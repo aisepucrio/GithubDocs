@@ -1,7 +1,13 @@
 from pedro_adapt.agents import GeminiAgent
 from pedro_adapt.agent_pipeline import AgentPipeline
 
-api_key = "SUA_API_KEY"
+import dotenv
+
+import os
+
+dotenv.load_dotenv()
+
+api_key = os.getenv("GEMINI_API_KEY")
 
 changelog_agent = GeminiAgent(
     api_key=api_key,
@@ -18,15 +24,15 @@ formatter_agent = GeminiAgent(
     api_key=api_key,
     base_prompt=(
         """
-        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
-        - **Release Notes:** resumo para usuários finais, linguagem simples.  
-        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
-        - **Benefícios:** rastrear progresso, transparência, onboarding.  
-        - **Quando usar:** público técnico, necessidade de detalhes completos.  
-        - **Formato padrão:**  
-        - Version (SemVer + data YYYY-MM-DD)  
-        - Release highlights  
-        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+        - **Release Notes:** resumo para usuários finais, linguagem simples.
+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+        - **Benefícios:** rastrear progresso, transparência, onboarding.
+        - **Quando usar:** público técnico, necessidade de detalhes completos.
+        - **Formato padrão:**
+        - Version (SemVer + data YYYY-MM-DD)
+        - Release highlights
+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
         """
     )
 )
