@@ -1,5 +1,6 @@
 from pedro_adapt.agents import GeminiAgent
 from pedro_adapt.agent_pipeline import AgentPipeline
+from utils.tree import tree
 
 import dotenv
 
@@ -41,13 +42,58 @@ formatter_agent = GeminiAgent(
     )
 )
 
-pipeline = AgentPipeline([changelog_agent, formatter_agent])
 
-with open("base_data/sample.patch", "r") as file:
-    entrada = file.read()
+readme_agent = GeminiAgent(
+    api_key=gemini_api_key,
+    model_name=gemini_model_name,
+    base_prompt=(
+        """    You are an assistant that generates README.md files based on the given file tree.
+        
+        INSTRUCTIONS:
+        - Only include sections if there is evidence in the file tree that they apply.
+        - Do NOT invent content — base everything on the provided tree.
+        - Output only the README.md content.
+        - Use dependencies to know how to install correctly based on tree
+        - maing file structure should be based on tree
+        
+        README TEMPLATE:
+        # GithubDocs
 
-saida = pipeline.run(entrada)
+        # Main File Structure 
 
-output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-with open(output_filename, "w") as file:
-    file.write(saida)
+        # describe technology and main language used
+
+        # Installation
+
+        # License
+        """
+    )
+)
+
+
+
+# pipeline = AgentPipeline([changelog_agent, formatter_agent])
+
+# with open("base_data/sample.patch", "r") as file:
+#     entrada = file.read()
+
+# saida = pipeline.run(entrada)
+
+# output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+# with open(output_filename, "w") as file:
+#     file.write(saida)
+
+# ==================================
+
+pipeline_readme = AgentPipeline([readme_agent])
+
+tree = tree()
+print(tree)
+
+print("\n\nGerando README.md com base na estrutura de diretórios...")
+
+saidaReadme = pipeline_readme.run(tree)
+
+output_readme = f"output/readme{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+with open(output_readme, "w") as file:
+    file.write(saidaReadme)
