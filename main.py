@@ -1,5 +1,7 @@
 import os
 import google.generativeai as genai
+import sys
+import json
 import subprocess
 from dotenv import load_dotenv
 
@@ -38,6 +40,40 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=api_key)
 
+# Caminhos dos arquivos
+changelog_raw_path = "CHANGELOG.md"
+changelog_final_path = "CHANGELOG_FINAL.md"
+
+# Ler o changelog bruto
+with open(changelog_raw_path, "r", encoding="utf-8") as f:
+    raw_text = f.read()
+
+# Prompt para a LLM
+prompt = f"""
+Você é um assistente de documentação de software.
+Transforme o seguinte changelog em português, no padrão Good Docs:
+
+- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
+- Faça um resumo curto das mudanças importantes em Release highlights
+- Organize os commits corretamente nas seções
+- Melhore a clareza e a linguagem formal
+- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+
+Changelog bruto:
+{raw_text}
+"""
+
+# Gerar o changelog final
+resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(prompt)
+
+final_text = resposta.text  # resultado em texto
+
+# Salvar o changelog final
+with open(changelog_final_path, "w", encoding="utf-8") as f:
+    f.write(final_text)
+
+print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+
 def ler_arquivo(caminho):
     with open(caminho, "r", encoding="utf-8") as f:
         return f.read()
@@ -46,7 +82,7 @@ def salvar_arquivo(caminho, conteudo):
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(conteudo)
 
-changelog = ler_arquivo("CHANGELOG.md")
+changelog = ler_arquivo("CHANGELOG_FINAL.md")
 readme = ler_arquivo("README.md")
 
 prompt = f"""
