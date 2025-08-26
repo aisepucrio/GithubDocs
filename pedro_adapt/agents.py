@@ -19,7 +19,7 @@ class GeminiAgent(AIAgent):
     def _count_tokens(self, input: str) -> int:
         return self.client.models.count_tokens(
             model=self.model_name, contents=self.base_prompt + "\n" + input
-        )
+        ).total_tokens
 
 class GPTAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str):

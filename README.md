@@ -28,6 +28,9 @@ Instale as dependencias
 uv sync
 ```
 
+### Base data example
+use o commando `git log --reverse -p main..HEAD > base_data/branch_diffs.patch` para gerar um arquivo de sample, onde o diff do  primeiro commit da branch ate o atual esta localizado.
+
 ### Usando o Ruff para linting e formatação
 
 O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
