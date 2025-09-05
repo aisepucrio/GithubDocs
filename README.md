@@ -21,8 +21,6 @@ curl -Ls [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
 pip install uv
 ```
 
-O [git-cliff](https://git-cliff.org/) é uma ferramenta CLI separada e não é instalado via pip/uv. Consulte a documentação oficial para instalá-lo, se necessário.
-
 ### 2\. Clonando o Repositório
 
 Para clonar este repositório pela primeira vez, incluindo os submodules, use o comando:

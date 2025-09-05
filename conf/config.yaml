@@ -2,29 +2,29 @@
 # TODO: melhorar a documentaco de cada topico desse, fazer isso dentro desse proprio file
 #como as outras ferramentas normalmente fazem, vide doxygen, postgres pg_hba.conf
 
-input:
-  type: "multiple"  # Supported types: code, tree, git, custom
-  sources:
-    - type: "code"
-      path: "src/**/*.{py,java,cpp,h}"
-      exclude: ["**/test/**", "**/build/**"]
+# -----------------------------------------------------------------------------
+# TARGET INFORMATION
+# -----------------------------------------------------------------------------
+# Specify which documentation to target for testing within a repository.
+#
+# The 'type' field determines which configuration block below will be used.
+# Supported types: 'readme', 'changelog', 'api'
+#
+#
+# -----------------------------------------------------------------------------
+target_information:
+  repo_path: "external_repos/ansible"
+  branch_name: "stable-2.19"
+  start_date: ""
+  end_date: ""
+  dependency_file_path: "pyproject.toml"
+  description: ""
+  framework: "none"
+  programing_language: "python"
+  expected_result_type: "changelog"
     
-    - type: "tree"
-      max_depth: 3
-      include_hidden: false
-    
-    - type: "git"
-      components:
-        - "diff"
-        - "commit_messages"
-        - "branches"
-      history_depth: 10
-    
-    - type: "custom"
-      files:
-        - path: "docs/requirements.txt"
-        - path: "architecture.md"
-    
+extract_information:
+  types: [diff, commit_description, readme]
 
 # -----------------------------------------------------------------------------
 # LLM SELECTION
@@ -36,19 +36,35 @@ input:
 # -----------------------------------------------------------------------------
 llm:
   providers:
-    - name: "gemini"
-      model: "gemini-2.0-flash-lite"
-      api_key: "${GEMINI_API_KEY}"
-      parameters:
-        temperature: 0.7
-        max_tokens: 1500
-    - name: "openai"
-      model: "gpt-4"
-      api_key: "${OPENAI_API_KEY}"
-      parameters:
-        temperature: 0.7
-        max_tokens: 1500
-  default_provider: "gemini"
+    - family: "gemini"
+      configurations:
+        - name: "gemini-flash-default"
+          model: "gemini-2.0-flash-lite"
+          api_key: "${GEMINI_API_KEY}"
+          parameters:
+            temperature: 0.7
+            max_tokens: 1500
+        - name: "gemini-pro"
+          model: "gemini-pro"
+          api_key: "${GEMINI_API_KEY}"
+          parameters:
+            temperature: 0.9
+            max_tokens: 2000
+    - family: "openai"
+      configurations:
+        - name: "gpt4-default"
+          model: "gpt-4"
+          api_key: "${OPENAI_API_KEY}"
+          parameters:
+            temperature: 0.7
+            max_tokens: 1500
+        - name: "gpt4-turbo"
+          model: "gpt-4-turbo"
+          api_key: "${OPENAI_API_KEY}"
+          parameters:
+            temperature: 0.8
+            max_tokens: 2000
+  default_provider: "gemini-flash-default"
 
 # -----------------------------------------------------------------------------
 # AGENTS
@@ -72,40 +88,36 @@ agents:
       prompt: "Evaluate the following documentation:\n\n"
       model_name: "gemini"
 
-#esse tem que avaliar se e factivel
 orchestration:
-  strategy: "sequential"
   max_retries: 2
   timeout_seconds: 300
+  flow:
+    - step: 1
+      from: "extract_information"
+      extract_information_types: "diff"
+      to: "Document Store"
+    - step: 2
+      from: "extract_information"
+      extract_information_types: "commit_description"
+      to: "Document Store"
+    - step: 3
+      from: "Document Store"
+      to: "Evaluation Module"
+      extract_information_types: "all"
 
-# -----------------------------------------------------------------------------
-# TARGET DOCUMENTATION
-# -----------------------------------------------------------------------------
-# Specify which documentation to target for testing within a repository.
-#
-# The 'type' field determines which configuration block below will be used.
-# Supported types: 'readme', 'changelog', 'api'
-#
-#
-# -----------------------------------------------------------------------------
-target:
-  repository_path: "external_repos/ansible"
-  type: "readme"
-
-  readme:
-    path: "README.md"
-
-  # changelog:
-  #   path: "changelogs/changelog.yaml"
-  #   fragments_directory: "changelogs/fragments/"
-
-# -----------------------------------------------------------------------------
-# Output definition
-#
-# Obs: Is ideal that the output follow the evaluation file type if one exists
-# -----------------------------------------------------------------------------
 output:
   path: "output/"
+  template: |
+    # Changelog
+    ## Version ${version}
+    ### Changes
+    ${changes}
+    
+    ### Bug Fixes
+    ${bugs}
+    
+    ### Contributors
+    ${contributors}
   file:
     name: "ansible_readme"
     format: "md"
