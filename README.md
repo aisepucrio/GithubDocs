@@ -1,39 +1,57 @@
 # GithubDocs
 
-Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador e gerenciador de pacotes Python ultra rápido que também inclui o linter/formatter Ruff.
 
-## Instalação do uv
+Além disso, o projeto gerencia dependências de repositórios externos para a geração de documentação através de Git submodules.
 
-1. Instale o `uv` usando um dos métodos abaixo:
+## Instalação e Configuração
 
+### 1. Pré-requisitos
+
+Instale o `uv` em seu sistema:
+
+  
+#### Via curl (Linux/macOS)
+``` bash
+curl -Ls [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+```
+
+#### Via pip
 ```bash
-# Via curl (Linux/macOS)
-curl -Ls https://astral.sh/uv/install.sh | bash
-
-# Via pip
 pip install uv
 ```
 
-## Configuração e Uso
+O [git-cliff](https://git-cliff.org/) é uma ferramenta CLI separada e não é instalado via pip/uv. Consulte a documentação oficial para instalá-lo, se necessário.
 
-### Instalando dependências
-Para instalar todas as dependências do projeto:
+### 2\. Clonando o Repositório
 
-Inicie uma venv
+Para clonar este repositório pela primeira vez, incluindo os submodules, use o comando:
+
 ```bash
-uv venv
+git clone --recursive <this-repo-url>
 ```
-Instale as dependencias
+
+Se você já clonou o repositório sem os submodules, inicialize-os com:
+
 ```bash
+git submodule init
+git submodule update
+```
+
+### 3\. Instalando Dependências Python
+
+Com o repositório clonado, crie um ambiente virtual e instale as dependências:
+
+```bash
+# Instale as dependências do projeto
 uv sync
 ```
 
-### Base data example
-use o commando `git log --reverse -p main..HEAD > base_data/branch_diffs.patch` para gerar um arquivo de sample, onde o diff do  primeiro commit da branch ate o atual esta localizado.
+## Uso
 
-### Usando o Ruff para linting e formatação
+### Linting e Formatação
 
-O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+O [Ruff](https://github.com/astral-sh/ruff) está configurado no arquivo `pyproject.toml` para garantir a qualidade e o estilo do código. O Ruff substitui ferramentas como `flake8`, `black`, `isort`, e `pyupgrade` em uma única ferramenta de alta performance.
 
 ```bash
 # Verificar problemas de linting
@@ -43,7 +61,39 @@ uv run ruff check .
 uv run ruff format .
 ```
 
-## Observações
-- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
-- A configuração do Ruff está incluída no arquivo `pyproject.toml`
-- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+## Gerenciamento de Submodules
+
+Este projeto usa Git submodules para gerenciar dependências de repositórios externos. Eles estão localizados no diretório `external_repos/`.
+
+### Adicionando um Novo Submodule
+
+Para adicionar um novo repositório como um submodule:
+
+```bash
+git submodule add <repository-url> external_repos/<repo-name>
+```
+
+### Atualizando Submodules
+
+Para atualizar todos os submodules para seus commits mais recentes na branch padrão:
+
+```bash
+git submodule update --remote
+```
+
+Para atualizar um submodule específico:
+
+```bash
+git submodule update --remote external_repos/<repo-name>
+```
+
+### Submodules Atuais
+
+A lista de repositórios externos utilizados para documentação é:
+
+  - *(Adicione os repositórios aqui conforme forem incluídos)*
+
+<!-- end list -->
+
+```
+```

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+from llm_agent.context_window import LLM_CONTEXT_WINDOWS
 
 class AIAgent(ABC):
     def __init__(self, model_name: str, api_key: str, base_prompt: str):

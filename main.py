@@ -1,176 +1,99 @@
+from src.llm_agent.agents import GeminiAgent
+from src.llm_agent.agent_pipeline import AgentPipeline
+from utils.tree import tree
+
+import dotenv
+
 import os
-import google.generativeai as genai
-import sys
-import json
-import subprocess
-from dotenv import load_dotenv
+from datetime import datetime
 
-def obter_commit():
-    cmd = ["git", "log", "-n", "1", "--pretty=format:%H", "--", "README.md"]
+dotenv.load_dotenv()
 
-    resultado = subprocess.run(cmd, capture_output=True, text=True, check=True)
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+gemini_model_name = "gemini-2.0-flash-lite"
 
-    return resultado.stdout.strip()
+changelog_agent = GeminiAgent(
+    api_key=gemini_api_key,
+    model_name=gemini_model_name,
+    base_prompt=(
+        "Você é um especialista em criar change logs para projetos de software. "
+        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+    )
+)
 
-def gerar_changelog(hash):
-    init_cmd = ["git-cliff", "--init"]
-    subprocess.run(init_cmd, capture_output=True, text=True)
+formatter_agent = GeminiAgent(
+    api_key=gemini_api_key,
+    model_name=gemini_model_name,
+    base_prompt=(
+        """
+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+        - **Release Notes:** resumo para usuários finais, linguagem simples.
+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+        - **Benefícios:** rastrear progresso, transparência, onboarding.
+        - **Quando usar:** público técnico, necessidade de detalhes completos.
+        - **Formato padrão:**
+        - Version (SemVer + data YYYY-MM-DD)
+        - Release highlights
+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+        """
+    )
+)
 
-    # gera o changelog
-    cmd = [
-        "git-cliff",
-        f"{hash}..HEAD",
-        "-o",
-        "CHANGELOG.md"
-    ]
 
-    resultado = subprocess.run(cmd, capture_output=True, text=True)
+readme_agent = GeminiAgent(
+    api_key=gemini_api_key,
+    model_name=gemini_model_name,
+    base_prompt=(
+        """    You are an assistant that generates README.md files based on the given file tree.
+        
+        INSTRUCTIONS:
+        - Only include sections if there is evidence in the file tree that they apply.
+        - Do NOT invent content — base everything on the provided tree.
+        - Output only the README.md content.
+        - Use dependencies to know how to install correctly based on tree
+        - maing file structure should be based on tree
+        
+        README TEMPLATE:
+        # GithubDocs
 
-    if resultado.returncode == 0:
-        print("CHANGELOG.md gerado com sucesso!")
-    else:
-        print("Erro ao gerar CHANGELOG:")
-        print(resultado.stderr)
-hash = obter_commit()
+        # Main File Structure 
 
-gerar_changelog(hash)
+        # describe technology and main language used
 
-load_dotenv()
+        # Installation
 
-api_key = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=api_key)
+        # License
+        """
+    )
+)
 
-# Caminhos dos arquivos
-changelog_raw_path = "CHANGELOG.md"
-changelog_final_path = "CHANGELOG_FINAL.md"
 
-# Ler o changelog bruto
-with open(changelog_raw_path, "r", encoding="utf-8") as f:
-    raw_text = f.read()
 
-# Prompt para a LLM
-prompt = f"""
-Você é um assistente de documentação de software.
-Transforme o seguinte changelog em português, no padrão Good Docs:
+# pipeline = AgentPipeline([changelog_agent, formatter_agent])
 
-- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
-- Faça um resumo curto das mudanças importantes em Release highlights
-- Organize os commits corretamente nas seções
-- Melhore a clareza e a linguagem formal
-- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+# with open("base_data/sample.patch", "r") as file:
+#     entrada = file.read()
 
-Changelog bruto:
-{raw_text}
-"""
+# saida = pipeline.run(entrada)
 
-# Gerar o changelog final
-resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(prompt)
+# output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+# with open(output_filename, "w") as file:
+#     file.write(saida)
 
-final_text = resposta.text  # resultado em texto
+# ==================================
 
-# Salvar o changelog final
-with open(changelog_final_path, "w", encoding="utf-8") as f:
-    f.write(final_text)
+pipeline_readme = AgentPipeline([readme_agent])
 
-print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+tree = tree()
+print(tree)
 
-def ler_arquivo(caminho):
-    with open(caminho, "r", encoding="utf-8") as f:
-        return f.read()
+print("\n\nGerando README.md com base na estrutura de diretórios...")
 
-def salvar_arquivo(caminho, conteudo):
-    with open(caminho, "w", encoding="utf-8") as f:
-        f.write(conteudo)
+saidaReadme = pipeline_readme.run(tree)
 
-changelog = ler_arquivo("CHANGELOG_FINAL.md")
-readme = ler_arquivo("README.md")
-
-prompt = f"""
-Você é um assistente que cria arquivos README em Markdown para projetos de software.
-
-Aqui está o CHANGELOG do projeto:
-{changelog}
-
-Aqui está o README atual:
-{readme}
-
-Crie um novo README em Markdown atualizado, integrando todas as informações relevantes do changelog.  
-Mantenha exatamente as mesmas seções e o mesmo formato. Só faça alterações necessárias de acordo com as mudanças do changelog. Não crie uma seção chamda changelog. Não crie novas seções em nenhuma hipótese.
-Forneça o conteúdo completo do README pronto para salvar em arquivo .md. Não explique nada, apenas gere o Markdown.
-"""
-
-resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(prompt)
-
-salvar_arquivo("README_UPDATED.md", resposta.text)
-
-print("Novo README gerado em README_UPDATED.md")
-import os
-import google.generativeai as genai
-import subprocess
-from dotenv import load_dotenv
-
-def obter_commit():
-    cmd = ["git", "log", "-n", "1", "--pretty=format:%H", "--", "README.md"]
-
-    resultado = subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-    return resultado.stdout.strip()
-
-def gerar_changelog(hash):
-    init_cmd = ["git-cliff", "--init"]
-    subprocess.run(init_cmd, capture_output=True, text=True)
-
-    # gera o changelog
-    cmd = [
-        "git-cliff",
-        f"{hash}..HEAD",
-        "-o",
-        "CHANGELOG.md"
-    ]
-
-    resultado = subprocess.run(cmd, capture_output=True, text=True)
-
-    if resultado.returncode == 0:
-        print("CHANGELOG.md gerado com sucesso!")
-    else:
-        print("Erro ao gerar CHANGELOG:")
-        print(resultado.stderr)
-hash = obter_commit()
-
-gerar_changelog(hash)
-
-load_dotenv()
-
-api_key = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=api_key)
-
-def ler_arquivo(caminho):
-    with open(caminho, "r", encoding="utf-8") as f:
-        return f.read()
-
-def salvar_arquivo(caminho, conteudo):
-    with open(caminho, "w", encoding="utf-8") as f:
-        f.write(conteudo)
-
-changelog = ler_arquivo("CHANGELOG.md")
-readme = ler_arquivo("README.md")
-
-prompt = f"""
-Você é um assistente que cria arquivos README em Markdown para projetos de software.
-
-Aqui está o CHANGELOG do projeto:
-{changelog}
-
-Aqui está o README atual:
-{readme}
-
-Crie um novo README em Markdown atualizado, integrando todas as informações relevantes do changelog.  
-Mantenha exatamente as mesmas seções e o mesmo formato. Só faça alterações necessárias de acordo com as mudanças do changelog. Não crie uma seção chamda changelog. Não crie novas seções em nenhuma hipótese.
-Forneça o conteúdo completo do README pronto para salvar em arquivo .md. Não explique nada, apenas gere o Markdown.
-"""
-
-resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(prompt)
-
-salvar_arquivo("README_UPDATED.md", resposta.text)
-
-print("Novo README gerado em README_UPDATED.md")
+output_readme = f"output/readme{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+with open(output_readme, "w") as file:
+    file.write(saidaReadme)

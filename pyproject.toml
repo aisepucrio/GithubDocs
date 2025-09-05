@@ -8,7 +8,8 @@ dependencies = [
     "openai",
     "google-genai==1.31.0",
     "python-dotenv",
-    "tiktoken==0.11.0"
+    "tiktoken==0.11.0",
+    "PyYAML==6.0.2"
 ]
 
 [tool.ruff]

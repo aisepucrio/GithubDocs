@@ -98,6 +98,14 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
+
+# External repositories specific ignores
+external_repos/**/__pycache__/
+external_repos/**/*.pyc
+external_repos/**/.pytest_cache/
+external_repos/**/.coverage
+external_repos/**/build/
+external_repos/**/dist/
 #uv.lock
 
 # poetry

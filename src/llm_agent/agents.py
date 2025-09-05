@@ -1,9 +1,8 @@
-from pedro_adapt.ai_agent import AIAgent
+from llm_agent.ai_agent import AIAgent
 from google import genai
 
 from openai import OpenAI
 import tiktoken
-
 
 class GeminiAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str):
