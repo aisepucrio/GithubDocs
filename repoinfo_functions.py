@@ -11,7 +11,7 @@ end_date = "" # "YYYY-MM-DD"
 dependency_file = "requirements.txt" # nome do arquivo de dependências
 repo_description = "Meu projeto de exemplo" # descrição/contexto do repositório
 framework = "Django" # framework usado no projeto *OBRIGATÓRIO (pode ser "Nenhum")
-prog_lang = "Python" # linguagem de programação principal *OBRIGATÓRIO (pode ser "Autodetect")
+prog_lang = "Autodetect" # linguagem de programação principal *OBRIGATÓRIO (pode ser "Autodetect")
 
 start_date = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
 end_date = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
@@ -64,8 +64,38 @@ def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, outp
     return output_file
 
 def getDependencies(dependency_file=dependency_file):
-    return os.path.join(repo_path, dependency_file)
+    dependency_file = os.path.join(repo_path, dependency_file)
+    return dependency_file
 
-getDependencies()
+def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path): #melhorar autodetect
+    prog_exts = {
+    ".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".rb", ".go",
+    ".php", ".rs", ".swift", ".kt", ".m", ".scala", ".sh", ".r",
+    ".jl", ".dart", ".hs", ".lua", ".pl", ".sql", ".ipynb", ".fs",
+    ".ex", ".exs", ".v", ".vhd", ".vhdl", ".groovy", ".clj", ".cljs",
+    ".elm", ".erl", ".erl", ".nim", ".cr", ".coffee", ".tsx", ".jsx"
+    }
+    
+    if prog_lang != "Autodetect":
+        return prog_lang
+    else:
+        langs_found = set()
+
+        for root, dirs, files in os.walk(repo_path):
+            if ".git" in dirs:
+                dirs.remove(".git")
+            
+            for file in files:
+                ext = os.path.splitext(file)[1].lower()
+                if ext in prog_exts:
+                    langs_found.add(ext)
+
+        if langs_found:
+            return ", ".join(sorted(langs_found))
+        else:
+            return None
+
+print(f"Linguagens: {getProgrammingLanguages()}") 
+print(f"Dependências: {getDependencies()}")
 getCommitDiffs()
 getCommits()
