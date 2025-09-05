@@ -102,25 +102,27 @@ orchestration:
       to: "Document Store"
     - step: 3
       from: "Document Store"
-      to: "Evaluation Module"
+      to: "changelog_output"
       extract_information_types: "all"
 
 output:
-  path: "output/"
-  template: |
-    # Changelog
-    ## Version ${version}
-    ### Changes
-    ${changes}
-    
-    ### Bug Fixes
-    ${bugs}
-    
-    ### Contributors
-    ${contributors}
-  file:
-    name: "ansible_readme"
-    format: "md"
+  components:
+    - name: "changelog_output"
+      path: "output/"
+      template: |
+        # Changelog
+        ## Version ${version}
+        ### Changes
+        ${changes}
+        
+        ### Bug Fixes
+        ${bugs}
+        
+        ### Contributors
+        ${contributors}
+      file:
+        name: "ansible_readme"
+        format: "md"
 
 # -----------------------------------------------------------------------------
 # EVALUATION METHOD
