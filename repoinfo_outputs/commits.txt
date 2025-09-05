@@ -1,0 +1,16 @@
+repoinfo_functions.py
+integração com a parte de geração de readme.md
+merging
+une soluções gui e jailma
+Merge branch 'main' of https://github.com/aisepucrio/GithubDocs
+add cliff.toml file
+sample data of that repository, plus some bugfixes and modifications on the readme.md file
+refactoring uv file, Readme usage and information in the gitignore
+add gpt agent
+removing .env of cache and improving .gitignore
+add changeLogLLM
+remove .env from repo history
+sample of a main file
+modifications to support ai agents to create the changelog
+Add git-cliff on requirements.txt
+Add update_readme_changelog.py
