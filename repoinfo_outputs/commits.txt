@@ -1,3 +1,4 @@
+getCodeRelatedToDiff funcionando
 getDiffs refatorado
 refactor getCommits
 Create getHashes function

@@ -1,4 +1,3 @@
-from git import Repo
 import os
 import subprocess
 
@@ -89,7 +88,6 @@ def getCodeReletadToDiffs(hashes,output_filename):
 def getDependencies(dependency_file=dependency_file):
     return os.path.join(repo_path, dependency_file)
 
-
 def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path):  # melhorar autodetect
     prog_exts = {
         ".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".rb", ".go",
@@ -119,7 +117,6 @@ print(f"Linguagens detectadas: {getProgrammingLanguages()}")
 print(f"Dependências: {getDependencies()}")
 
 hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
-print(hashes)
 getCommits(hashes,output_filename="commits.txt")
 getDiffs(hashes,"diffs.txt")
 getCodeReletadToDiffs(hashes,"diffs_related_code.txt")
