@@ -1,7 +1,0 @@
-Remove biblioteca que usa Repo
-getCodeRelatedToDiff funcionando
-getDiffs refatorado
-refactor getCommits
-Create getHashes function
-getCommits return hashes
-getCommits refeito

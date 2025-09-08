@@ -219,3 +219,6 @@ __marimo__/
 .streamlit/secrets.toml
 
 /repositories/*
+
+#Outputs
+repoinfo_outputs/
