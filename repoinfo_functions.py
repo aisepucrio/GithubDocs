@@ -25,6 +25,20 @@ print(f"Linguagem: {prog_lang}, Framework: {framework}")
 print(f"Dependências: {dependency_file}\n")
 
 # ------------------- Funções -------------------
+def getHashes(branch="main", start_date=None, end_date=None):
+    cmd = ["git", "log", branch, "--pretty=format:%H"]
+
+    if start_date:
+        cmd += [f"--since={start_date}"]
+    if end_date:
+        cmd += [f"--until={end_date}"]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    hashes = result.stdout.splitlines()
+    print(hashes)
+    return hashes
+
+
 def getCommits(branch="main", start_date=None, end_date=None, output_filename=None):
     output_file = os.path.join(output_dir, output_filename) if output_filename else None
 
@@ -44,6 +58,25 @@ def getCommits(branch="main", start_date=None, end_date=None, output_filename=No
 
     return hashes
 
+def getDiffs(branch="main", start_date=None, end_date=None, output_filename=None,hashes=None):
+    output_file = os.path.join(output_dir, output_filename) if output_filename else None
+
+    if hashes is None:
+        hashes = getCommits(branch, start_date, end_date)
+
+    diffs = []
+    for h in hashes:
+        cmd = ["git", "diff", f"{h}^!", "--unified=0"]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        diffs.append((h, result.stdout))
+
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            for h, d in diffs:
+                f.write(f"Commit: {h}\n")
+                f.write(d + "\n")
+
+    return diffs
 
 def getDependencies(dependency_file=dependency_file):
     return os.path.join(repo_path, dependency_file)
