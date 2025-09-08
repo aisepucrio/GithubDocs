@@ -112,6 +112,28 @@ def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path):  # melhor
 
     return ", ".join(sorted(langs_found)) if langs_found else None
 
+def getTree(path='.', include_venv_files=False, _prefix=''):
+    entries = sorted(os.listdir(path))
+    # ignora .git e .venv (se include_venv_files=False)
+    entries = [e for e in entries if e != '.git' and (include_venv_files or e != 'venv')]
+    entries_count = len(entries)
+    
+    lines = []
+    
+    for idx, entry in enumerate(entries):
+        full_path = os.path.join(path, entry)
+        is_last = idx == entries_count - 1
+        connector = '└── ' if is_last else '├── '
+        lines.append(f"{_prefix}{connector}{entry}")
+        
+        if os.path.isdir(full_path):
+            new_prefix = _prefix + ('    ' if is_last else '│   ')
+            lines.append(getTree(full_path, include_venv_files, _prefix=new_prefix))
+    
+    tree = '\n'.join(lines)
+    print(tree)
+    return tree
+
 # ------------------- Execução -------------------
 print(f"Linguagens detectadas: {getProgrammingLanguages()}")
 print(f"Dependências: {getDependencies()}")
@@ -120,4 +142,6 @@ hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
 getCommits(hashes,output_filename="commits.txt")
 getDiffs(hashes,"diffs.txt")
 getCodeReletadToDiffs(hashes,"diffs_related_code.txt")
+getTree()
+
 
