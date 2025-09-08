@@ -35,29 +35,24 @@ def getHashes(branch="main", start_date=None, end_date=None):
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     hashes = result.stdout.splitlines()
-    print(hashes)
     return hashes
 
 
-def getCommits(branch="main", start_date=None, end_date=None, output_filename=None):
-    output_file = os.path.join(output_dir, output_filename) if output_filename else None
+def getCommits(hashes, output_filename):
+    output_file = os.path.join(output_dir, output_filename)
 
-    cmd = ["git", "log", branch]
+    messages = []
+    for h in hashes:
+        cmd = ["git", "log", "-1", "--pretty=format:%s", h]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_path)
+        messages.append(result.stdout)
 
-    cmd += ["--pretty=format:%H %s"]
+    with open(output_file, "w", encoding="utf-8") as f:
+        for line in messages:
+            f.write(line + "\n")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-    commits = result.stdout.splitlines()
-    hashes = [line.split()[0] for line in commits]
-
-    if output_file:
-        with open(output_file, "w", encoding="utf-8") as f:
-            for c in commits:
-                f.write(c + "\n")
-
-    return hashes
-
+    print(f"{len(messages)} mensagens de commit salvas em {output_file}")
+    
 def getDiffs(branch="main", start_date=None, end_date=None, output_filename=None,hashes=None):
     output_file = os.path.join(output_dir, output_filename) if output_filename else None
 
@@ -109,5 +104,7 @@ def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path):  # melhor
 # ------------------- Execução -------------------
 print(f"Linguagens detectadas: {getProgrammingLanguages()}")
 print(f"Dependências: {getDependencies()}")
-getCommits(branch=branch, start_date=start_date, end_date=end_date,output_filename="commits.txt")
+
+hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
+getCommits(hashes,output_filename="commits.txt")
 
