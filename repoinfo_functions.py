@@ -69,6 +69,23 @@ def getDiffs(hashes,output_filename):
 
     print(f"Diffs salvos em {output_file}")
 
+def getCodeReletadToDiffs(hashes,output_filename):
+    output_file = os.path.join(output_dir, output_filename) 
+
+    start_hash = hashes[-1]
+    end_hash = hashes[0]
+
+    cmd = ["git", "diff", f"{start_hash}^", end_hash, "--unified=0"]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=repo_path)
+
+    diff_text = result.stdout if result.stdout else ""
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(diff_text)
+
+    print(f"Diffs salvos em {output_file}")
+
 def getDependencies(dependency_file=dependency_file):
     return os.path.join(repo_path, dependency_file)
 
@@ -105,4 +122,5 @@ hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
 print(hashes)
 getCommits(hashes,output_filename="commits.txt")
 getDiffs(hashes,"diffs.txt")
+getCodeReletadToDiffs(hashes,"diffs_related_code.txt")
 

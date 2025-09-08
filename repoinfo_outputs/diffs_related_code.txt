@@ -2,10 +2,9 @@ diff --git a/repoinfo_functions.py b/repoinfo_functions.py
 index 71cbafb..f02964f 100644
 --- a/repoinfo_functions.py
 +++ b/repoinfo_functions.py
-@@ -1,24 +1,22 @@
- from git import Repo
+@@ -2 +1,0 @@ from git import Repo
 -from datetime import datetime
- import os
+@@ -4,17 +3,15 @@ import os
 -from collections import Counter
 -
 -# Variáveis que virão do .config
@@ -38,21 +37,15 @@ index 71cbafb..f02964f 100644
 +
 +# ------------------- Repositório -------------------
 +
- output_dir = "repoinfo_outputs"
+@@ -21,0 +19 @@ output_dir = "repoinfo_outputs"
 +os.makedirs(output_dir, exist_ok=True)
- 
- print(f"Repositório: {repo_path}")
- print(f"Branch: {branch}")
-@@ -26,76 +24,85 @@ print(f"Descrição: {repo_description}")
- print(f"Linguagem: {prog_lang}, Framework: {framework}")
- print(f"Dependências: {dependency_file}\n")
- 
+@@ -29,2 +27,3 @@ print(f"Dependências: {dependency_file}\n")
 -def getCommits(branch="main", start_date=start_date, end_date=end_date, output_filename="commits.txt"):
 -    output_file = os.path.join(output_dir, output_filename)
 +# ------------------- Funções -------------------
 +def getHashes(branch="main", start_date=None, end_date=None):
 +    cmd = ["git", "log", branch, "--pretty=format:%H"]
- 
+@@ -32,13 +31,10 @@ def getCommits(branch="main", start_date=start_date, end_date=end_date, output_f
 -    with open(output_file, "w", encoding="utf-8") as f:
 -        for commit in repo.iter_commits(branch):
 -            commit_date = commit.committed_datetime
@@ -76,15 +69,14 @@ index 71cbafb..f02964f 100644
 +    return hashes
 +
 +def getCommits(hashes, output_filename):
-     output_file = os.path.join(output_dir, output_filename)
- 
+@@ -46,0 +43,6 @@ def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, outp
 +    messages = []
 +    for h in hashes:
 +        cmd = ["git", "log", "-1", "--pretty=format:%s", h]
 +        result = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_path, encoding="utf-8")
 +        messages.append(result.stdout)
 +
-     with open(output_file, "w", encoding="utf-8") as f:
+@@ -48,4 +50,10 @@ def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, outp
 -        commits = list(repo.iter_commits(branch))
 -        for i in range(len(commits)-1):
 -            commit = commits[i]
@@ -99,19 +91,19 @@ index 71cbafb..f02964f 100644
 +
 +    start_hash = hashes[-1]
 +    end_hash = hashes[0]
- 
+@@ -53,5 +61 @@ def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, outp
 -            commit_date = commit.committed_datetime
 -            if start_date and commit_date < start_date:
 -                continue
 -            if end_date and commit_date > end_date:
 -                continue
 +    cmd = ["git", "diff", f"{start_hash}^", end_hash]
- 
+@@ -59,3 +63 @@ def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, outp
 -            diffs = commit.diff(parent, create_patch=True)
 -            for diff in diffs:
 -                f.write(diff.diff.decode('utf-8', errors='ignore') + "\n")
 +    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=repo_path)
- 
+@@ -63,2 +65,6 @@ def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, outp
 -    print(f"Diferenças salvas em {output_file}")
 -    return output_file
 +    diff_text = result.stdout if result.stdout else ""
@@ -120,16 +112,15 @@ index 71cbafb..f02964f 100644
 +        f.write(diff_text)
 +
 +    print(f"Diffs salvos em {output_file}")
- 
- def getDependencies(dependency_file=dependency_file):
+@@ -67,2 +73,2 @@ def getDependencies(dependency_file=dependency_file):
 -    dependency_file = os.path.join(repo_path, dependency_file)
 -    return dependency_file
 +    return os.path.join(repo_path, dependency_file)
 +
- 
+@@ -70 +76 @@ def getDependencies(dependency_file=dependency_file):
 -def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path): #melhorar autodetect
 +def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path):  # melhorar autodetect
-     prog_exts = {
+@@ -72,5 +78,5 @@ def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path): #melhorar
 -    ".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".rb", ".go",
 -    ".php", ".rs", ".swift", ".kt", ".m", ".scala", ".sh", ".r",
 -    ".jl", ".dart", ".hs", ".lua", ".pl", ".sql", ".ipynb", ".fs",
@@ -140,11 +131,10 @@ index 71cbafb..f02964f 100644
 +        ".jl", ".dart", ".hs", ".lua", ".pl", ".sql", ".ipynb", ".fs",
 +        ".ex", ".exs", ".v", ".vhd", ".vhdl", ".groovy", ".clj", ".cljs",
 +        ".elm", ".erl", ".nim", ".cr", ".coffee", ".tsx", ".jsx"
-     }
+@@ -78 +84 @@ def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path): #melhorar
 -    
 +
-     if prog_lang != "Autodetect":
-         return prog_lang
+@@ -81,18 +87,15 @@ def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path): #melhorar
 -    else:
 -        langs_found = set()
 -
@@ -178,7 +168,7 @@ index 71cbafb..f02964f 100644
 +
 +# ------------------- Execução -------------------
 +print(f"Linguagens detectadas: {getProgrammingLanguages()}")
- print(f"Dependências: {getDependencies()}")
+@@ -100,2 +103,6 @@ print(f"Dependências: {getDependencies()}")
 -getCommitDiffs()
 -getCommits()
 \ No newline at end of file
@@ -217,7 +207,7 @@ diff --git a/repoinfo_outputs/diffs.txt b/repoinfo_outputs/diffs.txt
 index 3ae885a..c36f1ad 100644
 --- a/repoinfo_outputs/diffs.txt
 +++ b/repoinfo_outputs/diffs.txt
-@@ -1,636 +1,3086 @@
+@@ -1,15 +1,42 @@
 -
 -@@ -217,5 +217,3 @@ __marimo__/
 - 
@@ -275,7 +265,7 @@ index 3ae885a..c36f1ad 100644
 ++
 + output_dir = "repoinfo_outputs"
 ++os.makedirs(output_dir, exist_ok=True)
-  
+@@ -17,3 +44,5 @@
 -@@ -42,58 +41,13 @@ formatter_agent = GeminiAgent(
 -     )
 - )
@@ -284,14 +274,14 @@ index 3ae885a..c36f1ad 100644
 +@@ -26,76 +24,87 @@ print(f"Descrição: {repo_description}")
 + print(f"Linguagem: {prog_lang}, Framework: {framework}")
 + print(f"Dependências: {dependency_file}\n")
-  
+@@ -21 +50,5 @@
 -+pipeline = AgentPipeline([changelog_agent, formatter_agent])
 +-def getCommits(branch="main", start_date=start_date, end_date=end_date, output_filename="commits.txt"):
 +-    output_file = os.path.join(output_dir, output_filename)
 ++# ------------------- Funções -------------------
 ++def getHashes(branch="main", start_date=None, end_date=None):
 ++    cmd = ["git", "log", branch, "--pretty=format:%H"]
-  
+@@ -23,43 +56,7 @@
 --readme_agent = GeminiAgent(
 --    api_key=gemini_api_key,
 --    model_name=gemini_model_name,
@@ -342,13 +332,13 @@ index 3ae885a..c36f1ad 100644
 +-                continue
 +-            if end_date and commit_date > end_date:
 +-                continue
- -
+@@ -67,2 +64,3 @@
 --tree = tree()
 --print(tree)
 +-            f.write(f"{commit.message.strip()}\n")
 +-    print(f"Commits salvos em {output_file}")
 +-    return output_file
- -
+@@ -70,3 +68,13 @@
 --print("\n\nGerando README.md com base na estrutura de diretórios...")
 -+with open("base_data/sample.patch", "r") as file:
 -+    entrada = file.read()
@@ -365,7 +355,7 @@ index 3ae885a..c36f1ad 100644
 ++
 ++def getCommits(hashes, output_filename):
 +     output_file = os.path.join(output_dir, output_filename)
-  
+@@ -74,2 +82,18 @@
 --saidaReadme = pipeline_readme.run(tree)
 -+saida = pipeline.run(entrada)
 ++    messages = []
@@ -386,7 +376,7 @@ index 3ae885a..c36f1ad 100644
 ++    
 ++def getDiffs(branch="main", start_date=None, end_date=None, output_filename=None,hashes=None):
 ++    output_file = os.path.join(output_dir, output_filename) if output_filename else None
-  
+@@ -77,42 +101,2 @@
 --output_readme = f"output/readme{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
 --with open(output_readme, "w") as file:
 --    file.write(saidaReadme)
@@ -431,7 +421,7 @@ index 3ae885a..c36f1ad 100644
 --            if entry == '.venv' and not include_venv_files:
 +-            commit_date = commit.committed_datetime
 +-            if start_date and commit_date < start_date:
- -                continue
+@@ -120,13 +104,44 @@
 --            # Define novo prefixo para subdiretórios
 --            new_prefix = _prefix + ('    ' if is_last else '│   ')
 --            lines.append(tree(full_path, include_venv_files, _prefix=new_prefix))
@@ -489,7 +479,7 @@ index 3ae885a..c36f1ad 100644
 ++        ".ex", ".exs", ".v", ".vhd", ".vhdl", ".groovy", ".clj", ".cljs",
 ++        ".elm", ".erl", ".nim", ".cr", ".coffee", ".tsx", ".jsx"
 +     }
- -    
+@@ -134,5 +149,39 @@
 --    output = tree(args.path, include_venv_files=args.include_venv)
 --    print(output)
 -
@@ -534,7 +524,7 @@ index 3ae885a..c36f1ad 100644
 + print(f"Dependências: {getDependencies()}")
 +-getCommitDiffs()
 +-getCommits()
- \ No newline at end of file
+@@ -140,29 +189,45 @@
 -
 -@@ -1,219 +0,0 @@
 --# Byte-compiled / optimized / DLL files
@@ -609,7 +599,7 @@ index 3ae885a..c36f1ad 100644
 +--
 +--/repositories/*
 +-\ No newline at end of file
- -
+@@ -170,5 +235,75 @@
 --# PyInstaller
 --#  Usually these files are written by a python script from a template
 --#  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -690,7 +680,7 @@ index 3ae885a..c36f1ad 100644
 +-+with open(output_filename, "w") as file:
 +-+    file.write(saida)
 +-\ No newline at end of file
- -
+@@ -176,3 +311,54 @@
 --# Installer logs
 --pip-log.txt
 --pip-delete-this-directory.txt
@@ -748,7 +738,7 @@ index 3ae885a..c36f1ad 100644
 +-@@ -0,0 +1 @@
 +-+GEMINI_API_KEY = "api_key_here"
 +-\ No newline at end of file
- -
+@@ -180,14 +366,220 @@
 --# Unit test / coverage reports
 --htmlcov/
 --.tox/
@@ -983,7 +973,7 @@ index 3ae885a..c36f1ad 100644
 +--
 +--# Streamlit
 +--.streamlit/secrets.toml
- -
+@@ -195,3 +587,873 @@
 --# Translations
 --*.mo
 --*.pot
@@ -1860,7 +1850,7 @@ index 3ae885a..c36f1ad 100644
 +--
 +- print("Novo README gerado em README_UPDATED.md")
 +-\ No newline at end of file
- -
+@@ -199,5 +1461,87 @@
 --# Django stuff:
 --*.log
 --local_settings.py
@@ -1953,7 +1943,7 @@ index 3ae885a..c36f1ad 100644
 +--    def need_summarization(self, input: str) -> bool:
 +--        return self._count_tokens(input) > self.context_window
 +-\ No newline at end of file
- -
+@@ -205,3 +1549,10 @@
 --# Flask stuff:
 --instance/
 --.webassets-cache
@@ -1967,7 +1957,7 @@ index 3ae885a..c36f1ad 100644
 +--    "gpt-5-mini-2025-08-07": 400_000,
 +--}
 +-\ No newline at end of file
- -
+@@ -209,2 +1560,55 @@
 --# Scrapy stuff:
 --.scrapy
 +-@@ -1,53 +0,0 @@
@@ -2025,7 +2015,7 @@ index 3ae885a..c36f1ad 100644
 +--with open(output_filename, "w") as file:
 +--    file.write(saida)
 +-\ No newline at end of file
- -
+@@ -212,2 +1616,38 @@
 --# Sphinx documentation
 --docs/_build/
 +-@@ -1,37 +0,0 @@
@@ -2066,14 +2056,14 @@ index 3ae885a..c36f1ad 100644
 +--
 +--[tool.ruff.lint.per-file-ignores]
 +--"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
- -
+@@ -215,3 +1655,3 @@
 --# PyBuilder
 --.pybuilder/
 --target/
 +-@@ -0,0 +1,2 @@
 +-+google.generativeai
 +-+git-cliff
- -
+@@ -219,2 +1659,43 @@
 --# Jupyter Notebook
 --.ipynb_checkpoints
 +-@@ -0,0 +1,42 @@
@@ -2119,7 +2109,7 @@ index 3ae885a..c36f1ad 100644
 +-+    f.write(final_text)
 +-+
 +-+print(f"CHANGELOG_FINAL.md gerado com sucesso!")
- -
+@@ -222,3 +1703,217 @@
 --# IPython
 --profile_default/
 --ipython_config.py
@@ -2340,7 +2330,7 @@ index 3ae885a..c36f1ad 100644
 +- readme = ler_arquivo("README.md")
 +- 
 +- prompt = f"""
- -
+@@ -226,4 +1921,43 @@
 --# pyenv
 --#   For a library or package, you might want to ignore these files since the code is
 --#   intended to run in multiple environments; otherwise, check them in:
@@ -2388,7 +2378,7 @@ index 3ae885a..c36f1ad 100644
 +--    f.write(final_text)
 +--
 +--print(f"CHANGELOG_FINAL.md gerado com sucesso!")
- -
+@@ -231,6 +1965,3 @@
 --# pipenv
 --#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
 --#   However, in case of collaboration, if having platform-specific dependencies or dependencies
@@ -2398,7 +2388,7 @@ index 3ae885a..c36f1ad 100644
 +-@@ -1 +0,0 @@
 +--GEMINI_API_KEY = "api_key_here"
 +-\ No newline at end of file
- -
+@@ -238,198 +1969,5 @@
 --# UV
 --#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 --#   This is especially recommended for binary packages to ensure reproducibility, and is more
@@ -2602,7 +2592,7 @@ index 3ae885a..c36f1ad 100644
 +-+__pycache__/
 +-+*.py[codz]
 +-+*$py.class
- -+
+@@ -437 +1975,22 @@
 --+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
 +-+# C extensions
 +-+*.so
@@ -2626,19 +2616,19 @@ index 3ae885a..c36f1ad 100644
 +-+.installed.cfg
 +-+*.egg
 +-+MANIFEST
- -+
+@@ -439 +1998,5 @@
 --+## Instalação do uv
 +-+# PyInstaller
 +-+#  Usually these files are written by a python script from a template
 +-+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 +-+*.manifest
 +-+*.spec
- -+
+@@ -441 +2004,3 @@
 --+1. Instale o `uv` usando um dos métodos abaixo:
 +-+# Installer logs
 +-+pip-log.txt
 +-+pip-delete-this-directory.txt
- -+
+@@ -443,3 +2008,14 @@
 --+```bash
 --+# Via curl (Linux/macOS)
 --+curl -Ls https://astral.sh/uv/install.sh | bash
@@ -2656,55 +2646,55 @@ index 3ae885a..c36f1ad 100644
 +-+.hypothesis/
 +-+.pytest_cache/
 +-+cover/
- -+
+@@ -447,3 +2023,3 @@
 --+# Via pip
 --+pip install uv
 --+```
 +-+# Translations
 +-+*.mo
 +-+*.pot
- -+
+@@ -451 +2027,5 @@
 --+## Configuração e Uso
 +-+# Django stuff:
 +-+*.log
 +-+local_settings.py
 +-+db.sqlite3
 +-+db.sqlite3-journal
- -+
+@@ -453,2 +2033,3 @@
 --+### Instalando dependências
 --+Para instalar todas as dependências do projeto:
 +-+# Flask stuff:
 +-+instance/
 +-+.webassets-cache
- -+
+@@ -456,3 +2037,2 @@
 --+```bash
 --+uv pip install -r requirements.uv.txt
 --+```
 +-+# Scrapy stuff:
 +-+.scrapy
- -+
+@@ -460 +2040,2 @@
 --+### Usando o Ruff para linting e formatação
 +-+# Sphinx documentation
 +-+docs/_build/
- -+
+@@ -462 +2043,3 @@
 --+O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
 +-+# PyBuilder
 +-+.pybuilder/
 +-+target/
- -+
+@@ -464,3 +2047,2 @@
 --+```bash
 --+# Verificar problemas de linting
 --+uv run ruff check .
 +-+# Jupyter Notebook
 +-+.ipynb_checkpoints
- -+
+@@ -468,3 +2050,3 @@
 --+# Formatar código automaticamente
 --+uv run ruff format .
 --+```
 +-+# IPython
 +-+profile_default/
 +-+ipython_config.py
- -+
+@@ -472,13 +2054,4 @@
 --+## Observações
 --+- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
 --+- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
@@ -2722,7 +2712,7 @@ index 3ae885a..c36f1ad 100644
 +-+#   For a library or package, you might want to ignore these files since the code is
 +-+#   intended to run in multiple environments; otherwise, check them in:
 +-+# .python-version
- -+
+@@ -486,3 +2059,6 @@
 --+# agent_pipeline.py
 --+from typing import List
 --+from ai_agent import AIAgent
@@ -2732,7 +2722,7 @@ index 3ae885a..c36f1ad 100644
 +-+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
 +-+#   install all needed dependencies.
 +-+#Pipfile.lock
- -+
+@@ -490,3 +2066,5 @@
 --+class AgentPipeline:
 --+    def __init__(self, agents: List[AIAgent]):
 --+        self.agents = agents
@@ -2741,7 +2731,7 @@ index 3ae885a..c36f1ad 100644
 +-+#   This is especially recommended for binary packages to ensure reproducibility, and is more
 +-+#   commonly ignored for libraries.
 +-+#uv.lock
- -+
+@@ -494,5 +2072,7 @@
 --+    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
 --+        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
 --+        while agent.need_summarization(text):
@@ -2754,7 +2744,7 @@ index 3ae885a..c36f1ad 100644
 +-+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 +-+#poetry.lock
 +-+#poetry.toml
- -+
+@@ -500,2 +2080,8 @@
 --+    def run(self, input: str) -> str:
 --+        current_text = input
 +-+# pdm
@@ -2765,7 +2755,7 @@ index 3ae885a..c36f1ad 100644
 +-+#pdm.toml
 +-+.pdm-python
 +-+.pdm-build/
- -+
+@@ -503,3 +2089,6 @@
 --+        for agent in self.agents:
 --+            # Garante que o input caiba na janela de contexto
 --+            current_text = self._summarize_until_fits(agent, current_text)
@@ -2775,12 +2765,12 @@ index 3ae885a..c36f1ad 100644
 +-+#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
 +-+#   in the .venv directory. It is recommended not to include this directory in version control.
 +-+.pixi
- -+
+@@ -507,2 +2096,2 @@
 --+            # Executa o processamento principal do agente
 --+            current_text = agent.generate_response(current_text)
 +-+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 +-+__pypackages__/
- -+
+@@ -510,9 +2099,3 @@
 --+        return current_text
 --diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
 --new file mode 100644
@@ -2793,7 +2783,7 @@ index 3ae885a..c36f1ad 100644
 +-+# Celery stuff
 +-+celerybeat-schedule
 +-+celerybeat.pid
- -+
+@@ -520,4 +2103,4 @@
 --+class GeminiAgent(AIAgent):
 --+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
 --+        super().__init__(model_name, api_key, base_prompt)
@@ -2802,12 +2792,12 @@ index 3ae885a..c36f1ad 100644
 +-+*.rdb
 +-+*.aof
 +-+*.pid
- -+
+@@ -524,0 +2108,4 @@
 +-+# RabbitMQ
 +-+mnesia/
 +-+rabbitmq/
 +-+rabbitmq-data/
- -+
+@@ -526,5 +2113,2 @@
 --+    def generate_response(self, input: str) -> str:
 --+        response = self.client.models.generate_content(
 --+            model=self.model_name, contents=self.base_prompt + "\n" + input
@@ -2815,7 +2805,7 @@ index 3ae885a..c36f1ad 100644
 --+        return response.text
 +-+# ActiveMQ
 +-+activemq-data/
- -+
+@@ -532,12 +2116,2 @@
 --+    def _count_tokens(self, input: str) -> int:
 --+        return self.client.models.count_tokens(
 --+            model=self.model_name, contents=self.base_prompt + "\n" + input
@@ -2830,7 +2820,7 @@ index 3ae885a..c36f1ad 100644
 --+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
 +-+# SageMath parsed files
 +-+*.sage.py
- -+
+@@ -545,6 +2119,9 @@
 --+class AIAgent(ABC):
 --+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
 --+        self.model_name = model_name
@@ -2846,13 +2836,13 @@ index 3ae885a..c36f1ad 100644
 +-+ENV/
 +-+env.bak/
 +-+venv.bak/
- -+
+@@ -552,3 +2129,2 @@
 --+    @abstractmethod
 --+    def generate_response(self, input: str) -> str:
 --+        pass
 +-+#uv
 +-+uv.lock
- -+
+@@ -556,44 +2132,3 @@
 --+    @abstractmethod
 --+    def _count_tokens(self, input: str) -> int:
 --+        pass
@@ -2900,14 +2890,14 @@ index 3ae885a..c36f1ad 100644
 +-+# Spyder project settings
 +-+.spyderproject
 +-+.spyproject
- -+
+@@ -601,4 +2136,2 @@
 --+[format]
 --+# Configure formatters
 --+exclude = ["*.pyc", "__pycache__"]
 --+preview = true
 +-+# Rope project settings
 +-+.ropeproject
- -+
+@@ -606,5 +2139,2 @@
 --+[lint]
 --+# Enable Ruff's linter
 --+select = ["E", "F", "I", "N", "W", "B", "RUF"]
@@ -2915,7 +2905,7 @@ index 3ae885a..c36f1ad 100644
 --+preview = true
 +-+# mkdocs documentation
 +-+/site
- -+
+@@ -612,6 +2142,47 @@
 --+[lint.per-file-ignores]
 --+"__init__.py" = ["F401"]
 --
@@ -2969,7 +2959,7 @@ index 3ae885a..c36f1ad 100644
 +-+
 +-+# Streamlit
 +-+.streamlit/secrets.toml
- -
+@@ -619 +2190,50 @@
 --    sample of a main file
 +-@@ -0,0 +1,49 @@
 +-+# GithubDocs
@@ -3021,7 +3011,7 @@ index 3ae885a..c36f1ad 100644
 +-+- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
 +-+- A configuração do Ruff está incluída no arquivo `pyproject.toml`
 +-+- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
- -
+@@ -621,6 +2241,827 @@
 --diff --git a/main.py b/main.py
 --new file mode 100644
 --index 0000000..2de8e5b
@@ -3855,9 +3845,7 @@ index 3ae885a..c36f1ad 100644
 +--sort_commits = "newest"
 +-
 +-@@ -0,0 +1,53 @@
- -+from pedro_adapt.agents import GeminiAgent
- -+from pedro_adapt.agent_pipeline import AgentPipeline
- -+
+@@ -630 +3071,9 @@
 --+api_key = "SUA_API_KEY"
 +-+import dotenv
 +-+
@@ -3868,23 +3856,15 @@ index 3ae885a..c36f1ad 100644
 +-+
 +-+gemini_api_key = os.getenv("GEMINI_API_KEY")
 +-+gemini_model_name = "gemini-2.0-flash-lite"
- -+
- -+changelog_agent = GeminiAgent(
+@@ -633 +3082,2 @@
 --+    api_key=api_key,
 +-+    api_key=gemini_api_key,
 +-+    model_name=gemini_model_name,
- -+    base_prompt=(
- -+        "Você é um especialista em criar change logs para projetos de software. "
- -+        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
-@@ -641,2535 +3091,68 @@
- -+)
- -+
- -+formatter_agent = GeminiAgent(
+@@ -644 +3094,2 @@
 --+    api_key=api_key,
 +-+    api_key=gemini_api_key,
 +-+    model_name=gemini_model_name,
- -+    base_prompt=(
- -+        """
+@@ -647,9 +3098,9 @@
 --+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
 --+        - **Release Notes:** resumo para usuários finais, linguagem simples.  
 --+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
@@ -3903,18 +3883,12 @@ index 3ae885a..c36f1ad 100644
 +-+        - Version (SemVer + data YYYY-MM-DD)
 +-+        - Release highlights
 +-+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
- -+        """
- -+    )
- -+)
- -+
- -+pipeline = AgentPipeline([changelog_agent, formatter_agent])
- -+
+@@ -662 +3113,3 @@
 --+entrada = "Um texto gigantesco que ultrapassa o contexto..."
 +-+with open("base_data/sample.patch", "r") as file:
 +-+    entrada = file.read()
 +-+
- -+saida = pipeline.run(entrada)
- -+
+@@ -665,40 +3118,3 @@
 --+print("Resultado final:", saida)
 --diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
 --index d815d14..fae2126 100644
@@ -3958,7 +3932,7 @@ index 3ae885a..c36f1ad 100644
 +-+output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
 +-+with open(output_filename, "w") as file:
 +-+    file.write(saida)
- -
+@@ -706,14 +3122,20 @@
 --diff --git a/.env b/.env
 --deleted file mode 100644
 --index 39084ef..0000000
@@ -3993,7 +3967,7 @@ index 3ae885a..c36f1ad 100644
 +-+            current_text = self._summarize_until_fits(agent, current_text)
 +-+            current_text = agent.generate_response(current_text)
 +-+        return current_text
- -
+@@ -721,9 +3143,3 @@
 --diff --git a/.gitignore b/.gitignore
 --index 50a19c6..393702d 100644
 ----- a/.gitignore
@@ -4006,12 +3980,12 @@ index 3ae885a..c36f1ad 100644
 +-@@ -0,0 +1,39 @@
 +-+from pedro_adapt.ai_agent import AIAgent
 +-+from google import genai
- -+
+@@ -731,2 +3147,2 @@
 --+# C extensions
 --+*.so
 +-+from openai import OpenAI
 +-+import tiktoken
- -+
+@@ -734,2432 +3149,0 @@
 --+# Distribution / packaging
 --+.Python
 --+build/
@@ -6444,20 +6418,9 @@ index 3ae885a..c36f1ad 100644
 --@@ -0,0 +1,19 @@
 --+from pedro_adapt.ai_agent import AIAgent
 --+from google import genai
- -+
- -+class GeminiAgent(AIAgent):
- -+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
- -+        super().__init__(model_name, api_key, base_prompt)
- -+        self.client: genai.Client = genai.Client()
- -+
+@@ -3172 +3155,0 @@
 --+
- -+    def generate_response(self, input: str) -> str:
- -+        response = self.client.models.generate_content(
- -+            model=self.model_name, contents=self.base_prompt + "\n" + input
-@@ -3179,12 +3162,25 @@
- -+    def _count_tokens(self, input: str) -> int:
- -+        return self.client.models.count_tokens(
- -+            model=self.model_name, contents=self.base_prompt + "\n" + input
+@@ -3181,0 +3165,11 @@
 +-+        ).total_tokens
 +-+
 +-+class GPTAgent(AIAgent):
@@ -6469,7 +6432,7 @@ index 3ae885a..c36f1ad 100644
 +-+        response = self.client.responses.create(
 +-+            model=self.model_name,
 +-+            input=self.base_prompt + "\n" + input,
- -+        )
+@@ -3183,5 +3177,7 @@
 --diff --git a/pedro_adapt/ai_agent.py b/pedro_adapt/ai_agent.py
 --new file mode 100644
 --index 0000000..1514c42
@@ -6482,26 +6445,14 @@ index 3ae885a..c36f1ad 100644
 +-+        num_tokens = len(encoding.encode(input))
 +-+        return num_tokens
 +-
- -@@ -0,0 +1,23 @@
- -+from abc import ABC, abstractmethod
- -+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
-@@ -3210,11 +3206,7 @@
- -+    def need_summarization(self, input: str) -> bool:
- -+        return self._count_tokens(input) > self.context_window
- -\ No newline at end of file
+@@ -3213,5 +3209 @@
 --diff --git a/pedro_adapt/utils.py b/pedro_adapt/utils.py
 --new file mode 100644
 --index 0000000..0b95bcf
 ----- /dev/null
 --+++ b/pedro_adapt/utils.py
 +-
- -@@ -0,0 +1,8 @@
- -+LLM_CONTEXT_WINDOWS = {
- -+    "gemini-2.5-pro": 1_048_576,
-@@ -3225,19 +3217,959 @@
- -+    "gpt-5-mini-2025-08-07": 400_000,
- -+}
- -\ No newline at end of file
+@@ -3228,5 +3220,40 @@
 --diff --git a/requirements.txt b/requirements.txt
 --deleted file mode 100644
 --index aa09f68..0000000
@@ -6547,9 +6498,7 @@ index 3ae885a..c36f1ad 100644
 +-+[tool.ruff.lint.per-file-ignores]
 +-+"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
 +-
- -@@ -1,2 +0,0 @@
- --google.generativeai
- --git-cliff
+@@ -3236,5 +3263,910 @@
 --diff --git a/requirements.uv.txt b/requirements.uv.txt
 --new file mode 100644
 --index 0000000..4c657cd
@@ -7465,13 +7414,7 @@ index 3ae885a..c36f1ad 100644
 +--[tool.ruff.lint.per-file-ignores]
 +--"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
 +-
- -@@ -0,0 +1,19 @@
- -+google-generativeai
- -+ruff>=0.1.0
-@@ -3259,358 +4191,771 @@
- -+[lint.per-file-ignores]
- -+"__init__.py" = ["F401"]
- -
+@@ -3262,59 +4194,6 @@
 --commit 4300215dddbdc32f4132788dac393fb37529242f
 --Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
 --Date:   Mon Aug 25 21:31:29 2025 -0300
@@ -7537,11 +7480,11 @@ index 3ae885a..c36f1ad 100644
 +- 
 +--from openai import OpenAI
 +--import tiktoken
- --
+@@ -3322,3 +4200,0 @@
 ---# agent_pipeline.py
 ---from typing import List
 ---from ai_agent import AIAgent
- --
+@@ -3326,11 +4202,4 @@
 -- class AgentPipeline:
 --     def __init__(self, agents: List[AIAgent]):
 --         self.agents = agents
@@ -7557,7 +7500,7 @@ index 3ae885a..c36f1ad 100644
 +-     def __init__(self, model_name: str, api_key: str, base_prompt: str):
 +-         super().__init__(model_name, api_key, base_prompt)
 +-         self.client: genai.Client = genai.Client()
- - 
+@@ -3338,3 +4207,8 @@
 --         for agent in self.agents:
 ---            # Garante que o input caiba na janela de contexto
 --             current_text = self._summarize_until_fits(agent, current_text)
@@ -7569,14 +7512,14 @@ index 3ae885a..c36f1ad 100644
 +-         return self.client.models.count_tokens(
 +-             model=self.model_name, contents=self.base_prompt + "\n" + input
 +-         )
- --
+@@ -3342,2 +4216,4 @@
 ---            # Executa o processamento principal do agente
 --             current_text = agent.generate_response(current_text)
 +--class GPTAgent(AIAgent):
 +--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
 +--        super().__init__(model_name, api_key, base_prompt)
 +--        self.client: OpenAI = OpenAI(api_key=self.api_key)
- --
+@@ -3345,7 +4221,11 @@
 --         return current_text
 --
 --commit 7f1eac06d8f8f1fb7c9273a097e9283550766663
@@ -7595,7 +7538,7 @@ index 3ae885a..c36f1ad 100644
 +--        encoding = tiktoken.get_encoding("cl100k_base")
 +--        num_tokens = len(encoding.encode(input))
 +--        return num_tokens
- -
+@@ -3353,7 +4233,2 @@
 --diff --git a/.env b/.env
 --deleted file mode 100644
 --index 39084ef..0000000
@@ -7605,8 +7548,7 @@ index 3ae885a..c36f1ad 100644
 ---GEMINI_API_KEY = "api_key_here"
 +-@@ -0,0 +1 @@
 +-+GEMINI_API_KEY = "api_key_here"
- -\ No newline at end of file
- -
+@@ -3362,3 +4237,217 @@
 --commit 3c27c1823a34436b690a1d1e2d480dc7948e0ad7
 --Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
 --Date:   Mon Aug 25 21:40:25 2025 -0300
@@ -7827,7 +7769,7 @@ index 3ae885a..c36f1ad 100644
 +--
 +--# Streamlit
 +--.streamlit/secrets.toml
- -
+@@ -3366 +4455,42 @@
 --    removing .env of cache and improving .gitignore
 +-@@ -1,41 +0,0 @@
 +--# GithubDocs
@@ -7871,7 +7813,7 @@ index 3ae885a..c36f1ad 100644
 +--- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
 +--- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
 +--- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
- -
+@@ -3368,32 +4498,5 @@
 --diff --git a/.gitignore b/.gitignore
 --index 50a19c6..393702d 100644
 ----- a/.gitignore
@@ -7909,19 +7851,19 @@ index 3ae885a..c36f1ad 100644
 +-+import google.generativeai as genai
 +-+import sys
 +-+import json
- -+
+@@ -3401,5 +4504 @@
 --+# PyInstaller
 --+#  Usually these files are written by a python script from a template
 --+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 --+*.manifest
 --+*.spec
 +-+genai.configure(api_key="SUA CHAVE")
- -+
+@@ -3407,3 +4506 @@
 --+# Installer logs
 --+pip-log.txt
 --+pip-delete-this-directory.txt
 +-+model = genai.GenerativeModel('gemini-2.5-flash')
- -+
+@@ -3411,14 +4508,3 @@
 --+# Unit test / coverage reports
 --+htmlcov/
 --+.tox/
@@ -7939,14 +7881,14 @@ index 3ae885a..c36f1ad 100644
 +-+# Caminhos dos arquivos
 +-+changelog_raw_path = "CHANGELOG.md"
 +-+changelog_final_path = "CHANGELOG_FINAL.md"
- -+
+@@ -3426,3 +4512,3 @@
 --+# Translations
 --+*.mo
 --+*.pot
 +-+# Ler o changelog bruto
 +-+with open(changelog_raw_path, "r", encoding="utf-8") as f:
 +-+    raw_text = f.read()
- -+
+@@ -3430,5 +4516,4 @@
 --+# Django stuff:
 --+*.log
 --+local_settings.py
@@ -7956,7 +7898,7 @@ index 3ae885a..c36f1ad 100644
 +-+prompt = f"""
 +-+Você é um assistente de documentação de software.
 +-+Transforme o seguinte changelog em português, no padrão Good Docs:
- -+
+@@ -3436,3 +4521,5 @@
 --+# Flask stuff:
 --+instance/
 --+.webassets-cache
@@ -7965,29 +7907,29 @@ index 3ae885a..c36f1ad 100644
 +-+- Organize os commits corretamente nas seções
 +-+- Melhore a clareza e a linguagem formal
 +-+- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
- -+
+@@ -3440,2 +4527,3 @@
 --+# Scrapy stuff:
 --+.scrapy
 +-+Changelog bruto:
 +-+{raw_text}
 +-+"""
- -+
+@@ -3443,2 +4531,2 @@
 --+# Sphinx documentation
 --+docs/_build/
 +-+# Gerar o changelog final
 +-+response = model.generate_content(prompt)
- -+
+@@ -3446,3 +4534 @@
 --+# PyBuilder
 --+.pybuilder/
 --+target/
 +-+final_text = response.text  # resultado em texto
- -+
+@@ -3450,2 +4536,3 @@
 --+# Jupyter Notebook
 --+.ipynb_checkpoints
 +-+# Salvar o changelog final
 +-+with open(changelog_final_path, "w", encoding="utf-8") as f:
 +-+    f.write(final_text)
- -+
+@@ -3453,3 +4540,164 @@
 --+# IPython
 --+profile_default/
 --+ipython_config.py
@@ -8155,13 +8097,13 @@ index 3ae885a..c36f1ad 100644
 +-
 +-@@ -0,0 +1,41 @@
 +-+# GithubDocs
- -+
+@@ -3457,4 +4705 @@
 --+# pyenv
 --+#   For a library or package, you might want to ignore these files since the code is
 --+#   intended to run in multiple environments; otherwise, check them in:
 --+# .python-version
 +-+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
- -+
+@@ -3462,6 +4707 @@
 --+# pipenv
 --+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
 --+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
@@ -8169,14 +8111,14 @@ index 3ae885a..c36f1ad 100644
 --+#   install all needed dependencies.
 --+#Pipfile.lock
 +-+## Instalação do uv
- -+
+@@ -3469,5 +4709 @@
 --+# UV
 --+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 --+#   This is especially recommended for binary packages to ensure reproducibility, and is more
 --+#   commonly ignored for libraries.
 --+#uv.lock
 +-+1. Instale o `uv` usando um dos métodos abaixo:
- -+
+@@ -3475,7 +4711,3 @@
 --+# poetry
 --+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 --+#   This is especially recommended for binary packages to ensure reproducibility, and is more
@@ -8187,7 +8129,7 @@ index 3ae885a..c36f1ad 100644
 +-+```bash
 +-+# Via curl (Linux/macOS)
 +-+curl -Ls https://astral.sh/uv/install.sh | bash
- -+
+@@ -3483,8 +4715,3 @@
 --+# pdm
 --+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
 --+#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
@@ -8199,7 +8141,7 @@ index 3ae885a..c36f1ad 100644
 +-+# Via pip
 +-+pip install uv
 +-+```
- -+
+@@ -3492,6 +4719 @@
 --+# pixi
 --+#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
 --+#pixi.lock
@@ -8207,43 +8149,43 @@ index 3ae885a..c36f1ad 100644
 --+#   in the .venv directory. It is recommended not to include this directory in version control.
 --+.pixi
 +-+## Configuração e Uso
- -+
+@@ -3499,2 +4721,2 @@
 --+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 --+__pypackages__/
 +-+### Instalando dependências
 +-+Para instalar todas as dependências do projeto:
- -+
+@@ -3502,3 +4724,3 @@
 --+# Celery stuff
 --+celerybeat-schedule
 --+celerybeat.pid
 +-+```bash
 +-+uv pip install -r requirements.uv.txt
 +-+```
- -+
+@@ -3506,4 +4728 @@
 --+# Redis 
 --+*.rdb
 --+*.aof
 --+*.pid
 +-+### Usando o Ruff para linting e formatação
- -+
+@@ -3511,4 +4730 @@
 --+# RabbitMQ
 --+mnesia/
 --+rabbitmq/
 --+rabbitmq-data/
 +-+O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
- -+
+@@ -3516,2 +4732,3 @@
 --+# ActiveMQ
 --+activemq-data/
 +-+```bash
 +-+# Verificar problemas de linting
 +-+uv run ruff check .
- -+
+@@ -3519,2 +4736,3 @@
 --+# SageMath parsed files
 --+*.sage.py
 +-+# Formatar código automaticamente
 +-+uv run ruff format .
 +-+```
- -+
+@@ -3522,11 +4740,52 @@
 --+# Environments
 -- .env
 ---venv
@@ -8307,12 +8249,12 @@ index 3ae885a..c36f1ad 100644
 +-@@ -0,0 +1,39 @@
 +-+from pedro_adapt.agents import GeminiAgent
 +-+from pedro_adapt.agent_pipeline import AgentPipeline
- -+
+@@ -3534,3 +4793 @@
 --+# Spyder project settings
 --+.spyderproject
 --+.spyproject
 +-+api_key = "SUA_API_KEY"
- -+
+@@ -3538,2 +4795,10 @@
 --+# Rope project settings
 --+.ropeproject
 +-+changelog_agent = GeminiAgent(
@@ -8325,7 +8267,7 @@ index 3ae885a..c36f1ad 100644
 +-+        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
 +-+    )
 +-+)
- -+
+@@ -3541,2 +4806,16 @@
 --+# mkdocs documentation
 --+/site
 +-+formatter_agent = GeminiAgent(
@@ -8344,18 +8286,18 @@ index 3ae885a..c36f1ad 100644
 +-+        """
 +-+    )
 +-+)
- -+
+@@ -3544,4 +4823 @@
 --+# mypy
 --+.mypy_cache/
 --+.dmypy.json
 --+dmypy.json
 +-+pipeline = AgentPipeline([changelog_agent, formatter_agent])
- -+
+@@ -3549,2 +4825,2 @@
 --+# Pyre type checker
 --+.pyre/
 +-+entrada = "Um texto gigantesco que ultrapassa o contexto..."
 +-+saida = pipeline.run(entrada)
- -+
+@@ -3552,2 +4828,9 @@
 --+# pytype static type analyzer
 --+.pytype/
 +-+print("Resultado final:", saida)
@@ -8367,14 +8309,14 @@ index 3ae885a..c36f1ad 100644
 +-+class AgentPipeline:
 +-+    def __init__(self, agents: List[AIAgent]):
 +-+        self.agents = agents
- -+
+@@ -3555,2 +4838,4 @@
 --+# Cython debug symbols
 --+cython_debug/
 +-+    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
 +-+        while agent.need_summarization(text):
 +-+            text = agent.generate_response("Summarize the following text:\n" + text)
 +-+        return text
- -+
+@@ -3558,6 +4843,2 @@
 --+# PyCharm
 --+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 --+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
@@ -8383,7 +8325,7 @@ index 3ae885a..c36f1ad 100644
 --+#.idea/
 +-+    def run(self, input: str) -> str:
 +-+        current_text = input
- -+
+@@ -3565,5 +4846,8 @@
 --+# Abstra
 --+# Abstra is an AI-powered process automation framework.
 --+# Ignore directories containing user credentials, local state, and settings.
@@ -8397,7 +8339,7 @@ index 3ae885a..c36f1ad 100644
 +-@@ -0,0 +1,19 @@
 +-+from pedro_adapt.ai_agent import AIAgent
 +-+from google import genai
- -+
+@@ -3571,6 +4855,4 @@
 --+# Visual Studio Code
 --+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
 --+#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
@@ -8408,10 +8350,10 @@ index 3ae885a..c36f1ad 100644
 +-+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
 +-+        super().__init__(model_name, api_key, base_prompt)
 +-+        self.client: genai.Client = genai.Client()
- -+
+@@ -3578,2 +4859,0 @@
 --+# Ruff stuff:
 --+.ruff_cache/
- -+
+@@ -3581,2 +4861,5 @@
 --+# PyPI configuration file
 --+.pypirc
 +-+    def generate_response(self, input: str) -> str:
@@ -8419,7 +8361,7 @@ index 3ae885a..c36f1ad 100644
 +-+            model=self.model_name, contents=self.base_prompt + "\n" + input
 +-+        )
 +-+        return response.text
- -+
+@@ -3584,4 +4867,8 @@
 --+# Marimo
 --+marimo/_static/
 --+marimo/_lsp/
@@ -8432,7 +8374,7 @@ index 3ae885a..c36f1ad 100644
 +-@@ -0,0 +1,23 @@
 +-+from abc import ABC, abstractmethod
 +-+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
- -+
+@@ -3589,12 +4876,6 @@
 --+# Streamlit
 --+.streamlit/secrets.toml
 --diff --git a/main.py b/main.py
@@ -8451,12 +8393,12 @@ index 3ae885a..c36f1ad 100644
 +-+        self.api_key = api_key
 +-+        self.base_prompt = base_prompt
 +-+        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
- -+
+@@ -3602 +4883,3 @@
 --+import os
 +-+    @abstractmethod
 +-+    def generate_response(self, input: str) -> str:
 +-+        pass
- -+
+@@ -3604 +4887,32 @@
 --+dotenv.load_dotenv()
 +-+    @abstractmethod
 +-+    def _count_tokens(self, input: str) -> int:
@@ -8490,7 +8432,7 @@ index 3ae885a..c36f1ad 100644
 +-+dotenv
 +-+google-genai
 +-+# git-cliff is a CLI tool, not a Python package
- -+
+@@ -3606,8 +4920,39 @@
 --+api_key = os.getenv("GEMINI_API_KEY")
 -- 
 -- changelog_agent = GeminiAgent(
@@ -8538,13 +8480,7 @@ index 3ae885a..c36f1ad 100644
 +--    api_key=api_key,
 +--    base_prompt=(
 +--        """
- --        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
- --        - **Release Notes:** resumo para usuários finais, linguagem simples.  
- --        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
-@@ -3620,168 +4965,188 @@
- --        - Version (SemVer + data YYYY-MM-DD)  
- --        - Release highlights  
- --        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+@@ -3623,18 +4968,10 @@
 --+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
 --+        - **Release Notes:** resumo para usuários finais, linguagem simples.
 --+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
@@ -8573,7 +8509,7 @@ index 3ae885a..c36f1ad 100644
 +--saida = pipeline.run(entrada)
 +--
 +--print("Resultado final:", saida)
- -
+@@ -3642,10 +4979,4 @@
 --diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
 --index 3561b3c..7b91894 100644
 ----- a/pedro_adapt/agents.py
@@ -8588,11 +8524,11 @@ index 3ae885a..c36f1ad 100644
 +- # agent_pipeline.py
 +- from typing import List
 +- from ai_agent import AIAgent
- -+
+@@ -3652,0 +4984,3 @@
 +-+# agent_pipeline.py
 +-+from typing import List
 +-+from ai_agent import AIAgent
- -+
+@@ -3654,4 +4988,3 @@
 -- class GeminiAgent(AIAgent):
 --     def __init__(self, model_name: str, api_key: str, base_prompt: str):
 --         super().__init__(model_name, api_key, base_prompt)
@@ -8600,7 +8536,7 @@ index 3ae885a..c36f1ad 100644
 +- class AgentPipeline:
 +-     def __init__(self, agents: List[AIAgent]):
 +-         self.agents = agents
- - 
+@@ -3659,13 +4992,11 @@
 ---
 --     def generate_response(self, input: str) -> str:
 --         response = self.client.models.generate_content(
@@ -8625,7 +8561,7 @@ index 3ae885a..c36f1ad 100644
 +-         for agent in self.agents:
 +-+            # Garante que o input caiba na janela de contexto
 +-             current_text = self._summarize_until_fits(agent, current_text)
- -+
+@@ -3673,6 +5004,2 @@
 --+    def generate_response(self, input: str) -> str:
 --+        response = self.client.responses.create(
 --+            model=self.model_name,
@@ -8634,7 +8570,7 @@ index 3ae885a..c36f1ad 100644
 --+        return response.output_text
 +-+            # Executa o processamento principal do agente
 +-             current_text = agent.generate_response(current_text)
- -+
+@@ -3680,8 +5007 @@
 --+    def _count_tokens(self, input: str) -> int:
 --+        encoding = tiktoken.get_encoding("cl100k_base")
 --+        num_tokens = len(encoding.encode(input))
@@ -8644,13 +8580,13 @@ index 3ae885a..c36f1ad 100644
 --Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
 --Date:   Mon Aug 25 22:14:52 2025 -0300
 +-         return current_text
- -
+@@ -3689 +5009,4 @@
 --    refactoring uv file, Readme usage and information in the gitignore
 +-@@ -1,2 +0,0 @@
 +--.env
 +--venv
 +-\ No newline at end of file
- -
+@@ -3691,24 +5014,23 @@
 --diff --git a/.gitignore b/.gitignore
 --index 393702d..ab83e24 100644
 ----- a/.gitignore
@@ -8698,7 +8634,7 @@ index 3ae885a..c36f1ad 100644
 +--Para instalar todas as dependências do projeto:
 +--
 +--```bash
- --uv pip install -r requirements.uv.txt
+@@ -3716,9 +5038,4 @@
 --+uv venv
 --+```
 --+Instale as dependencias
@@ -8712,7 +8648,7 @@ index 3ae885a..c36f1ad 100644
 +--
 +--### Usando o Ruff para linting e formatação
 +--
- --O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+@@ -3726,8 +5043,11 @@
 --+O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
 -- 
 -- ```bash
@@ -8732,7 +8668,7 @@ index 3ae885a..c36f1ad 100644
 +--
 +--## Observações
 +--- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
- --- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+@@ -3735,50 +5055,95 @@
 --+- A configuração do Ruff está incluída no arquivo `pyproject.toml`
 -- - O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
 --diff --git a/pyproject.toml b/pyproject.toml
@@ -8878,13 +8814,7 @@ index 3ae885a..c36f1ad 100644
 +-+google.generativeai
 +-+git-cliff
 +-
- -@@ -1,19 +0,0 @@
- --google-generativeai
- --ruff>=0.1.0
-@@ -3802,1150 +5167,10 @@
- --
- --[lint.per-file-ignores]
- --"__init__.py" = ["F401"]
+@@ -3805,996 +5169,0 @@
 -
 -@@ -4,16 +4,13 @@ from pedro_adapt.agent_pipeline import AgentPipeline
 - import dotenv
@@ -9881,7 +9811,7 @@ index 3ae885a..c36f1ad 100644
 --```bash
 --# Via curl (Linux/macOS)
 --curl -Ls https://astral.sh/uv/install.sh | bash
- -
+@@ -4802,140 +5171,5 @@
 --# Via pip
 --pip install uv
 --```
@@ -10027,7 +9957,7 @@ index 3ae885a..c36f1ad 100644
 +--git-cliff
 +-+google.generativeai
 +-\ No newline at end of file
- -
+@@ -4943,9 +5176,0 @@
 --[lint.per-file-ignores]
 --"__init__.py" = ["F401"]
 -

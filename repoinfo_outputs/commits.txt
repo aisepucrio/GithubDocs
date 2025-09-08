@@ -1,3 +1,4 @@
+getDiffs refatorado
 refactor getCommits
 Create getHashes function
 getCommits return hashes
