@@ -34,18 +34,15 @@ def getCommits(branch="main", start_date=None, end_date=None, output_filename=No
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
-    if result.returncode != 0:
-        raise RuntimeError(f"Erro ao executar git log: {result.stderr}")
-
     commits = result.stdout.splitlines()
+    hashes = [line.split()[0] for line in commits]
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             for c in commits:
                 f.write(c + "\n")
 
-    return commits
-
+    return hashes
 
 
 def getDependencies(dependency_file=dependency_file):
