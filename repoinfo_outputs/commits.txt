@@ -1,16 +1,19 @@
-repoinfo_functions.py
-integração com a parte de geração de readme.md
-merging
-une soluções gui e jailma
-Merge branch 'main' of https://github.com/aisepucrio/GithubDocs
-add cliff.toml file
-sample data of that repository, plus some bugfixes and modifications on the readme.md file
-refactoring uv file, Readme usage and information in the gitignore
-add gpt agent
-removing .env of cache and improving .gitignore
-add changeLogLLM
-remove .env from repo history
-sample of a main file
-modifications to support ai agents to create the changelog
-Add git-cliff on requirements.txt
-Add update_readme_changelog.py
+34c8ce242008915d39bd1b99d74a363ee204acd5 create getProgrammingLanguages on repoinfo_functions
+7d64231226435ea17625563e81dab05f82913360 create getCommitsDiffs & getDependecies on repoinfo_functions
+e43f1a014bfc841f8c4bdc13d08b66fc4fdaf385 create getCommits on repoinfo_functions
+76b4cb8a5c8ff83b49e52451c518c73f246eab7a repoinfo_functions.py
+09d89920689d2489e49eacdc657f177f1a48ea23 integraÃ§Ã£o com a parte de geraÃ§Ã£o de readme.md
+016c882c0f770016d35dd3362a777e58eb3f2711 merging
+5f8230a27f9e489540bb6539cbfd4d9888199856 une soluÃ§Ãµes gui e jailma
+05e7221add1d0ca2a647def3a51f577d45d0bda2 Merge branch 'main' of https://github.com/aisepucrio/GithubDocs
+4b6bbfd5370ee6e7cc6e9a58e9198c78fc8189a7 add cliff.toml file
+1683e10781203e3729d86b1b5dc43f241b982124 sample data of that repository, plus some bugfixes and modifications on the readme.md file
+b6db3cdda564df4429b2bafc98ef6109899fe57d refactoring uv file, Readme usage and information in the gitignore
+5b11d6ff0863f2e43c9fa800e228d9d2a252f3dd add gpt agent
+3c27c1823a34436b690a1d1e2d480dc7948e0ad7 removing .env of cache and improving .gitignore
+177f34ae30fad71526099cd738f869a2fa2bdbe3 add changeLogLLM
+7f1eac06d8f8f1fb7c9273a097e9283550766663 remove .env from repo history
+4300215dddbdc32f4132788dac393fb37529242f sample of a main file
+32c077ace9b32fbe33a7d9b61f8f8267467ae6de modifications to support ai agents to create the changelog
+b26b8d680c734ce2cac1d8c195df83e6da3ab95d Add git-cliff on requirements.txt
+19964db6f5858a0f7cda8f9f3663982d636e371b Add update_readme_changelog.py
