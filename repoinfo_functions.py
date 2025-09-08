@@ -5,7 +5,7 @@ import subprocess
 # ------------------- Configurações -------------------
 repo_path = r"C:\Users\guicu\OneDrive\Documentos\prog\aise\GithubDocs"  # caminho do repositório *OBRIGATÓRIO
 branch = "Guilherme"  # nome da branch
-start_date = "2025-09-01"  # "YYYY-MM-DD"
+start_date = "2025-09-07"  # "YYYY-MM-DD"
 end_date = ""  # "YYYY-MM-DD"
 dependency_file = "requirements.txt"  # nome do arquivo de dependências
 repo_description = "Meu projeto de exemplo"  # descrição/contexto do repositório
@@ -33,10 +33,9 @@ def getHashes(branch="main", start_date=None, end_date=None):
     if end_date:
         cmd += [f"--until={end_date}"]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
     hashes = result.stdout.splitlines()
     return hashes
-
 
 def getCommits(hashes, output_filename):
     output_file = os.path.join(output_dir, output_filename)
@@ -44,7 +43,7 @@ def getCommits(hashes, output_filename):
     messages = []
     for h in hashes:
         cmd = ["git", "log", "-1", "--pretty=format:%s", h]
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_path)
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_path, encoding="utf-8")
         messages.append(result.stdout)
 
     with open(output_file, "w", encoding="utf-8") as f:
@@ -53,25 +52,22 @@ def getCommits(hashes, output_filename):
 
     print(f"{len(messages)} mensagens de commit salvas em {output_file}")
     
-def getDiffs(branch="main", start_date=None, end_date=None, output_filename=None,hashes=None):
-    output_file = os.path.join(output_dir, output_filename) if output_filename else None
+def getDiffs(hashes,output_filename):
+    output_file = os.path.join(output_dir, output_filename) 
 
-    if hashes is None:
-        hashes = getCommits(branch, start_date, end_date)
+    start_hash = hashes[-1]
+    end_hash = hashes[0]
 
-    diffs = []
-    for h in hashes:
-        cmd = ["git", "diff", f"{h}^!", "--unified=0"]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        diffs.append((h, result.stdout))
+    cmd = ["git", "diff", f"{start_hash}^", end_hash]
 
-    if output_file:
-        with open(output_file, "w", encoding="utf-8") as f:
-            for h, d in diffs:
-                f.write(f"Commit: {h}\n")
-                f.write(d + "\n")
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=repo_path)
 
-    return diffs
+    diff_text = result.stdout if result.stdout else ""
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(diff_text)
+
+    print(f"Diffs salvos em {output_file}")
 
 def getDependencies(dependency_file=dependency_file):
     return os.path.join(repo_path, dependency_file)
@@ -106,5 +102,7 @@ print(f"Linguagens detectadas: {getProgrammingLanguages()}")
 print(f"Dependências: {getDependencies()}")
 
 hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
+print(hashes)
 getCommits(hashes,output_filename="commits.txt")
+getDiffs(hashes,"diffs.txt")
 

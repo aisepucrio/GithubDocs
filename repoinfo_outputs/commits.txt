@@ -1,7 +1,4 @@
+refactor getCommits
 Create getHashes function
 getCommits return hashes
 getCommits refeito
-create getProgrammingLanguages on repoinfo_functions
-create getCommitsDiffs & getDependecies on repoinfo_functions
-create getCommits on repoinfo_functions
-repoinfo_functions.py

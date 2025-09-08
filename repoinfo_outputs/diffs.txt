@@ -1,0 +1,5176 @@
+diff --git a/repoinfo_functions.py b/repoinfo_functions.py
+index 71cbafb..7bb1119 100644
+--- a/repoinfo_functions.py
++++ b/repoinfo_functions.py
+@@ -1,24 +1,22 @@
+ from git import Repo
+-from datetime import datetime
+ import os
+-from collections import Counter
+-
+-# Variáveis que virão do .config
+-repo_path = r"C:\Users\guicu\OneDrive\Documentos\prog\aise\GithubDocs" # caminho do repositório *OBRIGATÓRIO
+-branch = "main" # nome da branch      
+-start_date = "" # "YYYY-MM-DD"
+-end_date = "" # "YYYY-MM-DD"  
+-dependency_file = "requirements.txt" # nome do arquivo de dependências
+-repo_description = "Meu projeto de exemplo" # descrição/contexto do repositório
+-framework = "Django" # framework usado no projeto *OBRIGATÓRIO (pode ser "Nenhum")
+-prog_lang = "Autodetect" # linguagem de programação principal *OBRIGATÓRIO (pode ser "Autodetect")
+-
+-start_date = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+-end_date = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
+-### -----------------------------------------------------------------------------
+-
+-repo = Repo(repo_path)
++import subprocess
++
++# ------------------- Configurações -------------------
++repo_path = r"C:\Users\guicu\OneDrive\Documentos\prog\aise\GithubDocs"  # caminho do repositório *OBRIGATÓRIO
++branch = "Guilherme"  # nome da branch
++start_date = "2025-09-01"  # "YYYY-MM-DD"
++end_date = ""  # "YYYY-MM-DD"
++dependency_file = "requirements.txt"  # nome do arquivo de dependências
++repo_description = "Meu projeto de exemplo"  # descrição/contexto do repositório
++framework = "Django"  # framework usado no projeto *OBRIGATÓRIO (pode ser "Nenhum")
++prog_lang = "Autodetect"  # linguagem de programação principal *OBRIGATÓRIO (pode ser "Autodetect")
++output_dir = os.path.join(repo_path, "repoinfo_outputs")
++
++# ------------------- Repositório -------------------
++
+ output_dir = "repoinfo_outputs"
++os.makedirs(output_dir, exist_ok=True)
+ 
+ print(f"Repositório: {repo_path}")
+ print(f"Branch: {branch}")
+@@ -26,76 +24,87 @@ print(f"Descrição: {repo_description}")
+ print(f"Linguagem: {prog_lang}, Framework: {framework}")
+ print(f"Dependências: {dependency_file}\n")
+ 
+-def getCommits(branch="main", start_date=start_date, end_date=end_date, output_filename="commits.txt"):
+-    output_file = os.path.join(output_dir, output_filename)
++# ------------------- Funções -------------------
++def getHashes(branch="main", start_date=None, end_date=None):
++    cmd = ["git", "log", branch, "--pretty=format:%H"]
+ 
+-    with open(output_file, "w", encoding="utf-8") as f:
+-        for commit in repo.iter_commits(branch):
+-            commit_date = commit.committed_datetime
+-            if start_date and commit_date < start_date:
+-                continue
+-            if end_date and commit_date > end_date:
+-                continue
+-
+-            f.write(f"{commit.message.strip()}\n")
+-    print(f"Commits salvos em {output_file}")
+-    return output_file
+-
+-def getCommitDiffs(branch="main", start_date=start_date, end_date=end_date, output_filename="diffs.txt"):
++    if start_date:
++        cmd += [f"--since={start_date}"]
++    if end_date:
++        cmd += [f"--until={end_date}"]
++
++    result = subprocess.run(cmd, capture_output=True, text=True)
++    hashes = result.stdout.splitlines()
++    return hashes
++
++
++def getCommits(hashes, output_filename):
+     output_file = os.path.join(output_dir, output_filename)
+ 
++    messages = []
++    for h in hashes:
++        cmd = ["git", "log", "-1", "--pretty=format:%s", h]
++        result = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_path)
++        messages.append(result.stdout)
++
+     with open(output_file, "w", encoding="utf-8") as f:
+-        commits = list(repo.iter_commits(branch))
+-        for i in range(len(commits)-1):
+-            commit = commits[i]
+-            parent = commits[i+1]  # commit anterior
++        for line in messages:
++            f.write(line + "\n")
++
++    print(f"{len(messages)} mensagens de commit salvas em {output_file}")
++    
++def getDiffs(branch="main", start_date=None, end_date=None, output_filename=None,hashes=None):
++    output_file = os.path.join(output_dir, output_filename) if output_filename else None
+ 
+-            commit_date = commit.committed_datetime
+-            if start_date and commit_date < start_date:
+-                continue
+-            if end_date and commit_date > end_date:
+-                continue
++    if hashes is None:
++        hashes = getCommits(branch, start_date, end_date)
+ 
+-            diffs = commit.diff(parent, create_patch=True)
+-            for diff in diffs:
+-                f.write(diff.diff.decode('utf-8', errors='ignore') + "\n")
++    diffs = []
++    for h in hashes:
++        cmd = ["git", "diff", f"{h}^!", "--unified=0"]
++        result = subprocess.run(cmd, capture_output=True, text=True)
++        diffs.append((h, result.stdout))
+ 
+-    print(f"Diferenças salvas em {output_file}")
+-    return output_file
++    if output_file:
++        with open(output_file, "w", encoding="utf-8") as f:
++            for h, d in diffs:
++                f.write(f"Commit: {h}\n")
++                f.write(d + "\n")
++
++    return diffs
+ 
+ def getDependencies(dependency_file=dependency_file):
+-    dependency_file = os.path.join(repo_path, dependency_file)
+-    return dependency_file
++    return os.path.join(repo_path, dependency_file)
++
+ 
+-def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path): #melhorar autodetect
++def getProgrammingLanguages(prog_lang=prog_lang, repo_path=repo_path):  # melhorar autodetect
+     prog_exts = {
+-    ".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".rb", ".go",
+-    ".php", ".rs", ".swift", ".kt", ".m", ".scala", ".sh", ".r",
+-    ".jl", ".dart", ".hs", ".lua", ".pl", ".sql", ".ipynb", ".fs",
+-    ".ex", ".exs", ".v", ".vhd", ".vhdl", ".groovy", ".clj", ".cljs",
+-    ".elm", ".erl", ".erl", ".nim", ".cr", ".coffee", ".tsx", ".jsx"
++        ".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".rb", ".go",
++        ".php", ".rs", ".swift", ".kt", ".m", ".scala", ".sh", ".r",
++        ".jl", ".dart", ".hs", ".lua", ".pl", ".sql", ".ipynb", ".fs",
++        ".ex", ".exs", ".v", ".vhd", ".vhdl", ".groovy", ".clj", ".cljs",
++        ".elm", ".erl", ".nim", ".cr", ".coffee", ".tsx", ".jsx"
+     }
+-    
++
+     if prog_lang != "Autodetect":
+         return prog_lang
+-    else:
+-        langs_found = set()
+-
+-        for root, dirs, files in os.walk(repo_path):
+-            if ".git" in dirs:
+-                dirs.remove(".git")
+-            
+-            for file in files:
+-                ext = os.path.splitext(file)[1].lower()
+-                if ext in prog_exts:
+-                    langs_found.add(ext)
+-
+-        if langs_found:
+-            return ", ".join(sorted(langs_found))
+-        else:
+-            return None
+-
+-print(f"Linguagens: {getProgrammingLanguages()}") 
++
++    langs_found = set()
++    for root, dirs, files in os.walk(repo_path):
++        if ".git" in dirs:
++            dirs.remove(".git")
++
++        for file in files:
++            ext = os.path.splitext(file)[1].lower()
++            if ext in prog_exts:
++                langs_found.add(ext)
++
++    return ", ".join(sorted(langs_found)) if langs_found else None
++
++# ------------------- Execução -------------------
++print(f"Linguagens detectadas: {getProgrammingLanguages()}")
+ print(f"Dependências: {getDependencies()}")
+-getCommitDiffs()
+-getCommits()
+\ No newline at end of file
++
++hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
++getCommits(hashes,output_filename="commits.txt")
++
+diff --git a/repoinfo_outputs/commits.txt b/repoinfo_outputs/commits.txt
+index dc5d7de..3a89baa 100644
+--- a/repoinfo_outputs/commits.txt
++++ b/repoinfo_outputs/commits.txt
+@@ -1,16 +1,7 @@
++Create getHashes function
++getCommits return hashes
++getCommits refeito
++create getProgrammingLanguages on repoinfo_functions
++create getCommitsDiffs & getDependecies on repoinfo_functions
++create getCommits on repoinfo_functions
+ repoinfo_functions.py
+-integração com a parte de geração de readme.md
+-merging
+-une soluções gui e jailma
+-Merge branch 'main' of https://github.com/aisepucrio/GithubDocs
+-add cliff.toml file
+-sample data of that repository, plus some bugfixes and modifications on the readme.md file
+-refactoring uv file, Readme usage and information in the gitignore
+-add gpt agent
+-removing .env of cache and improving .gitignore
+-add changeLogLLM
+-remove .env from repo history
+-sample of a main file
+-modifications to support ai agents to create the changelog
+-Add git-cliff on requirements.txt
+-Add update_readme_changelog.py
+diff --git a/repoinfo_outputs/diffs.txt b/repoinfo_outputs/diffs.txt
+deleted file mode 100644
+index 3ae885a..0000000
+--- a/repoinfo_outputs/diffs.txt
++++ /dev/null
+@@ -1,4951 +0,0 @@
+-
+-@@ -217,5 +217,3 @@ __marimo__/
+- 
+- # Streamlit
+- .streamlit/secrets.toml
+--
+--/repositories/*
+-\ No newline at end of file
+-
+-@@ -1,6 +1,5 @@
+- from pedro_adapt.agents import GeminiAgent
+- from pedro_adapt.agent_pipeline import AgentPipeline
+--from utils.tree import tree
+- 
+- import dotenv
+- 
+-@@ -42,58 +41,13 @@ formatter_agent = GeminiAgent(
+-     )
+- )
+- 
+-+pipeline = AgentPipeline([changelog_agent, formatter_agent])
+- 
+--readme_agent = GeminiAgent(
+--    api_key=gemini_api_key,
+--    model_name=gemini_model_name,
+--    base_prompt=(
+--        """    You are an assistant that generates README.md files based on the given file tree.
+--        
+--        INSTRUCTIONS:
+--        - Only include sections if there is evidence in the file tree that they apply.
+--        - Do NOT invent content — base everything on the provided tree.
+--        - Output only the README.md content.
+--        - Use dependencies to know how to install correctly based on tree
+--        - maing file structure should be based on tree
+--        
+--        README TEMPLATE:
+--        # GithubDocs
+--
+--        # Main File Structure 
+--
+--        # describe technology and main language used
+--
+--        # Installation
+--
+--        # License
+--        """
+--    )
+--)
+--
+--
+--
+--# pipeline = AgentPipeline([changelog_agent, formatter_agent])
+--
+--# with open("base_data/sample.patch", "r") as file:
+--#     entrada = file.read()
+--
+--# saida = pipeline.run(entrada)
+--
+--# output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+--# with open(output_filename, "w") as file:
+--#     file.write(saida)
+--
+--# ==================================
+--
+--pipeline_readme = AgentPipeline([readme_agent])
+--
+--tree = tree()
+--print(tree)
+--
+--print("\n\nGerando README.md com base na estrutura de diretórios...")
+-+with open("base_data/sample.patch", "r") as file:
+-+    entrada = file.read()
+- 
+--saidaReadme = pipeline_readme.run(tree)
+-+saida = pipeline.run(entrada)
+- 
+--output_readme = f"output/readme{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+--with open(output_readme, "w") as file:
+--    file.write(saidaReadme)
+-\ No newline at end of file
+-+output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+-+with open(output_filename, "w") as file:
+-+    file.write(saida)
+-\ No newline at end of file
+-
+-@@ -1,49 +0,0 @@
+--# tree.py
+--import os
+--
+--def tree(path='.', include_venv_files=False, _prefix=''):
+--    """
+--    Gera a estrutura de diretórios semelhante ao comando 'tree',
+--    ignorando a pasta .git e, por padrão, ignorando arquivos dentro da pasta venv.
+--    Retorna a árvore como string.
+--    
+--    Args:
+--        path (str): diretório raiz
+--        include_venv_files (bool): se True, inclui arquivos internos da venv
+--        _prefix (str): usado internamente para formatação recursiva
+--    
+--    Returns:
+--        str: árvore de diretórios formatada
+--    """
+--    entries = sorted(os.listdir(path))
+--    entries = [e for e in entries if e != '.git']  # ignora .git
+--    entries_count = len(entries)
+--    
+--    lines = []
+--    
+--    for idx, entry in enumerate(entries):
+--        full_path = os.path.join(path, entry)
+--        is_last = idx == entries_count - 1
+--        connector = '└── ' if is_last else '├── '
+--        lines.append(f"{_prefix}{connector}{entry}")
+--        
+--        if os.path.isdir(full_path):
+--            # Se for venv e não quiser incluir arquivos internos, apenas mostra a pasta
+--            if entry == '.venv' and not include_venv_files:
+--                continue
+--            # Define novo prefixo para subdiretórios
+--            new_prefix = _prefix + ('    ' if is_last else '│   ')
+--            lines.append(tree(full_path, include_venv_files, _prefix=new_prefix))
+--    
+--    return '\n'.join(lines)
+--
+--
+--if __name__ == "__main__":
+--    import argparse
+--    parser = argparse.ArgumentParser(description="Gera a árvore de diretórios como string")
+--    parser.add_argument("path", nargs="?", default=".", help="Diretório raiz")
+--    parser.add_argument("--include-venv", action="store_true", help="Incluir arquivos dentro da venv")
+--    args = parser.parse_args()
+--    
+--    output = tree(args.path, include_venv_files=args.include_venv)
+--    print(output)
+-
+-@@ -0,0 +1 @@
+-+GEMINI_API_KEY = "api_key_here"
+-\ No newline at end of file
+-
+-@@ -1,219 +0,0 @@
+--# Byte-compiled / optimized / DLL files
+--__pycache__/
+--*.py[codz]
+--*$py.class
+--
+--# C extensions
+--*.so
+--output/*
+--# Distribution / packaging
+--.Python
+--build/
+--develop-eggs/
+--dist/
+--downloads/
+--eggs/
+--.eggs/
+--lib/
+--lib64/
+--parts/
+--sdist/
+--var/
+--wheels/
+--share/python-wheels/
+--*.egg-info/
+--.installed.cfg
+--*.egg
+--MANIFEST
+--
+--# PyInstaller
+--#  Usually these files are written by a python script from a template
+--#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+--*.manifest
+--*.spec
+--
+--# Installer logs
+--pip-log.txt
+--pip-delete-this-directory.txt
+--
+--# Unit test / coverage reports
+--htmlcov/
+--.tox/
+--.nox/
+--.coverage
+--.coverage.*
+--.cache
+--nosetests.xml
+--coverage.xml
+--*.cover
+--*.py.cover
+--.hypothesis/
+--.pytest_cache/
+--cover/
+--
+--# Translations
+--*.mo
+--*.pot
+--
+--# Django stuff:
+--*.log
+--local_settings.py
+--db.sqlite3
+--db.sqlite3-journal
+--
+--# Flask stuff:
+--instance/
+--.webassets-cache
+--
+--# Scrapy stuff:
+--.scrapy
+--
+--# Sphinx documentation
+--docs/_build/
+--
+--# PyBuilder
+--.pybuilder/
+--target/
+--
+--# Jupyter Notebook
+--.ipynb_checkpoints
+--
+--# IPython
+--profile_default/
+--ipython_config.py
+--
+--# pyenv
+--#   For a library or package, you might want to ignore these files since the code is
+--#   intended to run in multiple environments; otherwise, check them in:
+--# .python-version
+--
+--# pipenv
+--#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+--#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+--#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+--#   install all needed dependencies.
+--#Pipfile.lock
+--
+--# UV
+--#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+--#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--#   commonly ignored for libraries.
+--#uv.lock
+--
+--# poetry
+--#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+--#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--#   commonly ignored for libraries.
+--#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+--#poetry.lock
+--#poetry.toml
+--
+--# pdm
+--#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+--#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+--#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+--#pdm.lock
+--#pdm.toml
+--.pdm-python
+--.pdm-build/
+--
+--# pixi
+--#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+--#pixi.lock
+--#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+--#   in the .venv directory. It is recommended not to include this directory in version control.
+--.pixi
+--
+--# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+--__pypackages__/
+--
+--# Celery stuff
+--celerybeat-schedule
+--celerybeat.pid
+--
+--# Redis 
+--*.rdb
+--*.aof
+--*.pid
+--
+--# RabbitMQ
+--mnesia/
+--rabbitmq/
+--rabbitmq-data/
+--
+--# ActiveMQ
+--activemq-data/
+--
+--# SageMath parsed files
+--*.sage.py
+--
+--# Environments
+--.env
+--.envrc
+--.venv
+--env/
+--venv/
+--ENV/
+--env.bak/
+--venv.bak/
+--
+--#uv
+--uv.lock
+--
+--# Spyder project settings
+--.spyderproject
+--.spyproject
+--
+--# Rope project settings
+--.ropeproject
+--
+--# mkdocs documentation
+--/site
+--
+--# mypy
+--.mypy_cache/
+--.dmypy.json
+--dmypy.json
+--
+--# Pyre type checker
+--.pyre/
+--
+--# pytype static type analyzer
+--.pytype/
+--
+--# Cython debug symbols
+--cython_debug/
+--
+--# PyCharm
+--#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+--#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+--#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+--#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+--#.idea/
+--
+--# Abstra
+--# Abstra is an AI-powered process automation framework.
+--# Ignore directories containing user credentials, local state, and settings.
+--# Learn more at https://abstra.io/docs
+--.abstra/
+--
+--# Visual Studio Code
+--#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+--#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+--#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+--#  you could uncomment the following to ignore the entire vscode folder
+--# .vscode/
+--
+--# Ruff stuff:
+--.ruff_cache/
+--
+--# PyPI configuration file
+--.pypirc
+--
+--# Marimo
+--marimo/_static/
+--marimo/_lsp/
+--__marimo__/
+--
+--# Streamlit
+--.streamlit/secrets.toml
+-
+-@@ -1,49 +0,0 @@
+--# GithubDocs
+--
+--Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+--
+--## Instalação do uv
+--
+--1. Instale o `uv` usando um dos métodos abaixo:
+--
+--```bash
+--# Via curl (Linux/macOS)
+--curl -Ls https://astral.sh/uv/install.sh | bash
+--
+--# Via pip
+--pip install uv
+--```
+--
+--## Configuração e Uso
+--
+--### Instalando dependências
+--Para instalar todas as dependências do projeto:
+--
+--Inicie uma venv
+--```bash
+--uv venv
+--```
+--Instale as dependencias
+--```bash
+--uv sync
+--```
+--
+--### Base data example
+--use o commando `git log --reverse -p main..HEAD > base_data/branch_diffs.patch` para gerar um arquivo de sample, onde o diff do  primeiro commit da branch ate o atual esta localizado.
+--
+--### Usando o Ruff para linting e formatação
+--
+--O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+--
+--```bash
+--# Verificar problemas de linting
+--uv run ruff check .
+--
+--# Formatar código automaticamente
+--uv run ruff format .
+--```
+--
+--## Observações
+--- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+--- A configuração do Ruff está incluída no arquivo `pyproject.toml`
+--- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-
+-@@ -1,744 +0,0 @@
+--commit 32c077ace9b32fbe33a7d9b61f8f8267467ae6de
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:19:25 2025 -0300
+--
+--    modifications to support ai agents to create the changelog
+--
+--diff --git a/.gitignore b/.gitignore
+--new file mode 100644
+--index 0000000..50a19c6
+----- /dev/null
+--+++ b/.gitignore
+--@@ -0,0 +1,2 @@
+--+.env
+--+venv
+--\ No newline at end of file
+--diff --git a/README.md b/README.md
+--new file mode 100644
+--index 0000000..f7f976a
+----- /dev/null
+--+++ b/README.md
+--@@ -0,0 +1,41 @@
+--+# GithubDocs
+--+
+--+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+--+
+--+## Instalação do uv
+--+
+--+1. Instale o `uv` usando um dos métodos abaixo:
+--+
+--+```bash
+--+# Via curl (Linux/macOS)
+--+curl -Ls https://astral.sh/uv/install.sh | bash
+--+
+--+# Via pip
+--+pip install uv
+--+```
+--+
+--+## Configuração e Uso
+--+
+--+### Instalando dependências
+--+Para instalar todas as dependências do projeto:
+--+
+--+```bash
+--+uv pip install -r requirements.uv.txt
+--+```
+--+
+--+### Usando o Ruff para linting e formatação
+--+
+--+O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+--+
+--+```bash
+--+# Verificar problemas de linting
+--+uv run ruff check .
+--+
+--+# Formatar código automaticamente
+--+uv run ruff format .
+--+```
+--+
+--+## Observações
+--+- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+--+- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+--+- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+--diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
+--new file mode 100644
+--index 0000000..d815d14
+----- /dev/null
+--+++ b/pedro_adapt/agent_pipeline.py
+--@@ -0,0 +1,29 @@
+--+# agent_pipeline.py
+--+from typing import List
+--+from ai_agent import AIAgent
+--+
+--+# agent_pipeline.py
+--+from typing import List
+--+from ai_agent import AIAgent
+--+
+--+class AgentPipeline:
+--+    def __init__(self, agents: List[AIAgent]):
+--+        self.agents = agents
+--+
+--+    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+--+        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+--+        while agent.need_summarization(text):
+--+            text = agent.generate_response("Summarize the following text:\n" + text)
+--+        return text
+--+
+--+    def run(self, input: str) -> str:
+--+        current_text = input
+--+
+--+        for agent in self.agents:
+--+            # Garante que o input caiba na janela de contexto
+--+            current_text = self._summarize_until_fits(agent, current_text)
+--+
+--+            # Executa o processamento principal do agente
+--+            current_text = agent.generate_response(current_text)
+--+
+--+        return current_text
+--diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
+--new file mode 100644
+--index 0000000..3561b3c
+----- /dev/null
+--+++ b/pedro_adapt/agents.py
+--@@ -0,0 +1,19 @@
+--+from pedro_adapt.ai_agent import AIAgent
+--+from google import genai
+--+
+--+class GeminiAgent(AIAgent):
+--+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--+        super().__init__(model_name, api_key, base_prompt)
+--+        self.client: genai.Client = genai.Client()
+--+
+--+
+--+    def generate_response(self, input: str) -> str:
+--+        response = self.client.models.generate_content(
+--+            model=self.model_name, contents=self.base_prompt + "\n" + input
+--+        )
+--+        return response.text
+--+
+--+    def _count_tokens(self, input: str) -> int:
+--+        return self.client.models.count_tokens(
+--+            model=self.model_name, contents=self.base_prompt + "\n" + input
+--+        )
+--diff --git a/pedro_adapt/ai_agent.py b/pedro_adapt/ai_agent.py
+--new file mode 100644
+--index 0000000..1514c42
+----- /dev/null
+--+++ b/pedro_adapt/ai_agent.py
+--@@ -0,0 +1,23 @@
+--+from abc import ABC, abstractmethod
+--+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+--+
+--+class AIAgent(ABC):
+--+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--+        self.model_name = model_name
+--+        self.api_key = api_key
+--+        self.base_prompt = base_prompt
+--+        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+--+
+--+    @abstractmethod
+--+    def generate_response(self, input: str) -> str:
+--+        pass
+--+
+--+    @abstractmethod
+--+    def _count_tokens(self, input: str) -> int:
+--+        pass
+--+    
+--+    def _get_model_window_context(self) -> int:
+--+        return self.context_window
+--+    
+--+    def need_summarization(self, input: str) -> bool:
+--+        return self._count_tokens(input) > self.context_window
+--\ No newline at end of file
+--diff --git a/pedro_adapt/utils.py b/pedro_adapt/utils.py
+--new file mode 100644
+--index 0000000..0b95bcf
+----- /dev/null
+--+++ b/pedro_adapt/utils.py
+--@@ -0,0 +1,8 @@
+--+LLM_CONTEXT_WINDOWS = {
+--+    "gemini-2.5-pro": 1_048_576,
+--+    "gemini-2.5-flash": 1_048_576,
+--+    "gemini-2.0-flash-lite": 1_048_576,
+--+    "gemini-2.0-flash": 1_048_576,
+--+    "gpt-5-2025-08-07": 400_000,
+--+    "gpt-5-mini-2025-08-07": 400_000,
+--+}
+--\ No newline at end of file
+--diff --git a/requirements.txt b/requirements.txt
+--deleted file mode 100644
+--index aa09f68..0000000
+----- a/requirements.txt
+--+++ /dev/null
+--@@ -1,2 +0,0 @@
+---google.generativeai
+---git-cliff
+--diff --git a/requirements.uv.txt b/requirements.uv.txt
+--new file mode 100644
+--index 0000000..4c657cd
+----- /dev/null
+--+++ b/requirements.uv.txt
+--@@ -0,0 +1,19 @@
+--+google-generativeai
+--+ruff>=0.1.0
+--+dotenv
+--+google-genai
+--+# git-cliff is a CLI tool, not a Python package
+--+
+--+[format]
+--+# Configure formatters
+--+exclude = ["*.pyc", "__pycache__"]
+--+preview = true
+--+
+--+[lint]
+--+# Enable Ruff's linter
+--+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--+ignore = []
+--+preview = true
+--+
+--+[lint.per-file-ignores]
+--+"__init__.py" = ["F401"]
+--
+--commit 4300215dddbdc32f4132788dac393fb37529242f
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:31:29 2025 -0300
+--
+--    sample of a main file
+--
+--diff --git a/main.py b/main.py
+--new file mode 100644
+--index 0000000..2de8e5b
+----- /dev/null
+--+++ b/main.py
+--@@ -0,0 +1,39 @@
+--+from pedro_adapt.agents import GeminiAgent
+--+from pedro_adapt.agent_pipeline import AgentPipeline
+--+
+--+api_key = "SUA_API_KEY"
+--+
+--+changelog_agent = GeminiAgent(
+--+    api_key=api_key,
+--+    base_prompt=(
+--+        "Você é um especialista em criar change logs para projetos de software. "
+--+        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+--+        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+--+        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+--+        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+--+    )
+--+)
+--+
+--+formatter_agent = GeminiAgent(
+--+    api_key=api_key,
+--+    base_prompt=(
+--+        """
+--+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+--+        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+--+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+--+        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+--+        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+--+        - **Formato padrão:**  
+--+        - Version (SemVer + data YYYY-MM-DD)  
+--+        - Release highlights  
+--+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+--+        """
+--+    )
+--+)
+--+
+--+pipeline = AgentPipeline([changelog_agent, formatter_agent])
+--+
+--+entrada = "Um texto gigantesco que ultrapassa o contexto..."
+--+saida = pipeline.run(entrada)
+--+
+--+print("Resultado final:", saida)
+--diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
+--index d815d14..fae2126 100644
+----- a/pedro_adapt/agent_pipeline.py
+--+++ b/pedro_adapt/agent_pipeline.py
+--@@ -1,17 +1,11 @@
+-- # agent_pipeline.py
+-- from typing import List
+-- from ai_agent import AIAgent
+---
+---# agent_pipeline.py
+---from typing import List
+---from ai_agent import AIAgent
+---
+-- class AgentPipeline:
+--     def __init__(self, agents: List[AIAgent]):
+--         self.agents = agents
+-- 
+--     def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+---        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+--         while agent.need_summarization(text):
+--             text = agent.generate_response("Summarize the following text:\n" + text)
+--         return text
+--@@ -20,10 +14,6 @@ class AgentPipeline:
+--         current_text = input
+-- 
+--         for agent in self.agents:
+---            # Garante que o input caiba na janela de contexto
+--             current_text = self._summarize_until_fits(agent, current_text)
+---
+---            # Executa o processamento principal do agente
+--             current_text = agent.generate_response(current_text)
+---
+--         return current_text
+--
+--commit 7f1eac06d8f8f1fb7c9273a097e9283550766663
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:33:25 2025 -0300
+--
+--    remove .env from repo history
+--
+--diff --git a/.env b/.env
+--deleted file mode 100644
+--index 39084ef..0000000
+----- a/.env
+--+++ /dev/null
+--@@ -1 +0,0 @@
+---GEMINI_API_KEY = "api_key_here"
+--\ No newline at end of file
+--
+--commit 3c27c1823a34436b690a1d1e2d480dc7948e0ad7
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:40:25 2025 -0300
+--
+--    removing .env of cache and improving .gitignore
+--
+--diff --git a/.gitignore b/.gitignore
+--index 50a19c6..393702d 100644
+----- a/.gitignore
+--+++ b/.gitignore
+--@@ -1,2 +1,216 @@
+--+# Byte-compiled / optimized / DLL files
+--+__pycache__/
+--+*.py[codz]
+--+*$py.class
+--+
+--+# C extensions
+--+*.so
+--+
+--+# Distribution / packaging
+--+.Python
+--+build/
+--+develop-eggs/
+--+dist/
+--+downloads/
+--+eggs/
+--+.eggs/
+--+lib/
+--+lib64/
+--+parts/
+--+sdist/
+--+var/
+--+wheels/
+--+share/python-wheels/
+--+*.egg-info/
+--+.installed.cfg
+--+*.egg
+--+MANIFEST
+--+
+--+# PyInstaller
+--+#  Usually these files are written by a python script from a template
+--+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+--+*.manifest
+--+*.spec
+--+
+--+# Installer logs
+--+pip-log.txt
+--+pip-delete-this-directory.txt
+--+
+--+# Unit test / coverage reports
+--+htmlcov/
+--+.tox/
+--+.nox/
+--+.coverage
+--+.coverage.*
+--+.cache
+--+nosetests.xml
+--+coverage.xml
+--+*.cover
+--+*.py.cover
+--+.hypothesis/
+--+.pytest_cache/
+--+cover/
+--+
+--+# Translations
+--+*.mo
+--+*.pot
+--+
+--+# Django stuff:
+--+*.log
+--+local_settings.py
+--+db.sqlite3
+--+db.sqlite3-journal
+--+
+--+# Flask stuff:
+--+instance/
+--+.webassets-cache
+--+
+--+# Scrapy stuff:
+--+.scrapy
+--+
+--+# Sphinx documentation
+--+docs/_build/
+--+
+--+# PyBuilder
+--+.pybuilder/
+--+target/
+--+
+--+# Jupyter Notebook
+--+.ipynb_checkpoints
+--+
+--+# IPython
+--+profile_default/
+--+ipython_config.py
+--+
+--+# pyenv
+--+#   For a library or package, you might want to ignore these files since the code is
+--+#   intended to run in multiple environments; otherwise, check them in:
+--+# .python-version
+--+
+--+# pipenv
+--+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+--+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+--+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+--+#   install all needed dependencies.
+--+#Pipfile.lock
+--+
+--+# UV
+--+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+--+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--+#   commonly ignored for libraries.
+--+#uv.lock
+--+
+--+# poetry
+--+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+--+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--+#   commonly ignored for libraries.
+--+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+--+#poetry.lock
+--+#poetry.toml
+--+
+--+# pdm
+--+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+--+#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+--+#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+--+#pdm.lock
+--+#pdm.toml
+--+.pdm-python
+--+.pdm-build/
+--+
+--+# pixi
+--+#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+--+#pixi.lock
+--+#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+--+#   in the .venv directory. It is recommended not to include this directory in version control.
+--+.pixi
+--+
+--+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+--+__pypackages__/
+--+
+--+# Celery stuff
+--+celerybeat-schedule
+--+celerybeat.pid
+--+
+--+# Redis 
+--+*.rdb
+--+*.aof
+--+*.pid
+--+
+--+# RabbitMQ
+--+mnesia/
+--+rabbitmq/
+--+rabbitmq-data/
+--+
+--+# ActiveMQ
+--+activemq-data/
+--+
+--+# SageMath parsed files
+--+*.sage.py
+--+
+--+# Environments
+-- .env
+---venv
+--\ No newline at end of file
+--+.envrc
+--+.venv
+--+env/
+--+venv/
+--+ENV/
+--+env.bak/
+--+venv.bak/
+--+
+--+# Spyder project settings
+--+.spyderproject
+--+.spyproject
+--+
+--+# Rope project settings
+--+.ropeproject
+--+
+--+# mkdocs documentation
+--+/site
+--+
+--+# mypy
+--+.mypy_cache/
+--+.dmypy.json
+--+dmypy.json
+--+
+--+# Pyre type checker
+--+.pyre/
+--+
+--+# pytype static type analyzer
+--+.pytype/
+--+
+--+# Cython debug symbols
+--+cython_debug/
+--+
+--+# PyCharm
+--+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+--+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+--+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+--+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+--+#.idea/
+--+
+--+# Abstra
+--+# Abstra is an AI-powered process automation framework.
+--+# Ignore directories containing user credentials, local state, and settings.
+--+# Learn more at https://abstra.io/docs
+--+.abstra/
+--+
+--+# Visual Studio Code
+--+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+--+#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+--+#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+--+#  you could uncomment the following to ignore the entire vscode folder
+--+# .vscode/
+--+
+--+# Ruff stuff:
+--+.ruff_cache/
+--+
+--+# PyPI configuration file
+--+.pypirc
+--+
+--+# Marimo
+--+marimo/_static/
+--+marimo/_lsp/
+--+__marimo__/
+--+
+--+# Streamlit
+--+.streamlit/secrets.toml
+--diff --git a/main.py b/main.py
+--index 2de8e5b..b59f156 100644
+----- a/main.py
+--+++ b/main.py
+--@@ -1,7 +1,13 @@
+-- from pedro_adapt.agents import GeminiAgent
+-- from pedro_adapt.agent_pipeline import AgentPipeline
+-- 
+---api_key = "SUA_API_KEY"
+--+import dotenv
+--+
+--+import os
+--+
+--+dotenv.load_dotenv()
+--+
+--+api_key = os.getenv("GEMINI_API_KEY")
+-- 
+-- changelog_agent = GeminiAgent(
+--     api_key=api_key,
+--@@ -18,15 +24,15 @@ formatter_agent = GeminiAgent(
+--     api_key=api_key,
+--     base_prompt=(
+--         """
+---        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+---        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+---        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+---        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+---        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+---        - **Formato padrão:**  
+---        - Version (SemVer + data YYYY-MM-DD)  
+---        - Release highlights  
+---        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+--+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+--+        - **Release Notes:** resumo para usuários finais, linguagem simples.
+--+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+--+        - **Benefícios:** rastrear progresso, transparência, onboarding.
+--+        - **Quando usar:** público técnico, necessidade de detalhes completos.
+--+        - **Formato padrão:**
+--+        - Version (SemVer + data YYYY-MM-DD)
+--+        - Release highlights
+--+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+--         """
+--     )
+-- )
+--
+--commit 5b11d6ff0863f2e43c9fa800e228d9d2a252f3dd
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 22:14:13 2025 -0300
+--
+--    add gpt agent
+--
+--diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
+--index 3561b3c..7b91894 100644
+----- a/pedro_adapt/agents.py
+--+++ b/pedro_adapt/agents.py
+--@@ -1,12 +1,15 @@
+-- from pedro_adapt.ai_agent import AIAgent
+-- from google import genai
+-- 
+--+from openai import OpenAI
+--+import tiktoken
+--+
+--+
+-- class GeminiAgent(AIAgent):
+--     def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--         super().__init__(model_name, api_key, base_prompt)
+--         self.client: genai.Client = genai.Client()
+-- 
+---
+--     def generate_response(self, input: str) -> str:
+--         response = self.client.models.generate_content(
+--             model=self.model_name, contents=self.base_prompt + "\n" + input
+--@@ -17,3 +20,20 @@ class GeminiAgent(AIAgent):
+--         return self.client.models.count_tokens(
+--             model=self.model_name, contents=self.base_prompt + "\n" + input
+--         )
+--+
+--+class GPTAgent(AIAgent):
+--+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--+        super().__init__(model_name, api_key, base_prompt)
+--+        self.client: OpenAI = OpenAI(api_key=self.api_key)
+--+
+--+    def generate_response(self, input: str) -> str:
+--+        response = self.client.responses.create(
+--+            model=self.model_name,
+--+            input=self.base_prompt + "\n" + input,
+--+        )
+--+        return response.output_text
+--+
+--+    def _count_tokens(self, input: str) -> int:
+--+        encoding = tiktoken.get_encoding("cl100k_base")
+--+        num_tokens = len(encoding.encode(input))
+--+        return num_tokens
+--
+--commit b6db3cdda564df4429b2bafc98ef6109899fe57d
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 22:14:52 2025 -0300
+--
+--    refactoring uv file, Readme usage and information in the gitignore
+--
+--diff --git a/.gitignore b/.gitignore
+--index 393702d..ab83e24 100644
+----- a/.gitignore
+--+++ b/.gitignore
+--@@ -157,6 +157,9 @@ ENV/
+-- env.bak/
+-- venv.bak/
+-- 
+--+#uv
+--+uv.lock
+--+
+-- # Spyder project settings
+-- .spyderproject
+-- .spyproject
+--diff --git a/README.md b/README.md
+--index f7f976a..c9bf10b 100644
+----- a/README.md
+--+++ b/README.md
+--@@ -19,13 +19,18 @@ pip install uv
+-- ### Instalando dependências
+-- Para instalar todas as dependências do projeto:
+-- 
+--+Inicie uma venv
+-- ```bash
+---uv pip install -r requirements.uv.txt
+--+uv venv
+--+```
+--+Instale as dependencias
+--+```bash
+--+uv sync
+-- ```
+-- 
+-- ### Usando o Ruff para linting e formatação
+-- 
+---O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+--+O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+-- 
+-- ```bash
+-- # Verificar problemas de linting
+--@@ -37,5 +42,5 @@ uv run ruff format .
+-- 
+-- ## Observações
+-- - O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+---- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+--+- A configuração do Ruff está incluída no arquivo `pyproject.toml`
+-- - O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+--diff --git a/pyproject.toml b/pyproject.toml
+--new file mode 100644
+--index 0000000..07d0b7b
+----- /dev/null
+--+++ b/pyproject.toml
+--@@ -0,0 +1,37 @@
+--+[project]
+--+name = "GithubDocs"
+--+version = "0.1.0"
+--+requires-python = ">=3.10"
+--+dependencies = [
+--+    "google-generativeai",
+--+    "ruff>=0.1.0",
+--+    "openai",
+--+    "google-genai==1.31.0",
+--+    "python-dotenv",
+--+    "tiktoken==0.11.0"
+--+]
+--+
+--+[tool.ruff]
+--+# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
+--+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--+ignore = []
+--+
+--+# Exclude directories and files
+--+exclude = [
+--+    ".git",
+--+    "__pycache__",
+--+    "*.pyc",
+--+]
+--+
+--+# Same as Black.
+--+line-length = 88
+--+indent-width = 4
+--+
+--+[tool.ruff.format]
+--+preview = true
+--+
+--+[tool.ruff.lint]
+--+preview = true
+--+
+--+[tool.ruff.lint.per-file-ignores]
+--+"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+--diff --git a/requirements.uv.txt b/requirements.uv.txt
+--deleted file mode 100644
+--index 4c657cd..0000000
+----- a/requirements.uv.txt
+--+++ /dev/null
+--@@ -1,19 +0,0 @@
+---google-generativeai
+---ruff>=0.1.0
+---dotenv
+---google-genai
+---# git-cliff is a CLI tool, not a Python package
+---
+---[format]
+---# Configure formatters
+---exclude = ["*.pyc", "__pycache__"]
+---preview = true
+---
+---[lint]
+---# Enable Ruff's linter
+---select = ["E", "F", "I", "N", "W", "B", "RUF"]
+---ignore = []
+---preview = true
+---
+---[lint.per-file-ignores]
+---"__init__.py" = ["F401"]
+-
+-@@ -103,74 +103,4 @@ resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(promp
+- 
+- salvar_arquivo("README_UPDATED.md", resposta.text)
+- 
+--print("Novo README gerado em README_UPDATED.md")
+--import os
+--import google.generativeai as genai
+--import subprocess
+--from dotenv import load_dotenv
+--
+--def obter_commit():
+--    cmd = ["git", "log", "-n", "1", "--pretty=format:%H", "--", "README.md"]
+--
+--    resultado = subprocess.run(cmd, capture_output=True, text=True, check=True)
+--
+--    return resultado.stdout.strip()
+--
+--def gerar_changelog(hash):
+--    init_cmd = ["git-cliff", "--init"]
+--    subprocess.run(init_cmd, capture_output=True, text=True)
+--
+--    # gera o changelog
+--    cmd = [
+--        "git-cliff",
+--        f"{hash}..HEAD",
+--        "-o",
+--        "CHANGELOG.md"
+--    ]
+--
+--    resultado = subprocess.run(cmd, capture_output=True, text=True)
+--
+--    if resultado.returncode == 0:
+--        print("CHANGELOG.md gerado com sucesso!")
+--    else:
+--        print("Erro ao gerar CHANGELOG:")
+--        print(resultado.stderr)
+--hash = obter_commit()
+--
+--gerar_changelog(hash)
+--
+--load_dotenv()
+--
+--api_key = os.getenv("GEMINI_API_KEY")
+--genai.configure(api_key=api_key)
+--
+--def ler_arquivo(caminho):
+--    with open(caminho, "r", encoding="utf-8") as f:
+--        return f.read()
+--
+--def salvar_arquivo(caminho, conteudo):
+--    with open(caminho, "w", encoding="utf-8") as f:
+--        f.write(conteudo)
+--
+--changelog = ler_arquivo("CHANGELOG.md")
+--readme = ler_arquivo("README.md")
+--
+--prompt = f"""
+--Você é um assistente que cria arquivos README em Markdown para projetos de software.
+--
+--Aqui está o CHANGELOG do projeto:
+--{changelog}
+--
+--Aqui está o README atual:
+--{readme}
+--
+--Crie um novo README em Markdown atualizado, integrando todas as informações relevantes do changelog.  
+--Mantenha exatamente as mesmas seções e o mesmo formato. Só faça alterações necessárias de acordo com as mudanças do changelog. Não crie uma seção chamda changelog. Não crie novas seções em nenhuma hipótese.
+--Forneça o conteúdo completo do README pronto para salvar em arquivo .md. Não explique nada, apenas gere o Markdown.
+--"""
+--
+--resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(prompt)
+--
+--salvar_arquivo("README_UPDATED.md", resposta.text)
+--
+- print("Novo README gerado em README_UPDATED.md")
+-\ No newline at end of file
+-
+-@@ -1,19 +0,0 @@
+--# agent_pipeline.py
+--from typing import List
+--from pedro_adapt.ai_agent import AIAgent
+--class AgentPipeline:
+--    def __init__(self, agents: List[AIAgent]):
+--        self.agents = agents
+--
+--    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+--        while agent.need_summarization(text):
+--            text = agent.generate_response("Summarize the following text:\n" + text)
+--        return text
+--
+--    def run(self, input: str) -> str:
+--        current_text = input
+--
+--        for agent in self.agents:
+--            current_text = self._summarize_until_fits(agent, current_text)
+--            current_text = agent.generate_response(current_text)
+--        return current_text
+-
+-@@ -1,39 +0,0 @@
+--from pedro_adapt.ai_agent import AIAgent
+--from google import genai
+--
+--from openai import OpenAI
+--import tiktoken
+--
+--
+--class GeminiAgent(AIAgent):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        super().__init__(model_name, api_key, base_prompt)
+--        self.client: genai.Client = genai.Client()
+--
+--    def generate_response(self, input: str) -> str:
+--        response = self.client.models.generate_content(
+--            model=self.model_name, contents=self.base_prompt + "\n" + input
+--        )
+--        return response.text
+--
+--    def _count_tokens(self, input: str) -> int:
+--        return self.client.models.count_tokens(
+--            model=self.model_name, contents=self.base_prompt + "\n" + input
+--        ).total_tokens
+--
+--class GPTAgent(AIAgent):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        super().__init__(model_name, api_key, base_prompt)
+--        self.client: OpenAI = OpenAI(api_key=self.api_key)
+--
+--    def generate_response(self, input: str) -> str:
+--        response = self.client.responses.create(
+--            model=self.model_name,
+--            input=self.base_prompt + "\n" + input,
+--        )
+--        return response.output_text
+--
+--    def _count_tokens(self, input: str) -> int:
+--        encoding = tiktoken.get_encoding("cl100k_base")
+--        num_tokens = len(encoding.encode(input))
+--        return num_tokens
+-
+-@@ -1,23 +0,0 @@
+--from abc import ABC, abstractmethod
+--from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+--
+--class AIAgent(ABC):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        self.model_name = model_name
+--        self.api_key = api_key
+--        self.base_prompt = base_prompt
+--        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+--
+--    @abstractmethod
+--    def generate_response(self, input: str) -> str:
+--        pass
+--
+--    @abstractmethod
+--    def _count_tokens(self, input: str) -> int:
+--        pass
+--    
+--    def _get_model_window_context(self) -> int:
+--        return self.context_window
+--    
+--    def need_summarization(self, input: str) -> bool:
+--        return self._count_tokens(input) > self.context_window
+-\ No newline at end of file
+-
+-@@ -1,8 +0,0 @@
+--LLM_CONTEXT_WINDOWS = {
+--    "gemini-2.5-pro": 1_048_576,
+--    "gemini-2.5-flash": 1_048_576,
+--    "gemini-2.0-flash-lite": 1_048_576,
+--    "gemini-2.0-flash": 1_048_576,
+--    "gpt-5-2025-08-07": 400_000,
+--    "gpt-5-mini-2025-08-07": 400_000,
+--}
+-\ No newline at end of file
+-
+-@@ -1,53 +0,0 @@
+--from pedro_adapt.agents import GeminiAgent
+--from pedro_adapt.agent_pipeline import AgentPipeline
+--
+--import dotenv
+--
+--import os
+--from datetime import datetime
+--
+--dotenv.load_dotenv()
+--
+--gemini_api_key = os.getenv("GEMINI_API_KEY")
+--gemini_model_name = "gemini-2.0-flash-lite"
+--
+--changelog_agent = GeminiAgent(
+--    api_key=gemini_api_key,
+--    model_name=gemini_model_name,
+--    base_prompt=(
+--        "Você é um especialista em criar change logs para projetos de software. "
+--        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+--        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+--        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+--        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+--    )
+--)
+--
+--formatter_agent = GeminiAgent(
+--    api_key=gemini_api_key,
+--    model_name=gemini_model_name,
+--    base_prompt=(
+--        """
+--        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+--        - **Release Notes:** resumo para usuários finais, linguagem simples.
+--        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+--        - **Benefícios:** rastrear progresso, transparência, onboarding.
+--        - **Quando usar:** público técnico, necessidade de detalhes completos.
+--        - **Formato padrão:**
+--        - Version (SemVer + data YYYY-MM-DD)
+--        - Release highlights
+--        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+--        """
+--    )
+--)
+--
+--pipeline = AgentPipeline([changelog_agent, formatter_agent])
+--
+--with open("base_data/sample.patch", "r") as file:
+--    entrada = file.read()
+--
+--saida = pipeline.run(entrada)
+--
+--output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+--with open(output_filename, "w") as file:
+--    file.write(saida)
+-\ No newline at end of file
+-
+-@@ -1,37 +0,0 @@
+--[project]
+--name = "GithubDocs"
+--version = "0.1.0"
+--requires-python = ">=3.10"
+--dependencies = [
+--    "google-generativeai",
+--    "ruff>=0.1.0",
+--    "openai",
+--    "google-genai==1.31.0",
+--    "python-dotenv",
+--    "tiktoken==0.11.0"
+--]
+--
+--[tool.ruff]
+--# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
+--select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--ignore = []
+--
+--# Exclude directories and files
+--exclude = [
+--    ".git",
+--    "__pycache__",
+--    "*.pyc",
+--]
+--
+--# Same as Black.
+--line-length = 88
+--indent-width = 4
+--
+--[tool.ruff.format]
+--preview = true
+--
+--[tool.ruff.lint]
+--preview = true
+--
+--[tool.ruff.lint.per-file-ignores]
+--"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+-
+-@@ -0,0 +1,2 @@
+-+google.generativeai
+-+git-cliff
+-
+-@@ -0,0 +1,42 @@
+-+import os
+-+import google.generativeai as genai
+-+import sys
+-+import json
+-+
+-+genai.configure(api_key="SUA CHAVE")
+-+
+-+model = genai.GenerativeModel('gemini-2.5-flash')
+-+
+-+# Caminhos dos arquivos
+-+changelog_raw_path = "CHANGELOG.md"
+-+changelog_final_path = "CHANGELOG_FINAL.md"
+-+
+-+# Ler o changelog bruto
+-+with open(changelog_raw_path, "r", encoding="utf-8") as f:
+-+    raw_text = f.read()
+-+
+-+# Prompt para a LLM
+-+prompt = f"""
+-+Você é um assistente de documentação de software.
+-+Transforme o seguinte changelog em português, no padrão Good Docs:
+-+
+-+- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
+-+- Faça um resumo curto das mudanças importantes em Release highlights
+-+- Organize os commits corretamente nas seções
+-+- Melhore a clareza e a linguagem formal
+-+- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+-+
+-+Changelog bruto:
+-+{raw_text}
+-+"""
+-+
+-+# Gerar o changelog final
+-+response = model.generate_content(prompt)
+-+
+-+final_text = response.text  # resultado em texto
+-+
+-+# Salvar o changelog final
+-+with open(changelog_final_path, "w", encoding="utf-8") as f:
+-+    f.write(final_text)
+-+
+-+print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+-
+-@@ -1,92 +1,78 @@
+--# git-cliff ~ configuration file
+--# https://git-cliff.org/docs/configuration
+--
+--
+- [changelog]
+--# A Tera template to be rendered for each release in the changelog.
+--# See https://keats.github.io/tera/docs/#introduction
+- body = """
+--{% if version %}\
+--    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+--{% else %}\
+--    ## [unreleased]
+--{% endif %}\
+--{% for group, commits in commits | group_by(attribute="group") %}
+--    ### {{ group | striptags | trim | upper_first }}
+--    {% for commit in commits %}
+--        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+--            {% if commit.breaking %}[**breaking**] {% endif %}\
+--            {{ commit.message | upper_first }}\
+--    {% endfor %}
+--{% endfor %}
+-+# Version {{ version }} - {{ timestamp | date(format="%Y-%m-%d") }}
+-+
+-+## Release highlights
+-+{%- if commits | filter(attribute="group", value="feat") | length > 0 %}
+-+{%- for commit in commits | filter(attribute="group", value="feat") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- endfor %}
+-+{%- else %}
+-+- Minor improvements and maintenance updates.
+-+{%- endif %}
+-+
+-+## Added
+-+{%- for commit in commits | filter(attribute="group", value="feat") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- else %}
+-+- No additions in this release.
+-+{%- endfor %}
+-+
+-+## Changed
+-+{%- for commit in commits | filter(attribute="group", value="chore") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- else %}
+-+- No changes in this release.
+-+{%- endfor %}
+-+
+-+## Deprecated
+-+{%- for commit in commits | filter(attribute="group", value="deprecate") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- else %}
+-+- No deprecations in this release.
+-+{%- endfor %}
+-+
+-+## Fixed
+-+{%- for commit in commits | filter(attribute="group", value="fix") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- else %}
+-+- No fixes in this release.
+-+{%- endfor %}
+-+
+-+## Security
+-+{%- for commit in commits | filter(attribute="group", value="security") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- else %}
+-+- No security updates in this release.
+-+{%- endfor %}
+-+
+-+## Breaking changes
+-+{%- for commit in commits | filter(attribute="group", value="breaking") %}
+-+- {{ commit.message | split(pat="\n") | first | trim }}
+-+{%- else %}
+-+- No breaking changes in this release.
+-+{%- endfor %}
+-+
+-+**Full Changelog**: {{ self::remote_url() }}/compare/{{ previous.version }}...{{ version }}
+-+
+-+{%- macro remote_url() -%}
+-+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+-+{%- endmacro -%}
+- """
+--# Remove leading and trailing whitespaces from the changelog's body.
+-+
+- trim = true
+--# Render body even when there are no releases to process.
+--render_always = true
+--# An array of regex based postprocessors to modify the changelog.
+--postprocessors = [
+--    # Replace the placeholder <REPO> with a URL.
+--    #{ pattern = '<REPO>', replace = "https://github.com/orhun/git-cliff" },
+--]
+--# render body even when there are no releases to process
+--# render_always = true
+--# output file path
+--# output = "test.md"
+-+
+-+footer = """
+-+<!-- generated by git-cliff -->
+-+"""
+- 
+- [git]
+--# Parse commits according to the conventional commits specification.
+--# See https://www.conventionalcommits.org
+- conventional_commits = true
+--# Exclude commits that do not match the conventional commits specification.
+- filter_unconventional = true
+--# Require all commits to be conventional.
+--# Takes precedence over filter_unconventional.
+--require_conventional = false
+--# Split commits on newlines, treating each line as an individual commit.
+- split_commits = false
+--# An array of regex based parsers to modify commit messages prior to further processing.
+- commit_preprocessors = [
+--    # Replace issue numbers with link templates to be updated in `changelog.postprocessors`.
+--    #{ pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))"},
+--    # Check spelling of the commit message using https://github.com/crate-ci/typos.
+--    # If the spelling is incorrect, it will be fixed automatically.
+--    #{ pattern = '.*', replace_command = 'typos --write-changes -' },
+--]
+--# Prevent commits that are breaking from being excluded by commit parsers.
+--protect_breaking_commits = false
+--# An array of regex based parsers for extracting data from the commit message.
+--# Assigns commits to groups.
+--# Optionally sets the commit's scope and can decide to exclude commits from further processing.
+--commit_parsers = [
+--    { message = "^feat", group = "<!-- 0 -->🚀 Features" },
+--    { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+--    { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
+--    { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
+--    { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
+--    { message = "^style", group = "<!-- 5 -->🎨 Styling" },
+--    { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+--    { message = "^chore\\(release\\): prepare for", skip = true },
+--    { message = "^chore\\(deps.*\\)", skip = true },
+--    { message = "^chore\\(pr\\)", skip = true },
+--    { message = "^chore\\(pull\\)", skip = true },
+--    { message = "^chore|^ci", group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
+--    { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
+--    { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
+--    { message = ".*", group = "<!-- 10 -->💼 Other" },
+-+  { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "" }
+- ]
+--# Exclude commits that are not matched by any commit parser.
+- filter_commits = false
+--# An array of link parsers for extracting external references, and turning them into URLs, using regex.
+--link_parsers = []
+--# Include only the tags that belong to the current branch.
+--use_branch_tags = false
+--# Order releases topologically instead of chronologically.
+- topo_order = false
+--# Order releases topologically instead of chronologically.
+--topo_order_commits = true
+--# Order of commits in each group/release within the changelog.
+--# Allowed values: newest, oldest
+--sort_commits = "oldest"
+--# Process submodules commits
+--recurse_submodules = false
+-+sort_commits = "newest"
+-
+-@@ -1,7 +1,5 @@
+- import os
+- import google.generativeai as genai
+--import sys
+--import json
+- import subprocess
+- from dotenv import load_dotenv
+- 
+-@@ -40,40 +38,6 @@ load_dotenv()
+- api_key = os.getenv("GEMINI_API_KEY")
+- genai.configure(api_key=api_key)
+- 
+--# Caminhos dos arquivos
+--changelog_raw_path = "CHANGELOG.md"
+--changelog_final_path = "CHANGELOG_FINAL.md"
+--
+--# Ler o changelog bruto
+--with open(changelog_raw_path, "r", encoding="utf-8") as f:
+--    raw_text = f.read()
+--
+--# Prompt para a LLM
+--prompt = f"""
+--Você é um assistente de documentação de software.
+--Transforme o seguinte changelog em português, no padrão Good Docs:
+--
+--- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
+--- Faça um resumo curto das mudanças importantes em Release highlights
+--- Organize os commits corretamente nas seções
+--- Melhore a clareza e a linguagem formal
+--- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+--
+--Changelog bruto:
+--{raw_text}
+--"""
+--
+--# Gerar o changelog final
+--resposta = genai.GenerativeModel("gemini-2.0-flash-lite").generate_content(prompt)
+--
+--final_text = resposta.text  # resultado em texto
+--
+--# Salvar o changelog final
+--with open(changelog_final_path, "w", encoding="utf-8") as f:
+--    f.write(final_text)
+--
+--print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+--
+- def ler_arquivo(caminho):
+-     with open(caminho, "r", encoding="utf-8") as f:
+-         return f.read()
+-@@ -82,7 +46,7 @@ def salvar_arquivo(caminho, conteudo):
+-     with open(caminho, "w", encoding="utf-8") as f:
+-         f.write(conteudo)
+- 
+--changelog = ler_arquivo("CHANGELOG_FINAL.md")
+-+changelog = ler_arquivo("CHANGELOG.md")
+- readme = ler_arquivo("README.md")
+- 
+- prompt = f"""
+-
+-@@ -1,42 +0,0 @@
+--import os
+--import google.generativeai as genai
+--import sys
+--import json
+--
+--genai.configure(api_key="SUA CHAVE")
+--
+--model = genai.GenerativeModel('gemini-2.5-flash')
+--
+--# Caminhos dos arquivos
+--changelog_raw_path = "CHANGELOG.md"
+--changelog_final_path = "CHANGELOG_FINAL.md"
+--
+--# Ler o changelog bruto
+--with open(changelog_raw_path, "r", encoding="utf-8") as f:
+--    raw_text = f.read()
+--
+--# Prompt para a LLM
+--prompt = f"""
+--Você é um assistente de documentação de software.
+--Transforme o seguinte changelog em português, no padrão Good Docs:
+--
+--- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
+--- Faça um resumo curto das mudanças importantes em Release highlights
+--- Organize os commits corretamente nas seções
+--- Melhore a clareza e a linguagem formal
+--- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+--
+--Changelog bruto:
+--{raw_text}
+--"""
+--
+--# Gerar o changelog final
+--response = model.generate_content(prompt)
+--
+--final_text = response.text  # resultado em texto
+--
+--# Salvar o changelog final
+--with open(changelog_final_path, "w", encoding="utf-8") as f:
+--    f.write(final_text)
+--
+--print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+-
+-@@ -1 +0,0 @@
+--GEMINI_API_KEY = "api_key_here"
+-\ No newline at end of file
+-
+-@@ -0,0 +1,219 @@
+-+# Byte-compiled / optimized / DLL files
+-+__pycache__/
+-+*.py[codz]
+-+*$py.class
+-+
+-+# C extensions
+-+*.so
+-+output/*
+-+# Distribution / packaging
+-+.Python
+-+build/
+-+develop-eggs/
+-+dist/
+-+downloads/
+-+eggs/
+-+.eggs/
+-+lib/
+-+lib64/
+-+parts/
+-+sdist/
+-+var/
+-+wheels/
+-+share/python-wheels/
+-+*.egg-info/
+-+.installed.cfg
+-+*.egg
+-+MANIFEST
+-+
+-+# PyInstaller
+-+#  Usually these files are written by a python script from a template
+-+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+-+*.manifest
+-+*.spec
+-+
+-+# Installer logs
+-+pip-log.txt
+-+pip-delete-this-directory.txt
+-+
+-+# Unit test / coverage reports
+-+htmlcov/
+-+.tox/
+-+.nox/
+-+.coverage
+-+.coverage.*
+-+.cache
+-+nosetests.xml
+-+coverage.xml
+-+*.cover
+-+*.py.cover
+-+.hypothesis/
+-+.pytest_cache/
+-+cover/
+-+
+-+# Translations
+-+*.mo
+-+*.pot
+-+
+-+# Django stuff:
+-+*.log
+-+local_settings.py
+-+db.sqlite3
+-+db.sqlite3-journal
+-+
+-+# Flask stuff:
+-+instance/
+-+.webassets-cache
+-+
+-+# Scrapy stuff:
+-+.scrapy
+-+
+-+# Sphinx documentation
+-+docs/_build/
+-+
+-+# PyBuilder
+-+.pybuilder/
+-+target/
+-+
+-+# Jupyter Notebook
+-+.ipynb_checkpoints
+-+
+-+# IPython
+-+profile_default/
+-+ipython_config.py
+-+
+-+# pyenv
+-+#   For a library or package, you might want to ignore these files since the code is
+-+#   intended to run in multiple environments; otherwise, check them in:
+-+# .python-version
+-+
+-+# pipenv
+-+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+-+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+-+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+-+#   install all needed dependencies.
+-+#Pipfile.lock
+-+
+-+# UV
+-+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+-+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+-+#   commonly ignored for libraries.
+-+#uv.lock
+-+
+-+# poetry
+-+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+-+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+-+#   commonly ignored for libraries.
+-+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+-+#poetry.lock
+-+#poetry.toml
+-+
+-+# pdm
+-+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+-+#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+-+#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+-+#pdm.lock
+-+#pdm.toml
+-+.pdm-python
+-+.pdm-build/
+-+
+-+# pixi
+-+#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+-+#pixi.lock
+-+#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+-+#   in the .venv directory. It is recommended not to include this directory in version control.
+-+.pixi
+-+
+-+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+-+__pypackages__/
+-+
+-+# Celery stuff
+-+celerybeat-schedule
+-+celerybeat.pid
+-+
+-+# Redis 
+-+*.rdb
+-+*.aof
+-+*.pid
+-+
+-+# RabbitMQ
+-+mnesia/
+-+rabbitmq/
+-+rabbitmq-data/
+-+
+-+# ActiveMQ
+-+activemq-data/
+-+
+-+# SageMath parsed files
+-+*.sage.py
+-+
+-+# Environments
+-+.env
+-+.envrc
+-+.venv
+-+env/
+-+venv/
+-+ENV/
+-+env.bak/
+-+venv.bak/
+-+
+-+#uv
+-+uv.lock
+-+
+-+# Spyder project settings
+-+.spyderproject
+-+.spyproject
+-+
+-+# Rope project settings
+-+.ropeproject
+-+
+-+# mkdocs documentation
+-+/site
+-+
+-+# mypy
+-+.mypy_cache/
+-+.dmypy.json
+-+dmypy.json
+-+
+-+# Pyre type checker
+-+.pyre/
+-+
+-+# pytype static type analyzer
+-+.pytype/
+-+
+-+# Cython debug symbols
+-+cython_debug/
+-+
+-+# PyCharm
+-+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+-+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+-+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+-+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+-+#.idea/
+-+
+-+# Abstra
+-+# Abstra is an AI-powered process automation framework.
+-+# Ignore directories containing user credentials, local state, and settings.
+-+# Learn more at https://abstra.io/docs
+-+.abstra/
+-+
+-+# Visual Studio Code
+-+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+-+#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+-+#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+-+#  you could uncomment the following to ignore the entire vscode folder
+-+# .vscode/
+-+
+-+# Ruff stuff:
+-+.ruff_cache/
+-+
+-+# PyPI configuration file
+-+.pypirc
+-+
+-+# Marimo
+-+marimo/_static/
+-+marimo/_lsp/
+-+__marimo__/
+-+
+-+# Streamlit
+-+.streamlit/secrets.toml
+-
+-@@ -0,0 +1,49 @@
+-+# GithubDocs
+-+
+-+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+-+
+-+## Instalação do uv
+-+
+-+1. Instale o `uv` usando um dos métodos abaixo:
+-+
+-+```bash
+-+# Via curl (Linux/macOS)
+-+curl -Ls https://astral.sh/uv/install.sh | bash
+-+
+-+# Via pip
+-+pip install uv
+-+```
+-+
+-+## Configuração e Uso
+-+
+-+### Instalando dependências
+-+Para instalar todas as dependências do projeto:
+-+
+-+Inicie uma venv
+-+```bash
+-+uv venv
+-+```
+-+Instale as dependencias
+-+```bash
+-+uv sync
+-+```
+-+
+-+### Base data example
+-+use o commando `git log --reverse -p main..HEAD > base_data/branch_diffs.patch` para gerar um arquivo de sample, onde o diff do  primeiro commit da branch ate o atual esta localizado.
+-+
+-+### Usando o Ruff para linting e formatação
+-+
+-+O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+-+
+-+```bash
+-+# Verificar problemas de linting
+-+uv run ruff check .
+-+
+-+# Formatar código automaticamente
+-+uv run ruff format .
+-+```
+-+
+-+## Observações
+-+- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+-+- A configuração do Ruff está incluída no arquivo `pyproject.toml`
+-+- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-
+-@@ -0,0 +1,744 @@
+-+commit 32c077ace9b32fbe33a7d9b61f8f8267467ae6de
+-+Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+-+Date:   Mon Aug 25 21:19:25 2025 -0300
+-+
+-+    modifications to support ai agents to create the changelog
+-+
+-+diff --git a/.gitignore b/.gitignore
+-+new file mode 100644
+-+index 0000000..50a19c6
+-+--- /dev/null
+-++++ b/.gitignore
+-+@@ -0,0 +1,2 @@
+-++.env
+-++venv
+-+\ No newline at end of file
+-+diff --git a/README.md b/README.md
+-+new file mode 100644
+-+index 0000000..f7f976a
+-+--- /dev/null
+-++++ b/README.md
+-+@@ -0,0 +1,41 @@
+-++# GithubDocs
+-++
+-++Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+-++
+-++## Instalação do uv
+-++
+-++1. Instale o `uv` usando um dos métodos abaixo:
+-++
+-++```bash
+-++# Via curl (Linux/macOS)
+-++curl -Ls https://astral.sh/uv/install.sh | bash
+-++
+-++# Via pip
+-++pip install uv
+-++```
+-++
+-++## Configuração e Uso
+-++
+-++### Instalando dependências
+-++Para instalar todas as dependências do projeto:
+-++
+-++```bash
+-++uv pip install -r requirements.uv.txt
+-++```
+-++
+-++### Usando o Ruff para linting e formatação
+-++
+-++O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+-++
+-++```bash
+-++# Verificar problemas de linting
+-++uv run ruff check .
+-++
+-++# Formatar código automaticamente
+-++uv run ruff format .
+-++```
+-++
+-++## Observações
+-++- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+-++- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+-++- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-+diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
+-+new file mode 100644
+-+index 0000000..d815d14
+-+--- /dev/null
+-++++ b/pedro_adapt/agent_pipeline.py
+-+@@ -0,0 +1,29 @@
+-++# agent_pipeline.py
+-++from typing import List
+-++from ai_agent import AIAgent
+-++
+-++# agent_pipeline.py
+-++from typing import List
+-++from ai_agent import AIAgent
+-++
+-++class AgentPipeline:
+-++    def __init__(self, agents: List[AIAgent]):
+-++        self.agents = agents
+-++
+-++    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+-++        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+-++        while agent.need_summarization(text):
+-++            text = agent.generate_response("Summarize the following text:\n" + text)
+-++        return text
+-++
+-++    def run(self, input: str) -> str:
+-++        current_text = input
+-++
+-++        for agent in self.agents:
+-++            # Garante que o input caiba na janela de contexto
+-++            current_text = self._summarize_until_fits(agent, current_text)
+-++
+-++            # Executa o processamento principal do agente
+-++            current_text = agent.generate_response(current_text)
+-++
+-++        return current_text
+-+diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
+-+new file mode 100644
+-+index 0000000..3561b3c
+-+--- /dev/null
+-++++ b/pedro_adapt/agents.py
+-+@@ -0,0 +1,19 @@
+-++from pedro_adapt.ai_agent import AIAgent
+-++from google import genai
+-++
+-++class GeminiAgent(AIAgent):
+-++    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-++        super().__init__(model_name, api_key, base_prompt)
+-++        self.client: genai.Client = genai.Client()
+-++
+-++
+-++    def generate_response(self, input: str) -> str:
+-++        response = self.client.models.generate_content(
+-++            model=self.model_name, contents=self.base_prompt + "\n" + input
+-++        )
+-++        return response.text
+-++
+-++    def _count_tokens(self, input: str) -> int:
+-++        return self.client.models.count_tokens(
+-++            model=self.model_name, contents=self.base_prompt + "\n" + input
+-++        )
+-+diff --git a/pedro_adapt/ai_agent.py b/pedro_adapt/ai_agent.py
+-+new file mode 100644
+-+index 0000000..1514c42
+-+--- /dev/null
+-++++ b/pedro_adapt/ai_agent.py
+-+@@ -0,0 +1,23 @@
+-++from abc import ABC, abstractmethod
+-++from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+-++
+-++class AIAgent(ABC):
+-++    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-++        self.model_name = model_name
+-++        self.api_key = api_key
+-++        self.base_prompt = base_prompt
+-++        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+-++
+-++    @abstractmethod
+-++    def generate_response(self, input: str) -> str:
+-++        pass
+-++
+-++    @abstractmethod
+-++    def _count_tokens(self, input: str) -> int:
+-++        pass
+-++    
+-++    def _get_model_window_context(self) -> int:
+-++        return self.context_window
+-++    
+-++    def need_summarization(self, input: str) -> bool:
+-++        return self._count_tokens(input) > self.context_window
+-+\ No newline at end of file
+-+diff --git a/pedro_adapt/utils.py b/pedro_adapt/utils.py
+-+new file mode 100644
+-+index 0000000..0b95bcf
+-+--- /dev/null
+-++++ b/pedro_adapt/utils.py
+-+@@ -0,0 +1,8 @@
+-++LLM_CONTEXT_WINDOWS = {
+-++    "gemini-2.5-pro": 1_048_576,
+-++    "gemini-2.5-flash": 1_048_576,
+-++    "gemini-2.0-flash-lite": 1_048_576,
+-++    "gemini-2.0-flash": 1_048_576,
+-++    "gpt-5-2025-08-07": 400_000,
+-++    "gpt-5-mini-2025-08-07": 400_000,
+-++}
+-+\ No newline at end of file
+-+diff --git a/requirements.txt b/requirements.txt
+-+deleted file mode 100644
+-+index aa09f68..0000000
+-+--- a/requirements.txt
+-++++ /dev/null
+-+@@ -1,2 +0,0 @@
+-+-google.generativeai
+-+-git-cliff
+-+diff --git a/requirements.uv.txt b/requirements.uv.txt
+-+new file mode 100644
+-+index 0000000..4c657cd
+-+--- /dev/null
+-++++ b/requirements.uv.txt
+-+@@ -0,0 +1,19 @@
+-++google-generativeai
+-++ruff>=0.1.0
+-++dotenv
+-++google-genai
+-++# git-cliff is a CLI tool, not a Python package
+-++
+-++[format]
+-++# Configure formatters
+-++exclude = ["*.pyc", "__pycache__"]
+-++preview = true
+-++
+-++[lint]
+-++# Enable Ruff's linter
+-++select = ["E", "F", "I", "N", "W", "B", "RUF"]
+-++ignore = []
+-++preview = true
+-++
+-++[lint.per-file-ignores]
+-++"__init__.py" = ["F401"]
+-+
+-+commit 4300215dddbdc32f4132788dac393fb37529242f
+-+Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+-+Date:   Mon Aug 25 21:31:29 2025 -0300
+-+
+-+    sample of a main file
+-+
+-+diff --git a/main.py b/main.py
+-+new file mode 100644
+-+index 0000000..2de8e5b
+-+--- /dev/null
+-++++ b/main.py
+-+@@ -0,0 +1,39 @@
+-++from pedro_adapt.agents import GeminiAgent
+-++from pedro_adapt.agent_pipeline import AgentPipeline
+-++
+-++api_key = "SUA_API_KEY"
+-++
+-++changelog_agent = GeminiAgent(
+-++    api_key=api_key,
+-++    base_prompt=(
+-++        "Você é um especialista em criar change logs para projetos de software. "
+-++        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+-++        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+-++        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+-++        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+-++    )
+-++)
+-++
+-++formatter_agent = GeminiAgent(
+-++    api_key=api_key,
+-++    base_prompt=(
+-++        """
+-++        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+-++        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+-++        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+-++        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+-++        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+-++        - **Formato padrão:**  
+-++        - Version (SemVer + data YYYY-MM-DD)  
+-++        - Release highlights  
+-++        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+-++        """
+-++    )
+-++)
+-++
+-++pipeline = AgentPipeline([changelog_agent, formatter_agent])
+-++
+-++entrada = "Um texto gigantesco que ultrapassa o contexto..."
+-++saida = pipeline.run(entrada)
+-++
+-++print("Resultado final:", saida)
+-+diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
+-+index d815d14..fae2126 100644
+-+--- a/pedro_adapt/agent_pipeline.py
+-++++ b/pedro_adapt/agent_pipeline.py
+-+@@ -1,17 +1,11 @@
+-+ # agent_pipeline.py
+-+ from typing import List
+-+ from ai_agent import AIAgent
+-+-
+-+-# agent_pipeline.py
+-+-from typing import List
+-+-from ai_agent import AIAgent
+-+-
+-+ class AgentPipeline:
+-+     def __init__(self, agents: List[AIAgent]):
+-+         self.agents = agents
+-+ 
+-+     def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+-+-        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+-+         while agent.need_summarization(text):
+-+             text = agent.generate_response("Summarize the following text:\n" + text)
+-+         return text
+-+@@ -20,10 +14,6 @@ class AgentPipeline:
+-+         current_text = input
+-+ 
+-+         for agent in self.agents:
+-+-            # Garante que o input caiba na janela de contexto
+-+             current_text = self._summarize_until_fits(agent, current_text)
+-+-
+-+-            # Executa o processamento principal do agente
+-+             current_text = agent.generate_response(current_text)
+-+-
+-+         return current_text
+-+
+-+commit 7f1eac06d8f8f1fb7c9273a097e9283550766663
+-+Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+-+Date:   Mon Aug 25 21:33:25 2025 -0300
+-+
+-+    remove .env from repo history
+-+
+-+diff --git a/.env b/.env
+-+deleted file mode 100644
+-+index 39084ef..0000000
+-+--- a/.env
+-++++ /dev/null
+-+@@ -1 +0,0 @@
+-+-GEMINI_API_KEY = "api_key_here"
+-+\ No newline at end of file
+-+
+-+commit 3c27c1823a34436b690a1d1e2d480dc7948e0ad7
+-+Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+-+Date:   Mon Aug 25 21:40:25 2025 -0300
+-+
+-+    removing .env of cache and improving .gitignore
+-+
+-+diff --git a/.gitignore b/.gitignore
+-+index 50a19c6..393702d 100644
+-+--- a/.gitignore
+-++++ b/.gitignore
+-+@@ -1,2 +1,216 @@
+-++# Byte-compiled / optimized / DLL files
+-++__pycache__/
+-++*.py[codz]
+-++*$py.class
+-++
+-++# C extensions
+-++*.so
+-++
+-++# Distribution / packaging
+-++.Python
+-++build/
+-++develop-eggs/
+-++dist/
+-++downloads/
+-++eggs/
+-++.eggs/
+-++lib/
+-++lib64/
+-++parts/
+-++sdist/
+-++var/
+-++wheels/
+-++share/python-wheels/
+-++*.egg-info/
+-++.installed.cfg
+-++*.egg
+-++MANIFEST
+-++
+-++# PyInstaller
+-++#  Usually these files are written by a python script from a template
+-++#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+-++*.manifest
+-++*.spec
+-++
+-++# Installer logs
+-++pip-log.txt
+-++pip-delete-this-directory.txt
+-++
+-++# Unit test / coverage reports
+-++htmlcov/
+-++.tox/
+-++.nox/
+-++.coverage
+-++.coverage.*
+-++.cache
+-++nosetests.xml
+-++coverage.xml
+-++*.cover
+-++*.py.cover
+-++.hypothesis/
+-++.pytest_cache/
+-++cover/
+-++
+-++# Translations
+-++*.mo
+-++*.pot
+-++
+-++# Django stuff:
+-++*.log
+-++local_settings.py
+-++db.sqlite3
+-++db.sqlite3-journal
+-++
+-++# Flask stuff:
+-++instance/
+-++.webassets-cache
+-++
+-++# Scrapy stuff:
+-++.scrapy
+-++
+-++# Sphinx documentation
+-++docs/_build/
+-++
+-++# PyBuilder
+-++.pybuilder/
+-++target/
+-++
+-++# Jupyter Notebook
+-++.ipynb_checkpoints
+-++
+-++# IPython
+-++profile_default/
+-++ipython_config.py
+-++
+-++# pyenv
+-++#   For a library or package, you might want to ignore these files since the code is
+-++#   intended to run in multiple environments; otherwise, check them in:
+-++# .python-version
+-++
+-++# pipenv
+-++#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+-++#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+-++#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+-++#   install all needed dependencies.
+-++#Pipfile.lock
+-++
+-++# UV
+-++#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+-++#   This is especially recommended for binary packages to ensure reproducibility, and is more
+-++#   commonly ignored for libraries.
+-++#uv.lock
+-++
+-++# poetry
+-++#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+-++#   This is especially recommended for binary packages to ensure reproducibility, and is more
+-++#   commonly ignored for libraries.
+-++#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+-++#poetry.lock
+-++#poetry.toml
+-++
+-++# pdm
+-++#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+-++#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+-++#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+-++#pdm.lock
+-++#pdm.toml
+-++.pdm-python
+-++.pdm-build/
+-++
+-++# pixi
+-++#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+-++#pixi.lock
+-++#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+-++#   in the .venv directory. It is recommended not to include this directory in version control.
+-++.pixi
+-++
+-++# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+-++__pypackages__/
+-++
+-++# Celery stuff
+-++celerybeat-schedule
+-++celerybeat.pid
+-++
+-++# Redis 
+-++*.rdb
+-++*.aof
+-++*.pid
+-++
+-++# RabbitMQ
+-++mnesia/
+-++rabbitmq/
+-++rabbitmq-data/
+-++
+-++# ActiveMQ
+-++activemq-data/
+-++
+-++# SageMath parsed files
+-++*.sage.py
+-++
+-++# Environments
+-+ .env
+-+-venv
+-+\ No newline at end of file
+-++.envrc
+-++.venv
+-++env/
+-++venv/
+-++ENV/
+-++env.bak/
+-++venv.bak/
+-++
+-++# Spyder project settings
+-++.spyderproject
+-++.spyproject
+-++
+-++# Rope project settings
+-++.ropeproject
+-++
+-++# mkdocs documentation
+-++/site
+-++
+-++# mypy
+-++.mypy_cache/
+-++.dmypy.json
+-++dmypy.json
+-++
+-++# Pyre type checker
+-++.pyre/
+-++
+-++# pytype static type analyzer
+-++.pytype/
+-++
+-++# Cython debug symbols
+-++cython_debug/
+-++
+-++# PyCharm
+-++#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+-++#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+-++#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+-++#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+-++#.idea/
+-++
+-++# Abstra
+-++# Abstra is an AI-powered process automation framework.
+-++# Ignore directories containing user credentials, local state, and settings.
+-++# Learn more at https://abstra.io/docs
+-++.abstra/
+-++
+-++# Visual Studio Code
+-++#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+-++#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+-++#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+-++#  you could uncomment the following to ignore the entire vscode folder
+-++# .vscode/
+-++
+-++# Ruff stuff:
+-++.ruff_cache/
+-++
+-++# PyPI configuration file
+-++.pypirc
+-++
+-++# Marimo
+-++marimo/_static/
+-++marimo/_lsp/
+-++__marimo__/
+-++
+-++# Streamlit
+-++.streamlit/secrets.toml
+-+diff --git a/main.py b/main.py
+-+index 2de8e5b..b59f156 100644
+-+--- a/main.py
+-++++ b/main.py
+-+@@ -1,7 +1,13 @@
+-+ from pedro_adapt.agents import GeminiAgent
+-+ from pedro_adapt.agent_pipeline import AgentPipeline
+-+ 
+-+-api_key = "SUA_API_KEY"
+-++import dotenv
+-++
+-++import os
+-++
+-++dotenv.load_dotenv()
+-++
+-++api_key = os.getenv("GEMINI_API_KEY")
+-+ 
+-+ changelog_agent = GeminiAgent(
+-+     api_key=api_key,
+-+@@ -18,15 +24,15 @@ formatter_agent = GeminiAgent(
+-+     api_key=api_key,
+-+     base_prompt=(
+-+         """
+-+-        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+-+-        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+-+-        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+-+-        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+-+-        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+-+-        - **Formato padrão:**  
+-+-        - Version (SemVer + data YYYY-MM-DD)  
+-+-        - Release highlights  
+-+-        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+-++        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+-++        - **Release Notes:** resumo para usuários finais, linguagem simples.
+-++        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+-++        - **Benefícios:** rastrear progresso, transparência, onboarding.
+-++        - **Quando usar:** público técnico, necessidade de detalhes completos.
+-++        - **Formato padrão:**
+-++        - Version (SemVer + data YYYY-MM-DD)
+-++        - Release highlights
+-++        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+-+         """
+-+     )
+-+ )
+-+
+-+commit 5b11d6ff0863f2e43c9fa800e228d9d2a252f3dd
+-+Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+-+Date:   Mon Aug 25 22:14:13 2025 -0300
+-+
+-+    add gpt agent
+-+
+-+diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
+-+index 3561b3c..7b91894 100644
+-+--- a/pedro_adapt/agents.py
+-++++ b/pedro_adapt/agents.py
+-+@@ -1,12 +1,15 @@
+-+ from pedro_adapt.ai_agent import AIAgent
+-+ from google import genai
+-+ 
+-++from openai import OpenAI
+-++import tiktoken
+-++
+-++
+-+ class GeminiAgent(AIAgent):
+-+     def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-+         super().__init__(model_name, api_key, base_prompt)
+-+         self.client: genai.Client = genai.Client()
+-+ 
+-+-
+-+     def generate_response(self, input: str) -> str:
+-+         response = self.client.models.generate_content(
+-+             model=self.model_name, contents=self.base_prompt + "\n" + input
+-+@@ -17,3 +20,20 @@ class GeminiAgent(AIAgent):
+-+         return self.client.models.count_tokens(
+-+             model=self.model_name, contents=self.base_prompt + "\n" + input
+-+         )
+-++
+-++class GPTAgent(AIAgent):
+-++    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-++        super().__init__(model_name, api_key, base_prompt)
+-++        self.client: OpenAI = OpenAI(api_key=self.api_key)
+-++
+-++    def generate_response(self, input: str) -> str:
+-++        response = self.client.responses.create(
+-++            model=self.model_name,
+-++            input=self.base_prompt + "\n" + input,
+-++        )
+-++        return response.output_text
+-++
+-++    def _count_tokens(self, input: str) -> int:
+-++        encoding = tiktoken.get_encoding("cl100k_base")
+-++        num_tokens = len(encoding.encode(input))
+-++        return num_tokens
+-+
+-+commit b6db3cdda564df4429b2bafc98ef6109899fe57d
+-+Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+-+Date:   Mon Aug 25 22:14:52 2025 -0300
+-+
+-+    refactoring uv file, Readme usage and information in the gitignore
+-+
+-+diff --git a/.gitignore b/.gitignore
+-+index 393702d..ab83e24 100644
+-+--- a/.gitignore
+-++++ b/.gitignore
+-+@@ -157,6 +157,9 @@ ENV/
+-+ env.bak/
+-+ venv.bak/
+-+ 
+-++#uv
+-++uv.lock
+-++
+-+ # Spyder project settings
+-+ .spyderproject
+-+ .spyproject
+-+diff --git a/README.md b/README.md
+-+index f7f976a..c9bf10b 100644
+-+--- a/README.md
+-++++ b/README.md
+-+@@ -19,13 +19,18 @@ pip install uv
+-+ ### Instalando dependências
+-+ Para instalar todas as dependências do projeto:
+-+ 
+-++Inicie uma venv
+-+ ```bash
+-+-uv pip install -r requirements.uv.txt
+-++uv venv
+-++```
+-++Instale as dependencias
+-++```bash
+-++uv sync
+-+ ```
+-+ 
+-+ ### Usando o Ruff para linting e formatação
+-+ 
+-+-O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+-++O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+-+ 
+-+ ```bash
+-+ # Verificar problemas de linting
+-+@@ -37,5 +42,5 @@ uv run ruff format .
+-+ 
+-+ ## Observações
+-+ - O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+-+-- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+-++- A configuração do Ruff está incluída no arquivo `pyproject.toml`
+-+ - O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-+diff --git a/pyproject.toml b/pyproject.toml
+-+new file mode 100644
+-+index 0000000..07d0b7b
+-+--- /dev/null
+-++++ b/pyproject.toml
+-+@@ -0,0 +1,37 @@
+-++[project]
+-++name = "GithubDocs"
+-++version = "0.1.0"
+-++requires-python = ">=3.10"
+-++dependencies = [
+-++    "google-generativeai",
+-++    "ruff>=0.1.0",
+-++    "openai",
+-++    "google-genai==1.31.0",
+-++    "python-dotenv",
+-++    "tiktoken==0.11.0"
+-++]
+-++
+-++[tool.ruff]
+-++# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
+-++select = ["E", "F", "I", "N", "W", "B", "RUF"]
+-++ignore = []
+-++
+-++# Exclude directories and files
+-++exclude = [
+-++    ".git",
+-++    "__pycache__",
+-++    "*.pyc",
+-++]
+-++
+-++# Same as Black.
+-++line-length = 88
+-++indent-width = 4
+-++
+-++[tool.ruff.format]
+-++preview = true
+-++
+-++[tool.ruff.lint]
+-++preview = true
+-++
+-++[tool.ruff.lint.per-file-ignores]
+-++"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+-+diff --git a/requirements.uv.txt b/requirements.uv.txt
+-+deleted file mode 100644
+-+index 4c657cd..0000000
+-+--- a/requirements.uv.txt
+-++++ /dev/null
+-+@@ -1,19 +0,0 @@
+-+-google-generativeai
+-+-ruff>=0.1.0
+-+-dotenv
+-+-google-genai
+-+-# git-cliff is a CLI tool, not a Python package
+-+-
+-+-[format]
+-+-# Configure formatters
+-+-exclude = ["*.pyc", "__pycache__"]
+-+-preview = true
+-+-
+-+-[lint]
+-+-# Enable Ruff's linter
+-+-select = ["E", "F", "I", "N", "W", "B", "RUF"]
+-+-ignore = []
+-+-preview = true
+-+-
+-+-[lint.per-file-ignores]
+-+-"__init__.py" = ["F401"]
+-
+-@@ -1,78 +0,0 @@
+--[changelog]
+--body = """
+--# Version {{ version }} - {{ timestamp | date(format="%Y-%m-%d") }}
+--
+--## Release highlights
+--{%- if commits | filter(attribute="group", value="feat") | length > 0 %}
+--{%- for commit in commits | filter(attribute="group", value="feat") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- endfor %}
+--{%- else %}
+--- Minor improvements and maintenance updates.
+--{%- endif %}
+--
+--## Added
+--{%- for commit in commits | filter(attribute="group", value="feat") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- else %}
+--- No additions in this release.
+--{%- endfor %}
+--
+--## Changed
+--{%- for commit in commits | filter(attribute="group", value="chore") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- else %}
+--- No changes in this release.
+--{%- endfor %}
+--
+--## Deprecated
+--{%- for commit in commits | filter(attribute="group", value="deprecate") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- else %}
+--- No deprecations in this release.
+--{%- endfor %}
+--
+--## Fixed
+--{%- for commit in commits | filter(attribute="group", value="fix") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- else %}
+--- No fixes in this release.
+--{%- endfor %}
+--
+--## Security
+--{%- for commit in commits | filter(attribute="group", value="security") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- else %}
+--- No security updates in this release.
+--{%- endfor %}
+--
+--## Breaking changes
+--{%- for commit in commits | filter(attribute="group", value="breaking") %}
+--- {{ commit.message | split(pat="\n") | first | trim }}
+--{%- else %}
+--- No breaking changes in this release.
+--{%- endfor %}
+--
+--**Full Changelog**: {{ self::remote_url() }}/compare/{{ previous.version }}...{{ version }}
+--
+--{%- macro remote_url() -%}
+--  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+--{%- endmacro -%}
+--"""
+--
+--trim = true
+--
+--footer = """
+--<!-- generated by git-cliff -->
+--"""
+--
+--[git]
+--conventional_commits = true
+--filter_unconventional = true
+--split_commits = false
+--commit_preprocessors = [
+--  { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "" }
+--]
+--filter_commits = false
+--topo_order = false
+--sort_commits = "newest"
+-
+-@@ -0,0 +1,53 @@
+-+from pedro_adapt.agents import GeminiAgent
+-+from pedro_adapt.agent_pipeline import AgentPipeline
+-+
+-+import dotenv
+-+
+-+import os
+-+from datetime import datetime
+-+
+-+dotenv.load_dotenv()
+-+
+-+gemini_api_key = os.getenv("GEMINI_API_KEY")
+-+gemini_model_name = "gemini-2.0-flash-lite"
+-+
+-+changelog_agent = GeminiAgent(
+-+    api_key=gemini_api_key,
+-+    model_name=gemini_model_name,
+-+    base_prompt=(
+-+        "Você é um especialista em criar change logs para projetos de software. "
+-+        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+-+        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+-+        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+-+        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+-+    )
+-+)
+-+
+-+formatter_agent = GeminiAgent(
+-+    api_key=gemini_api_key,
+-+    model_name=gemini_model_name,
+-+    base_prompt=(
+-+        """
+-+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+-+        - **Release Notes:** resumo para usuários finais, linguagem simples.
+-+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+-+        - **Benefícios:** rastrear progresso, transparência, onboarding.
+-+        - **Quando usar:** público técnico, necessidade de detalhes completos.
+-+        - **Formato padrão:**
+-+        - Version (SemVer + data YYYY-MM-DD)
+-+        - Release highlights
+-+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+-+        """
+-+    )
+-+)
+-+
+-+pipeline = AgentPipeline([changelog_agent, formatter_agent])
+-+
+-+with open("base_data/sample.patch", "r") as file:
+-+    entrada = file.read()
+-+
+-+saida = pipeline.run(entrada)
+-+
+-+output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+-+with open(output_filename, "w") as file:
+-+    file.write(saida)
+-
+-@@ -0,0 +1,19 @@
+-+# agent_pipeline.py
+-+from typing import List
+-+from pedro_adapt.ai_agent import AIAgent
+-+class AgentPipeline:
+-+    def __init__(self, agents: List[AIAgent]):
+-+        self.agents = agents
+-+
+-+    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+-+        while agent.need_summarization(text):
+-+            text = agent.generate_response("Summarize the following text:\n" + text)
+-+        return text
+-+
+-+    def run(self, input: str) -> str:
+-+        current_text = input
+-+
+-+        for agent in self.agents:
+-+            current_text = self._summarize_until_fits(agent, current_text)
+-+            current_text = agent.generate_response(current_text)
+-+        return current_text
+-
+-@@ -0,0 +1,39 @@
+-+from pedro_adapt.ai_agent import AIAgent
+-+from google import genai
+-+
+-+from openai import OpenAI
+-+import tiktoken
+-+
+-+
+-+class GeminiAgent(AIAgent):
+-+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-+        super().__init__(model_name, api_key, base_prompt)
+-+        self.client: genai.Client = genai.Client()
+-+
+-+    def generate_response(self, input: str) -> str:
+-+        response = self.client.models.generate_content(
+-+            model=self.model_name, contents=self.base_prompt + "\n" + input
+-+        )
+-+        return response.text
+-+
+-+    def _count_tokens(self, input: str) -> int:
+-+        return self.client.models.count_tokens(
+-+            model=self.model_name, contents=self.base_prompt + "\n" + input
+-+        ).total_tokens
+-+
+-+class GPTAgent(AIAgent):
+-+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-+        super().__init__(model_name, api_key, base_prompt)
+-+        self.client: OpenAI = OpenAI(api_key=self.api_key)
+-+
+-+    def generate_response(self, input: str) -> str:
+-+        response = self.client.responses.create(
+-+            model=self.model_name,
+-+            input=self.base_prompt + "\n" + input,
+-+        )
+-+        return response.output_text
+-+
+-+    def _count_tokens(self, input: str) -> int:
+-+        encoding = tiktoken.get_encoding("cl100k_base")
+-+        num_tokens = len(encoding.encode(input))
+-+        return num_tokens
+-
+-@@ -0,0 +1,23 @@
+-+from abc import ABC, abstractmethod
+-+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+-+
+-+class AIAgent(ABC):
+-+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-+        self.model_name = model_name
+-+        self.api_key = api_key
+-+        self.base_prompt = base_prompt
+-+        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+-+
+-+    @abstractmethod
+-+    def generate_response(self, input: str) -> str:
+-+        pass
+-+
+-+    @abstractmethod
+-+    def _count_tokens(self, input: str) -> int:
+-+        pass
+-+    
+-+    def _get_model_window_context(self) -> int:
+-+        return self.context_window
+-+    
+-+    def need_summarization(self, input: str) -> bool:
+-+        return self._count_tokens(input) > self.context_window
+-\ No newline at end of file
+-
+-@@ -0,0 +1,8 @@
+-+LLM_CONTEXT_WINDOWS = {
+-+    "gemini-2.5-pro": 1_048_576,
+-+    "gemini-2.5-flash": 1_048_576,
+-+    "gemini-2.0-flash-lite": 1_048_576,
+-+    "gemini-2.0-flash": 1_048_576,
+-+    "gpt-5-2025-08-07": 400_000,
+-+    "gpt-5-mini-2025-08-07": 400_000,
+-+}
+-\ No newline at end of file
+-
+-@@ -0,0 +1,37 @@
+-+[project]
+-+name = "GithubDocs"
+-+version = "0.1.0"
+-+requires-python = ">=3.10"
+-+dependencies = [
+-+    "google-generativeai",
+-+    "ruff>=0.1.0",
+-+    "openai",
+-+    "google-genai==1.31.0",
+-+    "python-dotenv",
+-+    "tiktoken==0.11.0"
+-+]
+-+
+-+[tool.ruff]
+-+# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
+-+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+-+ignore = []
+-+
+-+# Exclude directories and files
+-+exclude = [
+-+    ".git",
+-+    "__pycache__",
+-+    "*.pyc",
+-+]
+-+
+-+# Same as Black.
+-+line-length = 88
+-+indent-width = 4
+-+
+-+[tool.ruff.format]
+-+preview = true
+-+
+-+[tool.ruff.lint]
+-+preview = true
+-+
+-+[tool.ruff.lint.per-file-ignores]
+-+"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+-
+-@@ -1,2 +0,0 @@
+--google.generativeai
+--git-cliff
+-
+-@@ -5,7 +5,7 @@ __pycache__/
+- 
+- # C extensions
+- *.so
+--output/*
+-+
+- # Distribution / packaging
+- .Python
+- build/
+-
+-@@ -28,9 +28,6 @@ Instale as dependencias
+- uv sync
+- ```
+- 
+--### Base data example
+--use o commando `git log --reverse -p main..HEAD > base_data/branch_diffs.patch` para gerar um arquivo de sample, onde o diff do  primeiro commit da branch ate o atual esta localizado.
+--
+- ### Usando o Ruff para linting e formatação
+- 
+- O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+-
+-@@ -1,744 +0,0 @@
+--commit 32c077ace9b32fbe33a7d9b61f8f8267467ae6de
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:19:25 2025 -0300
+--
+--    modifications to support ai agents to create the changelog
+--
+--diff --git a/.gitignore b/.gitignore
+--new file mode 100644
+--index 0000000..50a19c6
+----- /dev/null
+--+++ b/.gitignore
+--@@ -0,0 +1,2 @@
+--+.env
+--+venv
+--\ No newline at end of file
+--diff --git a/README.md b/README.md
+--new file mode 100644
+--index 0000000..f7f976a
+----- /dev/null
+--+++ b/README.md
+--@@ -0,0 +1,41 @@
+--+# GithubDocs
+--+
+--+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+--+
+--+## Instalação do uv
+--+
+--+1. Instale o `uv` usando um dos métodos abaixo:
+--+
+--+```bash
+--+# Via curl (Linux/macOS)
+--+curl -Ls https://astral.sh/uv/install.sh | bash
+--+
+--+# Via pip
+--+pip install uv
+--+```
+--+
+--+## Configuração e Uso
+--+
+--+### Instalando dependências
+--+Para instalar todas as dependências do projeto:
+--+
+--+```bash
+--+uv pip install -r requirements.uv.txt
+--+```
+--+
+--+### Usando o Ruff para linting e formatação
+--+
+--+O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+--+
+--+```bash
+--+# Verificar problemas de linting
+--+uv run ruff check .
+--+
+--+# Formatar código automaticamente
+--+uv run ruff format .
+--+```
+--+
+--+## Observações
+--+- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+--+- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+--+- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+--diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
+--new file mode 100644
+--index 0000000..d815d14
+----- /dev/null
+--+++ b/pedro_adapt/agent_pipeline.py
+--@@ -0,0 +1,29 @@
+--+# agent_pipeline.py
+--+from typing import List
+--+from ai_agent import AIAgent
+--+
+--+# agent_pipeline.py
+--+from typing import List
+--+from ai_agent import AIAgent
+--+
+--+class AgentPipeline:
+--+    def __init__(self, agents: List[AIAgent]):
+--+        self.agents = agents
+--+
+--+    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+--+        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+--+        while agent.need_summarization(text):
+--+            text = agent.generate_response("Summarize the following text:\n" + text)
+--+        return text
+--+
+--+    def run(self, input: str) -> str:
+--+        current_text = input
+--+
+--+        for agent in self.agents:
+--+            # Garante que o input caiba na janela de contexto
+--+            current_text = self._summarize_until_fits(agent, current_text)
+--+
+--+            # Executa o processamento principal do agente
+--+            current_text = agent.generate_response(current_text)
+--+
+--+        return current_text
+--diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
+--new file mode 100644
+--index 0000000..3561b3c
+----- /dev/null
+--+++ b/pedro_adapt/agents.py
+--@@ -0,0 +1,19 @@
+--+from pedro_adapt.ai_agent import AIAgent
+--+from google import genai
+--+
+--+class GeminiAgent(AIAgent):
+--+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--+        super().__init__(model_name, api_key, base_prompt)
+--+        self.client: genai.Client = genai.Client()
+--+
+--+
+--+    def generate_response(self, input: str) -> str:
+--+        response = self.client.models.generate_content(
+--+            model=self.model_name, contents=self.base_prompt + "\n" + input
+--+        )
+--+        return response.text
+--+
+--+    def _count_tokens(self, input: str) -> int:
+--+        return self.client.models.count_tokens(
+--+            model=self.model_name, contents=self.base_prompt + "\n" + input
+--+        )
+--diff --git a/pedro_adapt/ai_agent.py b/pedro_adapt/ai_agent.py
+--new file mode 100644
+--index 0000000..1514c42
+----- /dev/null
+--+++ b/pedro_adapt/ai_agent.py
+--@@ -0,0 +1,23 @@
+--+from abc import ABC, abstractmethod
+--+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+--+
+--+class AIAgent(ABC):
+--+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--+        self.model_name = model_name
+--+        self.api_key = api_key
+--+        self.base_prompt = base_prompt
+--+        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+--+
+--+    @abstractmethod
+--+    def generate_response(self, input: str) -> str:
+--+        pass
+--+
+--+    @abstractmethod
+--+    def _count_tokens(self, input: str) -> int:
+--+        pass
+--+    
+--+    def _get_model_window_context(self) -> int:
+--+        return self.context_window
+--+    
+--+    def need_summarization(self, input: str) -> bool:
+--+        return self._count_tokens(input) > self.context_window
+--\ No newline at end of file
+--diff --git a/pedro_adapt/utils.py b/pedro_adapt/utils.py
+--new file mode 100644
+--index 0000000..0b95bcf
+----- /dev/null
+--+++ b/pedro_adapt/utils.py
+--@@ -0,0 +1,8 @@
+--+LLM_CONTEXT_WINDOWS = {
+--+    "gemini-2.5-pro": 1_048_576,
+--+    "gemini-2.5-flash": 1_048_576,
+--+    "gemini-2.0-flash-lite": 1_048_576,
+--+    "gemini-2.0-flash": 1_048_576,
+--+    "gpt-5-2025-08-07": 400_000,
+--+    "gpt-5-mini-2025-08-07": 400_000,
+--+}
+--\ No newline at end of file
+--diff --git a/requirements.txt b/requirements.txt
+--deleted file mode 100644
+--index aa09f68..0000000
+----- a/requirements.txt
+--+++ /dev/null
+--@@ -1,2 +0,0 @@
+---google.generativeai
+---git-cliff
+--diff --git a/requirements.uv.txt b/requirements.uv.txt
+--new file mode 100644
+--index 0000000..4c657cd
+----- /dev/null
+--+++ b/requirements.uv.txt
+--@@ -0,0 +1,19 @@
+--+google-generativeai
+--+ruff>=0.1.0
+--+dotenv
+--+google-genai
+--+# git-cliff is a CLI tool, not a Python package
+--+
+--+[format]
+--+# Configure formatters
+--+exclude = ["*.pyc", "__pycache__"]
+--+preview = true
+--+
+--+[lint]
+--+# Enable Ruff's linter
+--+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--+ignore = []
+--+preview = true
+--+
+--+[lint.per-file-ignores]
+--+"__init__.py" = ["F401"]
+--
+--commit 4300215dddbdc32f4132788dac393fb37529242f
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:31:29 2025 -0300
+--
+--    sample of a main file
+--
+--diff --git a/main.py b/main.py
+--new file mode 100644
+--index 0000000..2de8e5b
+----- /dev/null
+--+++ b/main.py
+--@@ -0,0 +1,39 @@
+--+from pedro_adapt.agents import GeminiAgent
+--+from pedro_adapt.agent_pipeline import AgentPipeline
+--+
+--+api_key = "SUA_API_KEY"
+--+
+--+changelog_agent = GeminiAgent(
+--+    api_key=api_key,
+--+    base_prompt=(
+--+        "Você é um especialista em criar change logs para projetos de software. "
+--+        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+--+        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+--+        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+--+        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+--+    )
+--+)
+--+
+--+formatter_agent = GeminiAgent(
+--+    api_key=api_key,
+--+    base_prompt=(
+--+        """
+--+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+--+        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+--+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+--+        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+--+        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+--+        - **Formato padrão:**  
+--+        - Version (SemVer + data YYYY-MM-DD)  
+--+        - Release highlights  
+--+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+--+        """
+--+    )
+--+)
+--+
+--+pipeline = AgentPipeline([changelog_agent, formatter_agent])
+--+
+--+entrada = "Um texto gigantesco que ultrapassa o contexto..."
+--+saida = pipeline.run(entrada)
+--+
+--+print("Resultado final:", saida)
+--diff --git a/pedro_adapt/agent_pipeline.py b/pedro_adapt/agent_pipeline.py
+--index d815d14..fae2126 100644
+----- a/pedro_adapt/agent_pipeline.py
+--+++ b/pedro_adapt/agent_pipeline.py
+--@@ -1,17 +1,11 @@
+-- # agent_pipeline.py
+-- from typing import List
+-- from ai_agent import AIAgent
+---
+---# agent_pipeline.py
+---from typing import List
+---from ai_agent import AIAgent
+---
+-- class AgentPipeline:
+--     def __init__(self, agents: List[AIAgent]):
+--         self.agents = agents
+-- 
+--     def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+---        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+--         while agent.need_summarization(text):
+--             text = agent.generate_response("Summarize the following text:\n" + text)
+--         return text
+--@@ -20,10 +14,6 @@ class AgentPipeline:
+--         current_text = input
+-- 
+--         for agent in self.agents:
+---            # Garante que o input caiba na janela de contexto
+--             current_text = self._summarize_until_fits(agent, current_text)
+---
+---            # Executa o processamento principal do agente
+--             current_text = agent.generate_response(current_text)
+---
+--         return current_text
+--
+--commit 7f1eac06d8f8f1fb7c9273a097e9283550766663
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:33:25 2025 -0300
+--
+--    remove .env from repo history
+--
+--diff --git a/.env b/.env
+--deleted file mode 100644
+--index 39084ef..0000000
+----- a/.env
+--+++ /dev/null
+--@@ -1 +0,0 @@
+---GEMINI_API_KEY = "api_key_here"
+--\ No newline at end of file
+--
+--commit 3c27c1823a34436b690a1d1e2d480dc7948e0ad7
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 21:40:25 2025 -0300
+--
+--    removing .env of cache and improving .gitignore
+--
+--diff --git a/.gitignore b/.gitignore
+--index 50a19c6..393702d 100644
+----- a/.gitignore
+--+++ b/.gitignore
+--@@ -1,2 +1,216 @@
+--+# Byte-compiled / optimized / DLL files
+--+__pycache__/
+--+*.py[codz]
+--+*$py.class
+--+
+--+# C extensions
+--+*.so
+--+
+--+# Distribution / packaging
+--+.Python
+--+build/
+--+develop-eggs/
+--+dist/
+--+downloads/
+--+eggs/
+--+.eggs/
+--+lib/
+--+lib64/
+--+parts/
+--+sdist/
+--+var/
+--+wheels/
+--+share/python-wheels/
+--+*.egg-info/
+--+.installed.cfg
+--+*.egg
+--+MANIFEST
+--+
+--+# PyInstaller
+--+#  Usually these files are written by a python script from a template
+--+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+--+*.manifest
+--+*.spec
+--+
+--+# Installer logs
+--+pip-log.txt
+--+pip-delete-this-directory.txt
+--+
+--+# Unit test / coverage reports
+--+htmlcov/
+--+.tox/
+--+.nox/
+--+.coverage
+--+.coverage.*
+--+.cache
+--+nosetests.xml
+--+coverage.xml
+--+*.cover
+--+*.py.cover
+--+.hypothesis/
+--+.pytest_cache/
+--+cover/
+--+
+--+# Translations
+--+*.mo
+--+*.pot
+--+
+--+# Django stuff:
+--+*.log
+--+local_settings.py
+--+db.sqlite3
+--+db.sqlite3-journal
+--+
+--+# Flask stuff:
+--+instance/
+--+.webassets-cache
+--+
+--+# Scrapy stuff:
+--+.scrapy
+--+
+--+# Sphinx documentation
+--+docs/_build/
+--+
+--+# PyBuilder
+--+.pybuilder/
+--+target/
+--+
+--+# Jupyter Notebook
+--+.ipynb_checkpoints
+--+
+--+# IPython
+--+profile_default/
+--+ipython_config.py
+--+
+--+# pyenv
+--+#   For a library or package, you might want to ignore these files since the code is
+--+#   intended to run in multiple environments; otherwise, check them in:
+--+# .python-version
+--+
+--+# pipenv
+--+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+--+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+--+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+--+#   install all needed dependencies.
+--+#Pipfile.lock
+--+
+--+# UV
+--+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+--+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--+#   commonly ignored for libraries.
+--+#uv.lock
+--+
+--+# poetry
+--+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+--+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--+#   commonly ignored for libraries.
+--+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+--+#poetry.lock
+--+#poetry.toml
+--+
+--+# pdm
+--+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+--+#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+--+#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+--+#pdm.lock
+--+#pdm.toml
+--+.pdm-python
+--+.pdm-build/
+--+
+--+# pixi
+--+#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+--+#pixi.lock
+--+#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+--+#   in the .venv directory. It is recommended not to include this directory in version control.
+--+.pixi
+--+
+--+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+--+__pypackages__/
+--+
+--+# Celery stuff
+--+celerybeat-schedule
+--+celerybeat.pid
+--+
+--+# Redis 
+--+*.rdb
+--+*.aof
+--+*.pid
+--+
+--+# RabbitMQ
+--+mnesia/
+--+rabbitmq/
+--+rabbitmq-data/
+--+
+--+# ActiveMQ
+--+activemq-data/
+--+
+--+# SageMath parsed files
+--+*.sage.py
+--+
+--+# Environments
+-- .env
+---venv
+--\ No newline at end of file
+--+.envrc
+--+.venv
+--+env/
+--+venv/
+--+ENV/
+--+env.bak/
+--+venv.bak/
+--+
+--+# Spyder project settings
+--+.spyderproject
+--+.spyproject
+--+
+--+# Rope project settings
+--+.ropeproject
+--+
+--+# mkdocs documentation
+--+/site
+--+
+--+# mypy
+--+.mypy_cache/
+--+.dmypy.json
+--+dmypy.json
+--+
+--+# Pyre type checker
+--+.pyre/
+--+
+--+# pytype static type analyzer
+--+.pytype/
+--+
+--+# Cython debug symbols
+--+cython_debug/
+--+
+--+# PyCharm
+--+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+--+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+--+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+--+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+--+#.idea/
+--+
+--+# Abstra
+--+# Abstra is an AI-powered process automation framework.
+--+# Ignore directories containing user credentials, local state, and settings.
+--+# Learn more at https://abstra.io/docs
+--+.abstra/
+--+
+--+# Visual Studio Code
+--+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+--+#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+--+#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+--+#  you could uncomment the following to ignore the entire vscode folder
+--+# .vscode/
+--+
+--+# Ruff stuff:
+--+.ruff_cache/
+--+
+--+# PyPI configuration file
+--+.pypirc
+--+
+--+# Marimo
+--+marimo/_static/
+--+marimo/_lsp/
+--+__marimo__/
+--+
+--+# Streamlit
+--+.streamlit/secrets.toml
+--diff --git a/main.py b/main.py
+--index 2de8e5b..b59f156 100644
+----- a/main.py
+--+++ b/main.py
+--@@ -1,7 +1,13 @@
+-- from pedro_adapt.agents import GeminiAgent
+-- from pedro_adapt.agent_pipeline import AgentPipeline
+-- 
+---api_key = "SUA_API_KEY"
+--+import dotenv
+--+
+--+import os
+--+
+--+dotenv.load_dotenv()
+--+
+--+api_key = os.getenv("GEMINI_API_KEY")
+-- 
+-- changelog_agent = GeminiAgent(
+--     api_key=api_key,
+--@@ -18,15 +24,15 @@ formatter_agent = GeminiAgent(
+--     api_key=api_key,
+--     base_prompt=(
+--         """
+---        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+---        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+---        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+---        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+---        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+---        - **Formato padrão:**  
+---        - Version (SemVer + data YYYY-MM-DD)  
+---        - Release highlights  
+---        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+--+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+--+        - **Release Notes:** resumo para usuários finais, linguagem simples.
+--+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+--+        - **Benefícios:** rastrear progresso, transparência, onboarding.
+--+        - **Quando usar:** público técnico, necessidade de detalhes completos.
+--+        - **Formato padrão:**
+--+        - Version (SemVer + data YYYY-MM-DD)
+--+        - Release highlights
+--+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+--         """
+--     )
+-- )
+--
+--commit 5b11d6ff0863f2e43c9fa800e228d9d2a252f3dd
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 22:14:13 2025 -0300
+--
+--    add gpt agent
+--
+--diff --git a/pedro_adapt/agents.py b/pedro_adapt/agents.py
+--index 3561b3c..7b91894 100644
+----- a/pedro_adapt/agents.py
+--+++ b/pedro_adapt/agents.py
+--@@ -1,12 +1,15 @@
+-- from pedro_adapt.ai_agent import AIAgent
+-- from google import genai
+-- 
+--+from openai import OpenAI
+--+import tiktoken
+--+
+--+
+-- class GeminiAgent(AIAgent):
+--     def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--         super().__init__(model_name, api_key, base_prompt)
+--         self.client: genai.Client = genai.Client()
+-- 
+---
+--     def generate_response(self, input: str) -> str:
+--         response = self.client.models.generate_content(
+--             model=self.model_name, contents=self.base_prompt + "\n" + input
+--@@ -17,3 +20,20 @@ class GeminiAgent(AIAgent):
+--         return self.client.models.count_tokens(
+--             model=self.model_name, contents=self.base_prompt + "\n" + input
+--         )
+--+
+--+class GPTAgent(AIAgent):
+--+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--+        super().__init__(model_name, api_key, base_prompt)
+--+        self.client: OpenAI = OpenAI(api_key=self.api_key)
+--+
+--+    def generate_response(self, input: str) -> str:
+--+        response = self.client.responses.create(
+--+            model=self.model_name,
+--+            input=self.base_prompt + "\n" + input,
+--+        )
+--+        return response.output_text
+--+
+--+    def _count_tokens(self, input: str) -> int:
+--+        encoding = tiktoken.get_encoding("cl100k_base")
+--+        num_tokens = len(encoding.encode(input))
+--+        return num_tokens
+--
+--commit b6db3cdda564df4429b2bafc98ef6109899fe57d
+--Author: Pedro Verardo <pedro.lopesverardo@gmail.com>
+--Date:   Mon Aug 25 22:14:52 2025 -0300
+--
+--    refactoring uv file, Readme usage and information in the gitignore
+--
+--diff --git a/.gitignore b/.gitignore
+--index 393702d..ab83e24 100644
+----- a/.gitignore
+--+++ b/.gitignore
+--@@ -157,6 +157,9 @@ ENV/
+-- env.bak/
+-- venv.bak/
+-- 
+--+#uv
+--+uv.lock
+--+
+-- # Spyder project settings
+-- .spyderproject
+-- .spyproject
+--diff --git a/README.md b/README.md
+--index f7f976a..c9bf10b 100644
+----- a/README.md
+--+++ b/README.md
+--@@ -19,13 +19,18 @@ pip install uv
+-- ### Instalando dependências
+-- Para instalar todas as dependências do projeto:
+-- 
+--+Inicie uma venv
+-- ```bash
+---uv pip install -r requirements.uv.txt
+--+uv venv
+--+```
+--+Instale as dependencias
+--+```bash
+--+uv sync
+-- ```
+-- 
+-- ### Usando o Ruff para linting e formatação
+-- 
+---O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+--+O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+-- 
+-- ```bash
+-- # Verificar problemas de linting
+--@@ -37,5 +42,5 @@ uv run ruff format .
+-- 
+-- ## Observações
+-- - O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+---- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+--+- A configuração do Ruff está incluída no arquivo `pyproject.toml`
+-- - O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+--diff --git a/pyproject.toml b/pyproject.toml
+--new file mode 100644
+--index 0000000..07d0b7b
+----- /dev/null
+--+++ b/pyproject.toml
+--@@ -0,0 +1,37 @@
+--+[project]
+--+name = "GithubDocs"
+--+version = "0.1.0"
+--+requires-python = ">=3.10"
+--+dependencies = [
+--+    "google-generativeai",
+--+    "ruff>=0.1.0",
+--+    "openai",
+--+    "google-genai==1.31.0",
+--+    "python-dotenv",
+--+    "tiktoken==0.11.0"
+--+]
+--+
+--+[tool.ruff]
+--+# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
+--+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--+ignore = []
+--+
+--+# Exclude directories and files
+--+exclude = [
+--+    ".git",
+--+    "__pycache__",
+--+    "*.pyc",
+--+]
+--+
+--+# Same as Black.
+--+line-length = 88
+--+indent-width = 4
+--+
+--+[tool.ruff.format]
+--+preview = true
+--+
+--+[tool.ruff.lint]
+--+preview = true
+--+
+--+[tool.ruff.lint.per-file-ignores]
+--+"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+--diff --git a/requirements.uv.txt b/requirements.uv.txt
+--deleted file mode 100644
+--index 4c657cd..0000000
+----- a/requirements.uv.txt
+--+++ /dev/null
+--@@ -1,19 +0,0 @@
+---google-generativeai
+---ruff>=0.1.0
+---dotenv
+---google-genai
+---# git-cliff is a CLI tool, not a Python package
+---
+---[format]
+---# Configure formatters
+---exclude = ["*.pyc", "__pycache__"]
+---preview = true
+---
+---[lint]
+---# Enable Ruff's linter
+---select = ["E", "F", "I", "N", "W", "B", "RUF"]
+---ignore = []
+---preview = true
+---
+---[lint.per-file-ignores]
+---"__init__.py" = ["F401"]
+-
+-@@ -4,16 +4,13 @@ from pedro_adapt.agent_pipeline import AgentPipeline
+- import dotenv
+- 
+- import os
+--from datetime import datetime
+- 
+- dotenv.load_dotenv()
+- 
+--gemini_api_key = os.getenv("GEMINI_API_KEY")
+--gemini_model_name = "gemini-2.0-flash-lite"
+-+api_key = os.getenv("GEMINI_API_KEY")
+- 
+- changelog_agent = GeminiAgent(
+--    api_key=gemini_api_key,
+--    model_name=gemini_model_name,
+-+    api_key=api_key,
+-     base_prompt=(
+-         "Você é um especialista em criar change logs para projetos de software. "
+-         "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+-@@ -24,8 +21,7 @@ changelog_agent = GeminiAgent(
+- )
+- 
+- formatter_agent = GeminiAgent(
+--    api_key=gemini_api_key,
+--    model_name=gemini_model_name,
+-+    api_key=api_key,
+-     base_prompt=(
+-         """
+-         - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+-@@ -43,11 +39,7 @@ formatter_agent = GeminiAgent(
+- 
+- pipeline = AgentPipeline([changelog_agent, formatter_agent])
+- 
+--with open("base_data/sample.patch", "r") as file:
+--    entrada = file.read()
+--
+-+entrada = "Um texto gigantesco que ultrapassa o contexto..."
+- saida = pipeline.run(entrada)
+- 
+--output_filename = f"output/result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+--with open(output_filename, "w") as file:
+--    file.write(saida)
+-+print("Resultado final:", saida)
+-
+-@@ -1,6 +1,6 @@
+- # agent_pipeline.py
+- from typing import List
+--from pedro_adapt.ai_agent import AIAgent
+-+from ai_agent import AIAgent
+- class AgentPipeline:
+-     def __init__(self, agents: List[AIAgent]):
+-         self.agents = agents
+-
+-@@ -19,7 +19,7 @@ class GeminiAgent(AIAgent):
+-     def _count_tokens(self, input: str) -> int:
+-         return self.client.models.count_tokens(
+-             model=self.model_name, contents=self.base_prompt + "\n" + input
+--        ).total_tokens
+-+        )
+- 
+- class GPTAgent(AIAgent):
+-     def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-
+-@@ -157,9 +157,6 @@ ENV/
+- env.bak/
+- venv.bak/
+- 
+--#uv
+--uv.lock
+--
+- # Spyder project settings
+- .spyderproject
+- .spyproject
+-
+-@@ -19,18 +19,13 @@ pip install uv
+- ### Instalando dependências
+- Para instalar todas as dependências do projeto:
+- 
+--Inicie uma venv
+- ```bash
+--uv venv
+--```
+--Instale as dependencias
+--```bash
+--uv sync
+-+uv pip install -r requirements.uv.txt
+- ```
+- 
+- ### Usando o Ruff para linting e formatação
+- 
+--O Ruff está configurado no arquivo `pyproject.toml`. Para usar:
+-+O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+- 
+- ```bash
+- # Verificar problemas de linting
+-@@ -42,5 +37,5 @@ uv run ruff format .
+- 
+- ## Observações
+- - O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+--- A configuração do Ruff está incluída no arquivo `pyproject.toml`
+-+- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+- - O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-
+-@@ -1,37 +0,0 @@
+--[project]
+--name = "GithubDocs"
+--version = "0.1.0"
+--requires-python = ">=3.10"
+--dependencies = [
+--    "google-generativeai",
+--    "ruff>=0.1.0",
+--    "openai",
+--    "google-genai==1.31.0",
+--    "python-dotenv",
+--    "tiktoken==0.11.0"
+--]
+--
+--[tool.ruff]
+--# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
+--select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--ignore = []
+--
+--# Exclude directories and files
+--exclude = [
+--    ".git",
+--    "__pycache__",
+--    "*.pyc",
+--]
+--
+--# Same as Black.
+--line-length = 88
+--indent-width = 4
+--
+--[tool.ruff.format]
+--preview = true
+--
+--[tool.ruff.lint]
+--preview = true
+--
+--[tool.ruff.lint.per-file-ignores]
+--"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+-
+-@@ -0,0 +1,19 @@
+-+google-generativeai
+-+ruff>=0.1.0
+-+dotenv
+-+google-genai
+-+# git-cliff is a CLI tool, not a Python package
+-+
+-+[format]
+-+# Configure formatters
+-+exclude = ["*.pyc", "__pycache__"]
+-+preview = true
+-+
+-+[lint]
+-+# Enable Ruff's linter
+-+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+-+ignore = []
+-+preview = true
+-+
+-+[lint.per-file-ignores]
+-+"__init__.py" = ["F401"]
+-
+-@@ -1,15 +1,12 @@
+- from pedro_adapt.ai_agent import AIAgent
+- from google import genai
+- 
+--from openai import OpenAI
+--import tiktoken
+--
+--
+- class GeminiAgent(AIAgent):
+-     def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-         super().__init__(model_name, api_key, base_prompt)
+-         self.client: genai.Client = genai.Client()
+- 
+-+
+-     def generate_response(self, input: str) -> str:
+-         response = self.client.models.generate_content(
+-             model=self.model_name, contents=self.base_prompt + "\n" + input
+-@@ -20,20 +17,3 @@ class GeminiAgent(AIAgent):
+-         return self.client.models.count_tokens(
+-             model=self.model_name, contents=self.base_prompt + "\n" + input
+-         )
+--
+--class GPTAgent(AIAgent):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        super().__init__(model_name, api_key, base_prompt)
+--        self.client: OpenAI = OpenAI(api_key=self.api_key)
+--
+--    def generate_response(self, input: str) -> str:
+--        response = self.client.responses.create(
+--            model=self.model_name,
+--            input=self.base_prompt + "\n" + input,
+--        )
+--        return response.output_text
+--
+--    def _count_tokens(self, input: str) -> int:
+--        encoding = tiktoken.get_encoding("cl100k_base")
+--        num_tokens = len(encoding.encode(input))
+--        return num_tokens
+-
+-@@ -0,0 +1 @@
+-+GEMINI_API_KEY = "api_key_here"
+-\ No newline at end of file
+-
+-@@ -1,216 +0,0 @@
+--# Byte-compiled / optimized / DLL files
+--__pycache__/
+--*.py[codz]
+--*$py.class
+--
+--# C extensions
+--*.so
+--
+--# Distribution / packaging
+--.Python
+--build/
+--develop-eggs/
+--dist/
+--downloads/
+--eggs/
+--.eggs/
+--lib/
+--lib64/
+--parts/
+--sdist/
+--var/
+--wheels/
+--share/python-wheels/
+--*.egg-info/
+--.installed.cfg
+--*.egg
+--MANIFEST
+--
+--# PyInstaller
+--#  Usually these files are written by a python script from a template
+--#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+--*.manifest
+--*.spec
+--
+--# Installer logs
+--pip-log.txt
+--pip-delete-this-directory.txt
+--
+--# Unit test / coverage reports
+--htmlcov/
+--.tox/
+--.nox/
+--.coverage
+--.coverage.*
+--.cache
+--nosetests.xml
+--coverage.xml
+--*.cover
+--*.py.cover
+--.hypothesis/
+--.pytest_cache/
+--cover/
+--
+--# Translations
+--*.mo
+--*.pot
+--
+--# Django stuff:
+--*.log
+--local_settings.py
+--db.sqlite3
+--db.sqlite3-journal
+--
+--# Flask stuff:
+--instance/
+--.webassets-cache
+--
+--# Scrapy stuff:
+--.scrapy
+--
+--# Sphinx documentation
+--docs/_build/
+--
+--# PyBuilder
+--.pybuilder/
+--target/
+--
+--# Jupyter Notebook
+--.ipynb_checkpoints
+--
+--# IPython
+--profile_default/
+--ipython_config.py
+--
+--# pyenv
+--#   For a library or package, you might want to ignore these files since the code is
+--#   intended to run in multiple environments; otherwise, check them in:
+--# .python-version
+--
+--# pipenv
+--#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+--#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+--#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+--#   install all needed dependencies.
+--#Pipfile.lock
+--
+--# UV
+--#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+--#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--#   commonly ignored for libraries.
+--#uv.lock
+--
+--# poetry
+--#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+--#   This is especially recommended for binary packages to ensure reproducibility, and is more
+--#   commonly ignored for libraries.
+--#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+--#poetry.lock
+--#poetry.toml
+--
+--# pdm
+--#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+--#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
+--#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
+--#pdm.lock
+--#pdm.toml
+--.pdm-python
+--.pdm-build/
+--
+--# pixi
+--#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
+--#pixi.lock
+--#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
+--#   in the .venv directory. It is recommended not to include this directory in version control.
+--.pixi
+--
+--# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+--__pypackages__/
+--
+--# Celery stuff
+--celerybeat-schedule
+--celerybeat.pid
+--
+--# Redis 
+--*.rdb
+--*.aof
+--*.pid
+--
+--# RabbitMQ
+--mnesia/
+--rabbitmq/
+--rabbitmq-data/
+--
+--# ActiveMQ
+--activemq-data/
+--
+--# SageMath parsed files
+--*.sage.py
+--
+--# Environments
+--.env
+--.envrc
+--.venv
+--env/
+--venv/
+--ENV/
+--env.bak/
+--venv.bak/
+--
+--# Spyder project settings
+--.spyderproject
+--.spyproject
+--
+--# Rope project settings
+--.ropeproject
+--
+--# mkdocs documentation
+--/site
+--
+--# mypy
+--.mypy_cache/
+--.dmypy.json
+--dmypy.json
+--
+--# Pyre type checker
+--.pyre/
+--
+--# pytype static type analyzer
+--.pytype/
+--
+--# Cython debug symbols
+--cython_debug/
+--
+--# PyCharm
+--#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+--#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+--#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+--#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+--#.idea/
+--
+--# Abstra
+--# Abstra is an AI-powered process automation framework.
+--# Ignore directories containing user credentials, local state, and settings.
+--# Learn more at https://abstra.io/docs
+--.abstra/
+--
+--# Visual Studio Code
+--#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+--#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+--#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+--#  you could uncomment the following to ignore the entire vscode folder
+--# .vscode/
+--
+--# Ruff stuff:
+--.ruff_cache/
+--
+--# PyPI configuration file
+--.pypirc
+--
+--# Marimo
+--marimo/_static/
+--marimo/_lsp/
+--__marimo__/
+--
+--# Streamlit
+--.streamlit/secrets.toml
+-
+-@@ -1,41 +0,0 @@
+--# GithubDocs
+--
+--Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+--
+--## Instalação do uv
+--
+--1. Instale o `uv` usando um dos métodos abaixo:
+--
+--```bash
+--# Via curl (Linux/macOS)
+--curl -Ls https://astral.sh/uv/install.sh | bash
+--
+--# Via pip
+--pip install uv
+--```
+--
+--## Configuração e Uso
+--
+--### Instalando dependências
+--Para instalar todas as dependências do projeto:
+--
+--```bash
+--uv pip install -r requirements.uv.txt
+--```
+--
+--### Usando o Ruff para linting e formatação
+--
+--O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+--
+--```bash
+--# Verificar problemas de linting
+--uv run ruff check .
+--
+--# Formatar código automaticamente
+--uv run ruff format .
+--```
+--
+--## Observações
+--- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+--- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+--- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-
+-@@ -0,0 +1,42 @@
+-+import os
+-+import google.generativeai as genai
+-+import sys
+-+import json
+-+
+-+genai.configure(api_key="SUA CHAVE")
+-+
+-+model = genai.GenerativeModel('gemini-2.5-flash')
+-+
+-+# Caminhos dos arquivos
+-+changelog_raw_path = "CHANGELOG.md"
+-+changelog_final_path = "CHANGELOG_FINAL.md"
+-+
+-+# Ler o changelog bruto
+-+with open(changelog_raw_path, "r", encoding="utf-8") as f:
+-+    raw_text = f.read()
+-+
+-+# Prompt para a LLM
+-+prompt = f"""
+-+Você é um assistente de documentação de software.
+-+Transforme o seguinte changelog em português, no padrão Good Docs:
+-+
+-+- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
+-+- Faça um resumo curto das mudanças importantes em Release highlights
+-+- Organize os commits corretamente nas seções
+-+- Melhore a clareza e a linguagem formal
+-+- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+-+
+-+Changelog bruto:
+-+{raw_text}
+-+"""
+-+
+-+# Gerar o changelog final
+-+response = model.generate_content(prompt)
+-+
+-+final_text = response.text  # resultado em texto
+-+
+-+# Salvar o changelog final
+-+with open(changelog_final_path, "w", encoding="utf-8") as f:
+-+    f.write(final_text)
+-+
+-+print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+-
+-@@ -1,45 +0,0 @@
+--from pedro_adapt.agents import GeminiAgent
+--from pedro_adapt.agent_pipeline import AgentPipeline
+--
+--import dotenv
+--
+--import os
+--
+--dotenv.load_dotenv()
+--
+--api_key = os.getenv("GEMINI_API_KEY")
+--
+--changelog_agent = GeminiAgent(
+--    api_key=api_key,
+--    base_prompt=(
+--        "Você é um especialista em criar change logs para projetos de software. "
+--        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+--        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+--        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+--        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+--    )
+--)
+--
+--formatter_agent = GeminiAgent(
+--    api_key=api_key,
+--    base_prompt=(
+--        """
+--        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).
+--        - **Release Notes:** resumo para usuários finais, linguagem simples.
+--        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.
+--        - **Benefícios:** rastrear progresso, transparência, onboarding.
+--        - **Quando usar:** público técnico, necessidade de detalhes completos.
+--        - **Formato padrão:**
+--        - Version (SemVer + data YYYY-MM-DD)
+--        - Release highlights
+--        - Added | Changed | Deprecated | Fixed | Security | Breaking changes
+--        """
+--    )
+--)
+--
+--pipeline = AgentPipeline([changelog_agent, formatter_agent])
+--
+--entrada = "Um texto gigantesco que ultrapassa o contexto..."
+--saida = pipeline.run(entrada)
+--
+--print("Resultado final:", saida)
+-
+-@@ -1,19 +0,0 @@
+--# agent_pipeline.py
+--from typing import List
+--from ai_agent import AIAgent
+--class AgentPipeline:
+--    def __init__(self, agents: List[AIAgent]):
+--        self.agents = agents
+--
+--    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+--        while agent.need_summarization(text):
+--            text = agent.generate_response("Summarize the following text:\n" + text)
+--        return text
+--
+--    def run(self, input: str) -> str:
+--        current_text = input
+--
+--        for agent in self.agents:
+--            current_text = self._summarize_until_fits(agent, current_text)
+--            current_text = agent.generate_response(current_text)
+--        return current_text
+-
+-@@ -1,19 +0,0 @@
+--from pedro_adapt.ai_agent import AIAgent
+--from google import genai
+--
+--class GeminiAgent(AIAgent):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        super().__init__(model_name, api_key, base_prompt)
+--        self.client: genai.Client = genai.Client()
+--
+--
+--    def generate_response(self, input: str) -> str:
+--        response = self.client.models.generate_content(
+--            model=self.model_name, contents=self.base_prompt + "\n" + input
+--        )
+--        return response.text
+--
+--    def _count_tokens(self, input: str) -> int:
+--        return self.client.models.count_tokens(
+--            model=self.model_name, contents=self.base_prompt + "\n" + input
+--        )
+-
+-@@ -1,23 +0,0 @@
+--from abc import ABC, abstractmethod
+--from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+--
+--class AIAgent(ABC):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        self.model_name = model_name
+--        self.api_key = api_key
+--        self.base_prompt = base_prompt
+--        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+--
+--    @abstractmethod
+--    def generate_response(self, input: str) -> str:
+--        pass
+--
+--    @abstractmethod
+--    def _count_tokens(self, input: str) -> int:
+--        pass
+--    
+--    def _get_model_window_context(self) -> int:
+--        return self.context_window
+--    
+--    def need_summarization(self, input: str) -> bool:
+--        return self._count_tokens(input) > self.context_window
+-\ No newline at end of file
+-
+-@@ -1,8 +0,0 @@
+--LLM_CONTEXT_WINDOWS = {
+--    "gemini-2.5-pro": 1_048_576,
+--    "gemini-2.5-flash": 1_048_576,
+--    "gemini-2.0-flash-lite": 1_048_576,
+--    "gemini-2.0-flash": 1_048_576,
+--    "gpt-5-2025-08-07": 400_000,
+--    "gpt-5-mini-2025-08-07": 400_000,
+--}
+-\ No newline at end of file
+-
+-@@ -0,0 +1,2 @@
+-+google.generativeai
+-+git-cliff
+-
+-@@ -1,19 +0,0 @@
+--google-generativeai
+--ruff>=0.1.0
+--dotenv
+--google-genai
+--# git-cliff is a CLI tool, not a Python package
+--
+--[format]
+--# Configure formatters
+--exclude = ["*.pyc", "__pycache__"]
+--preview = true
+--
+--[lint]
+--# Enable Ruff's linter
+--select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--ignore = []
+--preview = true
+--
+--[lint.per-file-ignores]
+--"__init__.py" = ["F401"]
+-
+-@@ -1 +0,0 @@
+--GEMINI_API_KEY = "api_key_here"
+-\ No newline at end of file
+-
+-@@ -0,0 +1,2 @@
+-+.env
+-+venv
+-\ No newline at end of file
+-
+-@@ -0,0 +1,41 @@
+-+# GithubDocs
+-+
+-+Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+-+
+-+## Instalação do uv
+-+
+-+1. Instale o `uv` usando um dos métodos abaixo:
+-+
+-+```bash
+-+# Via curl (Linux/macOS)
+-+curl -Ls https://astral.sh/uv/install.sh | bash
+-+
+-+# Via pip
+-+pip install uv
+-+```
+-+
+-+## Configuração e Uso
+-+
+-+### Instalando dependências
+-+Para instalar todas as dependências do projeto:
+-+
+-+```bash
+-+uv pip install -r requirements.uv.txt
+-+```
+-+
+-+### Usando o Ruff para linting e formatação
+-+
+-+O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+-+
+-+```bash
+-+# Verificar problemas de linting
+-+uv run ruff check .
+-+
+-+# Formatar código automaticamente
+-+uv run ruff format .
+-+```
+-+
+-+## Observações
+-+- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+-+- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+-+- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-
+-@@ -1,42 +0,0 @@
+--import os
+--import google.generativeai as genai
+--import sys
+--import json
+--
+--genai.configure(api_key="SUA CHAVE")
+--
+--model = genai.GenerativeModel('gemini-2.5-flash')
+--
+--# Caminhos dos arquivos
+--changelog_raw_path = "CHANGELOG.md"
+--changelog_final_path = "CHANGELOG_FINAL.md"
+--
+--# Ler o changelog bruto
+--with open(changelog_raw_path, "r", encoding="utf-8") as f:
+--    raw_text = f.read()
+--
+--# Prompt para a LLM
+--prompt = f"""
+--Você é um assistente de documentação de software.
+--Transforme o seguinte changelog em português, no padrão Good Docs:
+--
+--- Adicione as seções: Version, Release highlights, Added, Changed, Deprecated, Fixed, Security, Breaking changes
+--- Faça um resumo curto das mudanças importantes em Release highlights
+--- Organize os commits corretamente nas seções
+--- Melhore a clareza e a linguagem formal
+--- Mantenha a versão e a data conforme SemVer + YYYY-MM-DD
+--
+--Changelog bruto:
+--{raw_text}
+--"""
+--
+--# Gerar o changelog final
+--response = model.generate_content(prompt)
+--
+--final_text = response.text  # resultado em texto
+--
+--# Salvar o changelog final
+--with open(changelog_final_path, "w", encoding="utf-8") as f:
+--    f.write(final_text)
+--
+--print(f"CHANGELOG_FINAL.md gerado com sucesso!")
+-
+-@@ -0,0 +1,39 @@
+-+from pedro_adapt.agents import GeminiAgent
+-+from pedro_adapt.agent_pipeline import AgentPipeline
+-+
+-+api_key = "SUA_API_KEY"
+-+
+-+changelog_agent = GeminiAgent(
+-+    api_key=api_key,
+-+    base_prompt=(
+-+        "Você é um especialista em criar change logs para projetos de software. "
+-+        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+-+        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+-+        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+-+        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+-+    )
+-+)
+-+
+-+formatter_agent = GeminiAgent(
+-+    api_key=api_key,
+-+    base_prompt=(
+-+        """
+-+        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+-+        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+-+        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+-+        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+-+        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+-+        - **Formato padrão:**  
+-+        - Version (SemVer + data YYYY-MM-DD)  
+-+        - Release highlights  
+-+        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+-+        """
+-+    )
+-+)
+-+
+-+pipeline = AgentPipeline([changelog_agent, formatter_agent])
+-+
+-+entrada = "Um texto gigantesco que ultrapassa o contexto..."
+-+saida = pipeline.run(entrada)
+-+
+-+print("Resultado final:", saida)
+-
+-@@ -0,0 +1,19 @@
+-+# agent_pipeline.py
+-+from typing import List
+-+from ai_agent import AIAgent
+-+class AgentPipeline:
+-+    def __init__(self, agents: List[AIAgent]):
+-+        self.agents = agents
+-+
+-+    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+-+        while agent.need_summarization(text):
+-+            text = agent.generate_response("Summarize the following text:\n" + text)
+-+        return text
+-+
+-+    def run(self, input: str) -> str:
+-+        current_text = input
+-+
+-+        for agent in self.agents:
+-+            current_text = self._summarize_until_fits(agent, current_text)
+-+            current_text = agent.generate_response(current_text)
+-+        return current_text
+-
+-@@ -0,0 +1,19 @@
+-+from pedro_adapt.ai_agent import AIAgent
+-+from google import genai
+-+
+-+class GeminiAgent(AIAgent):
+-+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-+        super().__init__(model_name, api_key, base_prompt)
+-+        self.client: genai.Client = genai.Client()
+-+
+-+
+-+    def generate_response(self, input: str) -> str:
+-+        response = self.client.models.generate_content(
+-+            model=self.model_name, contents=self.base_prompt + "\n" + input
+-+        )
+-+        return response.text
+-+
+-+    def _count_tokens(self, input: str) -> int:
+-+        return self.client.models.count_tokens(
+-+            model=self.model_name, contents=self.base_prompt + "\n" + input
+-+        )
+-
+-@@ -0,0 +1,23 @@
+-+from abc import ABC, abstractmethod
+-+from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+-+
+-+class AIAgent(ABC):
+-+    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+-+        self.model_name = model_name
+-+        self.api_key = api_key
+-+        self.base_prompt = base_prompt
+-+        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+-+
+-+    @abstractmethod
+-+    def generate_response(self, input: str) -> str:
+-+        pass
+-+
+-+    @abstractmethod
+-+    def _count_tokens(self, input: str) -> int:
+-+        pass
+-+    
+-+    def _get_model_window_context(self) -> int:
+-+        return self.context_window
+-+    
+-+    def need_summarization(self, input: str) -> bool:
+-+        return self._count_tokens(input) > self.context_window
+-\ No newline at end of file
+-
+-@@ -0,0 +1,8 @@
+-+LLM_CONTEXT_WINDOWS = {
+-+    "gemini-2.5-pro": 1_048_576,
+-+    "gemini-2.5-flash": 1_048_576,
+-+    "gemini-2.0-flash-lite": 1_048_576,
+-+    "gemini-2.0-flash": 1_048_576,
+-+    "gpt-5-2025-08-07": 400_000,
+-+    "gpt-5-mini-2025-08-07": 400_000,
+-+}
+-\ No newline at end of file
+-
+-@@ -1,2 +0,0 @@
+--google.generativeai
+--git-cliff
+-
+-@@ -0,0 +1,19 @@
+-+google-generativeai
+-+ruff>=0.1.0
+-+dotenv
+-+google-genai
+-+# git-cliff is a CLI tool, not a Python package
+-+
+-+[format]
+-+# Configure formatters
+-+exclude = ["*.pyc", "__pycache__"]
+-+preview = true
+-+
+-+[lint]
+-+# Enable Ruff's linter
+-+select = ["E", "F", "I", "N", "W", "B", "RUF"]
+-+ignore = []
+-+preview = true
+-+
+-+[lint.per-file-ignores]
+-+"__init__.py" = ["F401"]
+-
+-@@ -0,0 +1 @@
+-+GEMINI_API_KEY = "api_key_here"
+-\ No newline at end of file
+-
+-@@ -1,39 +0,0 @@
+--from pedro_adapt.agents import GeminiAgent
+--from pedro_adapt.agent_pipeline import AgentPipeline
+--
+--api_key = "SUA_API_KEY"
+--
+--changelog_agent = GeminiAgent(
+--    api_key=api_key,
+--    base_prompt=(
+--        "Você é um especialista em criar change logs para projetos de software. "
+--        "Ao receber um diff do git, analise as alterações e gere um change log claro e objetivo, "
+--        "destacando as principais mudanças, correções de bugs, melhorias e novas funcionalidades. "
+--        "Organize o change log em tópicos, utilizando uma linguagem acessível e profissional. "
+--        "Ignore detalhes irrelevantes e foque no impacto das alterações para os usuários e desenvolvedores."
+--    )
+--)
+--
+--formatter_agent = GeminiAgent(
+--    api_key=api_key,
+--    base_prompt=(
+--        """
+--        - **Changelog:** registro em ordem inversa de todas as mudanças (bugs, features, segurança).  
+--        - **Release Notes:** resumo para usuários finais, linguagem simples.  
+--        - **Diferença:** changelog = técnico + completo | release notes = alto nível + não técnico.  
+--        - **Benefícios:** rastrear progresso, transparência, onboarding.  
+--        - **Quando usar:** público técnico, necessidade de detalhes completos.  
+--        - **Formato padrão:**  
+--        - Version (SemVer + data YYYY-MM-DD)  
+--        - Release highlights  
+--        - Added | Changed | Deprecated | Fixed | Security | Breaking changes  
+--        """
+--    )
+--)
+--
+--pipeline = AgentPipeline([changelog_agent, formatter_agent])
+--
+--entrada = "Um texto gigantesco que ultrapassa o contexto..."
+--saida = pipeline.run(entrada)
+--
+--print("Resultado final:", saida)
+-
+-@@ -1,11 +1,17 @@
+- # agent_pipeline.py
+- from typing import List
+- from ai_agent import AIAgent
+-+
+-+# agent_pipeline.py
+-+from typing import List
+-+from ai_agent import AIAgent
+-+
+- class AgentPipeline:
+-     def __init__(self, agents: List[AIAgent]):
+-         self.agents = agents
+- 
+-     def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+-+        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+-         while agent.need_summarization(text):
+-             text = agent.generate_response("Summarize the following text:\n" + text)
+-         return text
+-@@ -14,6 +20,10 @@ class AgentPipeline:
+-         current_text = input
+- 
+-         for agent in self.agents:
+-+            # Garante que o input caiba na janela de contexto
+-             current_text = self._summarize_until_fits(agent, current_text)
+-+
+-+            # Executa o processamento principal do agente
+-             current_text = agent.generate_response(current_text)
+-+
+-         return current_text
+-
+-@@ -1,2 +0,0 @@
+--.env
+--venv
+-\ No newline at end of file
+-
+-@@ -1,41 +0,0 @@
+--# GithubDocs
+--
+--Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador de pacotes Python ultra rápido e moderno que também inclui o linter/formatter Ruff.
+--
+--## Instalação do uv
+--
+--1. Instale o `uv` usando um dos métodos abaixo:
+--
+--```bash
+--# Via curl (Linux/macOS)
+--curl -Ls https://astral.sh/uv/install.sh | bash
+--
+--# Via pip
+--pip install uv
+--```
+--
+--## Configuração e Uso
+--
+--### Instalando dependências
+--Para instalar todas as dependências do projeto:
+--
+--```bash
+--uv pip install -r requirements.uv.txt
+--```
+--
+--### Usando o Ruff para linting e formatação
+--
+--O Ruff já está configurado no arquivo `requirements.uv.txt`. Para usar:
+--
+--```bash
+--# Verificar problemas de linting
+--uv run ruff check .
+--
+--# Formatar código automaticamente
+--uv run ruff format .
+--```
+--
+--## Observações
+--- O `git-cliff` é uma ferramenta CLI separada e não é instalado via pip/uv
+--- A configuração do Ruff está incluída no arquivo `requirements.uv.txt`
+--- O Ruff substituiu ferramentas como flake8, black, isort, pyupgrade, etc., em uma única ferramenta rápida
+-
+-@@ -1,29 +0,0 @@
+--# agent_pipeline.py
+--from typing import List
+--from ai_agent import AIAgent
+--
+--# agent_pipeline.py
+--from typing import List
+--from ai_agent import AIAgent
+--
+--class AgentPipeline:
+--    def __init__(self, agents: List[AIAgent]):
+--        self.agents = agents
+--
+--    def _summarize_until_fits(self, agent: AIAgent, text: str) -> str:
+--        """Aplica sumarização iterativa até o texto caber no contexto do modelo."""
+--        while agent.need_summarization(text):
+--            text = agent.generate_response("Summarize the following text:\n" + text)
+--        return text
+--
+--    def run(self, input: str) -> str:
+--        current_text = input
+--
+--        for agent in self.agents:
+--            # Garante que o input caiba na janela de contexto
+--            current_text = self._summarize_until_fits(agent, current_text)
+--
+--            # Executa o processamento principal do agente
+--            current_text = agent.generate_response(current_text)
+--
+--        return current_text
+-
+-@@ -1,19 +0,0 @@
+--from pedro_adapt.ai_agent import AIAgent
+--from google import genai
+--
+--class GeminiAgent(AIAgent):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        super().__init__(model_name, api_key, base_prompt)
+--        self.client: genai.Client = genai.Client()
+--
+--
+--    def generate_response(self, input: str) -> str:
+--        response = self.client.models.generate_content(
+--            model=self.model_name, contents=self.base_prompt + "\n" + input
+--        )
+--        return response.text
+--
+--    def _count_tokens(self, input: str) -> int:
+--        return self.client.models.count_tokens(
+--            model=self.model_name, contents=self.base_prompt + "\n" + input
+--        )
+-
+-@@ -1,23 +0,0 @@
+--from abc import ABC, abstractmethod
+--from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+--
+--class AIAgent(ABC):
+--    def __init__(self, model_name: str, api_key: str, base_prompt: str):
+--        self.model_name = model_name
+--        self.api_key = api_key
+--        self.base_prompt = base_prompt
+--        self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+--
+--    @abstractmethod
+--    def generate_response(self, input: str) -> str:
+--        pass
+--
+--    @abstractmethod
+--    def _count_tokens(self, input: str) -> int:
+--        pass
+--    
+--    def _get_model_window_context(self) -> int:
+--        return self.context_window
+--    
+--    def need_summarization(self, input: str) -> bool:
+--        return self._count_tokens(input) > self.context_window
+-\ No newline at end of file
+-
+-@@ -1,8 +0,0 @@
+--LLM_CONTEXT_WINDOWS = {
+--    "gemini-2.5-pro": 1_048_576,
+--    "gemini-2.5-flash": 1_048_576,
+--    "gemini-2.0-flash-lite": 1_048_576,
+--    "gemini-2.0-flash": 1_048_576,
+--    "gpt-5-2025-08-07": 400_000,
+--    "gpt-5-mini-2025-08-07": 400_000,
+--}
+-\ No newline at end of file
+-
+-@@ -0,0 +1,2 @@
+-+google.generativeai
+-+git-cliff
+-
+-@@ -1,19 +0,0 @@
+--google-generativeai
+--ruff>=0.1.0
+--dotenv
+--google-genai
+--# git-cliff is a CLI tool, not a Python package
+--
+--[format]
+--# Configure formatters
+--exclude = ["*.pyc", "__pycache__"]
+--preview = true
+--
+--[lint]
+--# Enable Ruff's linter
+--select = ["E", "F", "I", "N", "W", "B", "RUF"]
+--ignore = []
+--preview = true
+--
+--[lint.per-file-ignores]
+--"__init__.py" = ["F401"]
+-
+-@@ -1,2 +1 @@
+--google.generativeai
+--git-cliff
+-+google.generativeai
+-\ No newline at end of file
+-
