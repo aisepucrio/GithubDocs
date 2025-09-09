@@ -37,33 +37,17 @@ extract_information:
 llm:
   providers:
     - family: "gemini"
-      configurations:
-        - name: "gemini-flash-default"
-          model: "gemini-2.0-flash-lite"
-          api_key: "${GEMINI_API_KEY}"
-          parameters:
-            temperature: 0.7
-            max_tokens: 1500
-        - name: "gemini-pro"
-          model: "gemini-pro"
-          api_key: "${GEMINI_API_KEY}"
-          parameters:
-            temperature: 0.9
-            max_tokens: 2000
+      api_key: "${GEMINI_API_KEY}"
+      name: "gemini-flash-default"
+      model: "gemini-2.0-flash-lite"
+      temperature: 0.7
+      max_tokens: 1500
     - family: "openai"
-      configurations:
-        - name: "gpt4-default"
-          model: "gpt-4"
-          api_key: "${OPENAI_API_KEY}"
-          parameters:
-            temperature: 0.7
-            max_tokens: 1500
-        - name: "gpt4-turbo"
-          model: "gpt-4-turbo"
-          api_key: "${OPENAI_API_KEY}"
-          parameters:
-            temperature: 0.8
-            max_tokens: 2000
+      api_key: "${OPENAI_API_KEY}"
+      name: "gpt4"
+      model: "gpt-4-turbo"
+      temperature: 0.8
+      max_tokens: 2000
   default_provider: "gemini-flash-default"
 
 # -----------------------------------------------------------------------------
@@ -120,9 +104,8 @@ output:
         
         ### Contributors
         ${contributors}
-      file:
-        name: "ansible_readme"
-        format: "md"
+      file_name: "ansible_readme"
+      file_format: "md"
 
 # -----------------------------------------------------------------------------
 # EVALUATION METHOD

@@ -1,30 +1,27 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
-@dataclass
-class LLMParameters:
+class BaseConfig:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def __str__(self):
+        return f"{self.__class__.__name__}(" + ", ".join(f"{k}={v}" for k, v in self.__dict__.items()) + ")"
+
+class LLMProvider(BaseConfig):
+    family: str
+    api_key: str
+    name: str
+    model: str
     temperature: float
     max_tokens: int
 
-@dataclass
-class LLMConfiguration:
-    name: str
-    model: str
-    api_key: str
-    parameters: LLMParameters
-
-@dataclass
-class LLMProvider:
-    family: str
-    configurations: List[LLMConfiguration]
-
-@dataclass
-class LLM:
+class LLM(BaseConfig):
     providers: List[LLMProvider]
     default_provider: str
 
-@dataclass
-class TargetInformation:
+class TargetInformation(BaseConfig):
     repo_path: str
     branch_name: str
     dependency_file_path: str
@@ -35,67 +32,45 @@ class TargetInformation:
     description: str = ""
     framework: str = "none"
 
-@dataclass
-class ExtractInformation:
+class ExtractInformation(BaseConfig):
     types: List[str]
 
-@dataclass
-class AgentComponent:
+class AgentComponent(BaseConfig):
     name: str
     description: str
     prompt: str
     model_name: str
 
-@dataclass
-class Agents:
+class Agents(BaseConfig):
     components: List[AgentComponent]
 
-@dataclass
-class OrchestrationFlowStep:
+class OrchestrationFlowStep(BaseConfig):
     step: int
     from_step: str 
     to: str
-    extract_information_types: Optional[str] = None
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
-        return cls(
-            step=data["step"],
-            from_step=data["from"],
-            to=data["to"],
-            extract_information_types=data.get("extract_information_types")
-        )
+    extract_information_types: Optional[str] = "all"    
 
-@dataclass
-class Orchestration:
+class Orchestration(BaseConfig):
     max_retries: int
     timeout_seconds: int
     flow: List[OrchestrationFlowStep]
+    
 
-@dataclass
-class OutputFile:
-    name: str
-    format: str
-
-@dataclass
-class OutputComponent:
+class OutputComponent(BaseConfig):
     name: str
     path: str
     template: str
-    file: OutputFile
+    file_name: str
+    file_format: str
 
-@dataclass
-class Output:
+class Output(BaseConfig):
     components: List[OutputComponent]
 
-
-@dataclass
-class Evaluation:
+class Evaluation(BaseConfig):
     method: str
     objective_file_path: str
 
-@dataclass
-class FrameworkConfig:
+class FrameworkConfig(BaseConfig):
     target_information: TargetInformation
     extract_information: ExtractInformation
     llm: LLM

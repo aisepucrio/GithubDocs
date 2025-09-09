@@ -1,4 +1,4 @@
-from llm_agent.ai_agent import AIAgent
+from llm_agent.ai_agent_interface import AIAgent
 from google import genai
 
 from openai import OpenAI

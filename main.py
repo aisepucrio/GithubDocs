@@ -1,4 +1,4 @@
-from src.llm_agent.agents import GeminiAgent
+from llm_agent.agents_strategy import GeminiAgent
 from src.llm_agent.agent_pipeline import AgentPipeline
 from utils.tree import tree
 
