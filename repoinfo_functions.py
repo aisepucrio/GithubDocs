@@ -34,6 +34,7 @@ def getHashes(branch="main", start_date=None, end_date=None):
 
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
     hashes = result.stdout.splitlines()
+    
     return hashes
 
 def getCommits(hashes, output_filename):
@@ -41,7 +42,7 @@ def getCommits(hashes, output_filename):
 
     messages = []
     for h in hashes:
-        cmd = ["git", "log", "-1", "--pretty=format:%s", h]
+        cmd = ["git", "log", "-1", "--pretty=format:%B", h]
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_path, encoding="utf-8")
         messages.append(result.stdout)
 
@@ -50,6 +51,8 @@ def getCommits(hashes, output_filename):
             f.write(line + "\n")
 
     print(f"{len(messages)} mensagens de commit salvas em {output_file}")
+
+    return messages
     
 def getDiffs(hashes,output_filename):
     output_file = os.path.join(output_dir, output_filename) 
