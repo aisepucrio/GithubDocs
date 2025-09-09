@@ -71,6 +71,8 @@ def getDiffs(hashes,output_filename):
 
     print(f"Diffs salvos em {output_file}")
 
+    return diff_text
+
 def getCodeReletadToDiffs(hashes,output_filename):
     output_file = os.path.join(output_dir, output_filename) 
 
@@ -87,6 +89,8 @@ def getCodeReletadToDiffs(hashes,output_filename):
         f.write(diff_text)
 
     print(f"Diffs salvos em {output_file}")
+
+    return diff_text
 
 def getDependencies(dependency_file=dependency_file):
     return os.path.join(repo_path, dependency_file)
