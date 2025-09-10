@@ -1,24 +1,29 @@
-from ..load_configuration.conf_structures import AgentComponent, LLMProvider
+from ..load_configuration.conf_structures import AgentComponent, LLMProvider, Agents, LLM
 from .agents_strategy import GeminiAgent, GPTAgent, AIAgent
-#TODO: aqui fica meio foda, ja que o acoplamento entre agente e LLM é gigantesco, deve-se ver uma forma melhor
-# de colocar as configurações da LLM em um dicionario em que o nome é a chave primária
-# e o valor é um dicionario com as configurações, assim o agente pode pegar as configurações que quiser
-# sem precisar de um acoplamento tão grande
-def agent_factory(agent_config: AgentComponent, llm_provider: LLMProvider) -> AIAgent:
+from typing import Dict
 
-    family = agent_config.model_name
+def agent_factory(agent_config: AgentComponent, llm_provider: Dict[str, LLMProvider]) -> AIAgent:
 
-    if llm_provider.family == "gemini":
+    family = llm_provider[agent_config.model_name].family
+    if family == "gemini":
         return GeminiAgent(
             model_name=agent_config.model_name,
-            api_key=llm_provider.api_key,
+            api_key=llm_provider[agent_config.model_name].api_key,
             base_prompt=agent_config.prompt
         )
-    elif llm_provider.family == "openai":
+    elif family == "openai":
         return GPTAgent(
             model_name=agent_config.model_name,
-            api_key=llm_provider.api_key,
+            api_key=llm_provider[agent_config.model_name].api_key,
             base_prompt=agent_config.prompt
         )
     else:
-        raise ValueError(f"Unsupported agent family: {llm_provider.family}")
+        raise ValueError(f"Unsupported agent family: {family}")
+
+
+def get_agent_dictionary(agents: Agents, llms: LLM) -> Dict[str, AIAgent]:
+    agents_dict = {}
+
+    for agent_name, agent_conf in agents.components.items():
+        agents_dict[agent_name] = agent_factory(agent_conf, llms.providers)
+    return agents_dict

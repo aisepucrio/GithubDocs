@@ -7,6 +7,7 @@ class AIAgent(ABC):
         self.api_key = api_key
         self.base_prompt = base_prompt
         self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+        self.output = ""
 
     @abstractmethod
     def generate_response(self, input: str) -> str:

@@ -13,7 +13,7 @@ class GeminiAgent(AIAgent):
         response = self.client.models.generate_content(
             model=self.model_name, contents=self.base_prompt + "\n" + input
         )
-        return response.text
+        self.output = response.text
 
     def _count_tokens(self, input: str) -> int:
         return self.client.models.count_tokens(
@@ -30,7 +30,7 @@ class GPTAgent(AIAgent):
             model=self.model_name,
             input=self.base_prompt + "\n" + input,
         )
-        return response.output_text
+        self.output = response.output_text
 
     def _count_tokens(self, input: str) -> int:
         encoding = tiktoken.get_encoding("cl100k_base")
