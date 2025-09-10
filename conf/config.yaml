@@ -1,0 +1,122 @@
+# Configuration for the LLM Documentation Testing Framework
+# TODO: melhorar a documentaco de cada topico desse, fazer isso dentro desse proprio file
+#como as outras ferramentas normalmente fazem, vide doxygen, postgres pg_hba.conf
+
+# -----------------------------------------------------------------------------
+# TARGET INFORMATION
+# -----------------------------------------------------------------------------
+# Specify which documentation to target for testing within a repository.
+#
+# The 'type' field determines which configuration block below will be used.
+# Supported types: 'readme', 'changelog', 'api'
+#
+#
+# -----------------------------------------------------------------------------
+target_information:
+  repo_path: "external_repos/ansible"
+  branch_name: "stable-2.19"
+  start_date: ""
+  end_date: ""
+  dependency_file_path: "pyproject.toml"
+  description: ""
+  framework: "none"
+  programing_language: "python"
+  expected_result_type: "changelog"
+    
+extract_information:
+  types: [diff, commit_description, readme]
+
+# -----------------------------------------------------------------------------
+# LLM SELECTION
+# -----------------------------------------------------------------------------
+# Select and configure the Language Model to be used for generating or
+# evaluating documentation. read the documentation for more details.
+#
+# Supported providers: 'openai', 'gemini', 'ollama'
+# -----------------------------------------------------------------------------
+llm:
+  providers:
+    - family: "gemini"
+      api_key: "${GEMINI_API_KEY}"
+      name: "gemini-flash-default"
+      model: "gemini-2.0-flash-lite"
+      temperature: 0.7
+      max_tokens: 1500
+    - family: "openai"
+      api_key: "${OPENAI_API_KEY}"
+      name: "gpt4"
+      model: "gpt-4-turbo"
+      temperature: 0.8
+      max_tokens: 2000
+  default_provider: "gemini-flash-default"
+
+# -----------------------------------------------------------------------------
+# AGENTS
+# -----------------------------------------------------------------------------
+# Define the agents (components) that will be used in the documentation testing
+# process. Each agent can have its own configuration and prompt.
+#
+# name: name for input/output rastreability
+# description: simple description to be showed in the CLI tool
+# prompt: prompt that will be submited to the llm plus the text string
+# model_name: agent model defined on the llm section
+# -----------------------------------------------------------------------------
+agents:
+  components:
+    - name: "Document Store"
+      description: "Persistent storage for documents and metadata"
+      prompt: "Store the following documents and metadata:\n\n"
+      model_name: "gemini"
+    - name: "Evaluation Module"
+      description: "Module for evaluating generated documentation"
+      prompt: "Evaluate the following documentation:\n\n"
+      model_name: "gemini"
+
+orchestration:
+  max_retries: 2
+  timeout_seconds: 300
+  flow:
+    - step: 1
+      from: "extract_information"
+      extract_information_types: "diff"
+      to: "Document Store"
+    - step: 2
+      from: "extract_information"
+      extract_information_types: "commit_description"
+      to: "Document Store"
+    - step: 3
+      from: "Document Store"
+      to: "changelog_output"
+      extract_information_types: "all"
+
+output:
+  components:
+    - name: "changelog_output"
+      path: "output/"
+      template: |
+        # Changelog
+        ## Version ${version}
+        ### Changes
+        ${changes}
+        
+        ### Bug Fixes
+        ${bugs}
+        
+        ### Contributors
+        ${contributors}
+      file_name: "ansible_readme"
+      file_format: "md"
+
+# -----------------------------------------------------------------------------
+# EVALUATION METHOD
+# -----------------------------------------------------------------------------
+# Define the method for evaluating the generated documentation.
+#
+# Supported methods:
+#   - 'file_comparison': Compares the output against a ground-truth file.
+#   - 'semantic_similarity': Uses embeddings to check similarity.
+#   - 'custom_script': Runs a user-defined script for evaluation.
+# -----------------------------------------------------------------------------
+evaluation:
+  method: "semantic_similarity"
+  objective_file_path: "output/golden_ansible_readme.md"

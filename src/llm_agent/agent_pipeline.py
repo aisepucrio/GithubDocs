@@ -1,6 +1,6 @@
 # agent_pipeline.py
 from typing import List
-from pedro_adapt.ai_agent import AIAgent
+from llm_agent.ai_agent_interface import AIAgent
 class AgentPipeline:
     def __init__(self, agents: List[AIAgent]):
         self.agents = agents

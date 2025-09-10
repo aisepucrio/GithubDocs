@@ -1,0 +1,6 @@
+[submodule "external_repos/ansible"]
+	path = external_repos/ansible
+	url = https://github.com/ansible/ansible
+[submodule "external_repos/EventFlow"]
+	path = external_repos/EventFlow
+	url = https://github.com/stone-payments/EventFlow

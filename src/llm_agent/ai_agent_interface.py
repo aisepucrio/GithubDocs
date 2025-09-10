@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pedro_adapt.utils import LLM_CONTEXT_WINDOWS
+from llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
 
 class AIAgent(ABC):
     def __init__(self, model_name: str, api_key: str, base_prompt: str):
@@ -7,6 +7,7 @@ class AIAgent(ABC):
         self.api_key = api_key
         self.base_prompt = base_prompt
         self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
+        self.output = ""
 
     @abstractmethod
     def generate_response(self, input: str) -> str:
