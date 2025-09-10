@@ -1,17 +1,24 @@
 import os
 import subprocess
+import yaml
 
 # ------------------- Configurações -------------------
-repo_path = r"C:\Users\guicu\OneDrive\Documentos\prog\aise\GithubDocs"  # caminho do repositório *OBRIGATÓRIO
-branch = "Guilherme"  # nome da branch
-start_date = "2025-09-07"  # "YYYY-MM-DD"
-end_date = ""  # "YYYY-MM-DD"
-dependency_file = "requirements.txt"  # nome do arquivo de dependências
-repo_description = "Meu projeto de exemplo"  # descrição/contexto do repositório
-framework = "Django"  # framework usado no projeto *OBRIGATÓRIO (pode ser "Nenhum")
-prog_lang = "Autodetect"  # linguagem de programação principal *OBRIGATÓRIO (pode ser "Autodetect")
-output_dir = os.path.join(repo_path, "repoinfo_outputs")
+yaml_path = os.path.join("conf", "config.yaml")
 
+with open(yaml_path, "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
+info = config.get("target_information", {})
+
+repo_path = info.get("repo_path", "")
+branch = info.get("branch_name", "")
+start_date = info.get("start_date", "")
+end_date = info.get("end_date", "")
+dependency_file = info.get("dependency_file_path", "")
+repo_description = info.get("description", "")
+framework = info.get("framework", "")
+prog_lang = info.get("programing_language", "")
+expected_result_type = info.get("expected_result_type", "")
 # ------------------- Repositório -------------------
 
 output_dir = "repoinfo_outputs"
@@ -60,7 +67,7 @@ def getDiffs(hashes,output_filename):
     start_hash = hashes[-1]
     end_hash = hashes[0]
 
-    cmd = ["git", "diff", f"{start_hash}^", end_hash]
+    cmd = ["git", "diff", start_hash, end_hash]
 
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=repo_path)
 
@@ -79,7 +86,7 @@ def getCodeReletadToDiffs(hashes,output_filename):
     start_hash = hashes[-1]
     end_hash = hashes[0]
 
-    cmd = ["git", "diff", f"{start_hash}^", end_hash, "--unified=0"]
+    cmd = ["git", "diff", start_hash, end_hash, "--unified=0"]
 
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=repo_path)
 

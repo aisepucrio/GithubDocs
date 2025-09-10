@@ -13,11 +13,11 @@
 #
 # -----------------------------------------------------------------------------
 target_information:
-  repo_path: "external_repos/ansible"
-  branch_name: "stable-2.19"
-  start_date: ""
+  repo_path: 'C:\Users\guicu\OneDrive\Documentos\prog\aise\GithubDocs'
+  branch_name: 'main'
+  start_date: '2025-09-07'
   end_date: ""
-  dependency_file_path: "pyproject.toml"
+  dependency_file_path: "requirements.txt"
   description: ""
   framework: "none"
   programing_language: "python"
