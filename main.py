@@ -1,11 +1,33 @@
 from llm_agent.agents_strategy import GeminiAgent
 from src.llm_agent.agent_pipeline import AgentPipeline
 from utils.tree import tree
-
 import dotenv
-
 import os
 from datetime import datetime
+import os
+import yaml
+
+# Carrega configuração do YAML
+yaml_path = os.path.join("conf", "config.yaml")
+
+with open(yaml_path, "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
+info = config.get("target_information", {})
+
+repo_path = info.get("repo_path", "")
+branch = info.get("branch_name", "")
+start_date = info.get("start_date", "")
+end_date = info.get("end_date", "")
+dependency_file = info.get("dependency_file_path", "")
+repo_description = info.get("description", "")
+framework = info.get("framework", "")
+prog_lang = info.get("programing_language", "")
+expected_result_type = info.get("expected_result_type", "")
+
+# Saída para os txt dos commits
+output_dir = "repoinfo_outputs"
+
 
 dotenv.load_dotenv()
 
