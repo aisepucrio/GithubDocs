@@ -1,4 +1,4 @@
-from conf_structures import *
+from .conf_structures import *
 import yaml
 
 def _read_configuration(file_path: str) -> dict:
