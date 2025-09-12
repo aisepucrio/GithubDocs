@@ -1,7 +1,6 @@
 from typing import Dict
 from .repoinfo_strategy import RepoInfo
 from ..load_configuration.conf_structures import ExtractInformation, TargetInformation
-from src.load_configuration.load_conf import read_configuration
 
 def repo_info_factory(target,info) -> str:
 
@@ -33,9 +32,3 @@ def get_repoinfo_dictionary(target: TargetInformation, info: ExtractInformation)
     for info_type in info.types:
         repoinfo_dict[info_type] = repo_info_factory(target,info_type)
     return repoinfo_dict
-
-config = read_configuration("conf/config.yaml")
-target = config.target_information
-extract_info = config.extract_information
-repoinfo_dict = get_repoinfo_dictionary(target, extract_info)
-print(repoinfo_dict["commit_description"])
