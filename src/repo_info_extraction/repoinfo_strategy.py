@@ -18,25 +18,18 @@ class RepoInfo:
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
-    def getHashes(self, branch=None, start_date=None, end_date=None):
-        if branch is None:
-            branch = self.branch
-        if start_date is None:
-            start_date = self.start_date
-        if end_date is None:
-            end_date = self.end_date
-
-        cmd = ["git", "log", branch, "--pretty=format:%H"]
-        if start_date:
-            cmd += [f"--since={start_date}"]
-        if end_date:
-            cmd += [f"--until={end_date}"]
+    def getHashes(self):
+        cmd = ["git", "log", self.branch, "--pretty=format:%H"]
+        if self.start_date:
+            cmd += [f"--since={self.start_date}"]
+        if self.end_date:
+            cmd += [f"--until={self.end_date}"]
 
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=self.repo_path)
         return result.stdout.splitlines()
 
 
-    def getCommits(self, hashes, output_filename):
+    def getCommits(self, hashes, output_filename="commits.txt"):
         output_file = os.path.join(self.output_dir, output_filename)
 
         messages = []
@@ -52,7 +45,7 @@ class RepoInfo:
         print(f"{len(messages)} mensagens de commit salvas em {output_file}")
         return messages
 
-    def getDiffs(self, hashes, output_filename):
+    def getDiffs(self, hashes, output_filename="diffs.txt"):
         output_file = os.path.join(self.output_dir, output_filename)
 
         start_hash = hashes[-1]
@@ -69,7 +62,7 @@ class RepoInfo:
         print(f"Diffs salvos em {output_file}")
         return diff_text
 
-    def getCodeRelatedToDiffs(self, hashes, output_filename):
+    def getCodeRelatedToDiffs(self, hashes, output_filename="code_related_to_diffs.txt"):
         output_file = os.path.join(self.output_dir, output_filename)
 
         start_hash = hashes[-1]
@@ -136,7 +129,7 @@ class RepoInfo:
 
         return tree
     
-    def getReadMe():
+    def getReadMe(self):
         root_dir = os.getcwd()
         readme_path = os.path.join(root_dir, "README.md")
         if not os.path.isfile(readme_path):

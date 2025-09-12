@@ -1,1 +1,1 @@
-from .repoinfo_functions import *
+from .repoinfo_strategy import *
