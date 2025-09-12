@@ -149,13 +149,14 @@ def getTree(path='.', include_venv_files=False, _prefix=''):
     return tree
 
 # ------------------- Execução -------------------
-print(f"Linguagens detectadas: {getProgrammingLanguages()}")
-print(f"Dependências: {getDependencies()}")
+if __name__ == "__main__":
+    print(f"Linguagens detectadas: {getProgrammingLanguages()}")
+    print(f"Dependências: {getDependencies()}")
 
-hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
-getCommits(hashes,output_filename="commits.txt")
-getDiffs(hashes,"diffs.txt")
-getCodeReletadToDiffs(hashes,"diffs_related_code.txt")
-getTree()
+    hashes = getHashes(branch=branch, start_date=start_date, end_date=end_date)
+    getCommits(hashes,output_filename="commits.txt")
+    getDiffs(hashes,"diffs.txt")
+    getCodeReletadToDiffs(hashes,"diffs_related_code.txt")
+    getTree()
 
 
