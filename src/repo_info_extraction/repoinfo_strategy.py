@@ -2,26 +2,39 @@ import os
 import subprocess
 
 class RepoInfo:
-    def __init__(self, repo_path, output_dir="repoinfo_outputs", dependency_file="requirements.txt", prog_lang="Autodetect"):
+    def __init__(self, repo_path, branch="main",
+                 start_date=None, end_date=None,
+                 output_dir="repoinfo_outputs",
+                 dependency_file="requirements.txt",
+                 prog_lang="Autodetect"):
         self.repo_path = repo_path
         self.output_dir = output_dir
         self.dependency_file = dependency_file
         self.prog_lang = prog_lang
+        self.branch = branch
+        self.start_date = start_date
+        self.end_date = end_date
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
-    def getHashes(self, branch="main", start_date=None, end_date=None):
-        cmd = ["git", "log", branch, "--pretty=format:%H"]
+    def getHashes(self, branch=None, start_date=None, end_date=None):
+        if branch is None:
+            branch = self.branch
+        if start_date is None:
+            start_date = self.start_date
+        if end_date is None:
+            end_date = self.end_date
 
+        cmd = ["git", "log", branch, "--pretty=format:%H"]
         if start_date:
             cmd += [f"--since={start_date}"]
         if end_date:
             cmd += [f"--until={end_date}"]
 
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=self.repo_path)
-        hashes = result.stdout.splitlines()
-        return hashes
+        return result.stdout.splitlines()
+
 
     def getCommits(self, hashes, output_filename):
         output_file = os.path.join(self.output_dir, output_filename)
