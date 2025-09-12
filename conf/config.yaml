@@ -78,16 +78,16 @@ orchestration:
   flow:
     - step: 1
       from: "extract_information"
-      extract_information_types: "diff"
+      extract_information_types: "all"
       to: "Document Store"
     - step: 2
       from: "extract_information"
-      extract_information_types: "commit_description"
+      extract_information_types: ""
       to: "Document Store"
     - step: 3
       from: "Document Store"
       to: "changelog_output"
-      extract_information_types: "all"
+      extract_information_types: ""
 
 output:
   components:
