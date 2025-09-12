@@ -122,3 +122,12 @@ class RepoInfo:
         tree = '\n'.join(lines)
 
         return tree
+    
+    def getReadMe():
+        root_dir = os.getcwd()
+        readme_path = os.path.join(root_dir, "README.md")
+        if not os.path.isfile(readme_path):
+            raise FileNotFoundError(f"README.md não existe em {root_dir}")
+        with open(readme_path, "r", encoding="utf-8") as f:
+            readme = f.read()
+        return readme
