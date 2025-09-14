@@ -9,7 +9,9 @@ dependencies = [
     "google-genai==1.31.0",
     "python-dotenv",
     "tiktoken==0.11.0",
-    "PyYAML==6.0.2"
+    "PyYAML==6.0.2",
+    "sqlalchemy==2.0.43",
+    "gitpython==3.1.45",
 ]
 
 [tool.ruff]

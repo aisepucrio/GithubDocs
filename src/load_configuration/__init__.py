@@ -1,3 +1,2 @@
-from.check_conf import check_conf_restraints
-from.conf_structures import *
-from.load_conf import read_configuration
+from .conf_structures import *
+from .load_conf import read_configuration, sort_flow_steps

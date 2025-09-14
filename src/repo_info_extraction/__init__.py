@@ -1,1 +1,1 @@
-from .repoinfo_strategy import *
+from .repo_info_facade import get_repo_info

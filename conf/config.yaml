@@ -13,18 +13,15 @@
 #
 # -----------------------------------------------------------------------------
 target_information:
-  repo_path: 'C:\Users\guicu\OneDrive\Documentos\prog\aise\GithubDocs'
-  branch_name: 'Guilherme'
-  start_date: '2025-09-07'
-  end_date: ""
+  repo_path: 'external_repos/ansible'
+  branch_name: 'stable-2.19'
+  start_date: '2025-08-27'
+  end_date: '2025-09-14'
   dependency_file_path: "requirements.txt"
   description: ""
   framework: "none"
   programing_language: "python"
   expected_result_type: "changelog"
-    
-extract_information:
-  types: [diff, commit_description, readme]
 
 # -----------------------------------------------------------------------------
 # LLM SELECTION
@@ -37,7 +34,7 @@ extract_information:
 llm:
   providers:
     - family: "gemini"
-      api_key: "${GEMINI_API_KEY}"
+      api_key: "AIzaSyBJssh_vtQZBPFceyhWy4aGkYxwbn2T6MA"
       name: "gemini-flash-default"
       model: "gemini-2.0-flash-lite"
       temperature: 0.7
@@ -63,49 +60,45 @@ llm:
 # -----------------------------------------------------------------------------
 agents:
   components:
-    - name: "Document Store"
-      description: "Persistent storage for documents and metadata"
-      prompt: "Store the following documents and metadata:\n\n"
-      model_name: "gemini"
-    - name: "Evaluation Module"
-      description: "Module for evaluating generated documentation"
-      prompt: "Evaluate the following documentation:\n\n"
-      model_name: "gemini"
+    - name: "repo purpose"
+      description: "Identifies the purpose of the repository"
+      prompt: "Identify the purpose of the repository, make it in 6 lines at most:\n\n"
+      model_name: "gemini-flash-default"
+    - name: "changelog generator"
+      description: "Module for generating changelogs"
+      prompt: "Generate a changelog entry for the following changes:\n\n"
+      model_name: "gemini-flash-default"
 
 orchestration:
   max_retries: 2
   timeout_seconds: 300
   flow:
     - step: 1
-      from: "extract_information"
-      extract_information_types: "all"
-      to: "Document Store"
+      from: "repo purpose"
+      extract_information_types: "readme"
     - step: 2
-      from: "extract_information"
-      extract_information_types: ""
-      to: "Document Store"
+      from: "changelog generator"
+      extract_information_types: "diff,commit"
     - step: 3
-      from: "Document Store"
-      to: "changelog_output"
-      extract_information_types: ""
+      from: "output"
+      extract_information_types: "nothing"
 
 output:
-  components:
-    - name: "changelog_output"
-      path: "output/"
-      template: |
-        # Changelog
-        ## Version ${version}
-        ### Changes
-        ${changes}
-        
-        ### Bug Fixes
-        ${bugs}
-        
-        ### Contributors
-        ${contributors}
-      file_name: "ansible_readme"
-      file_format: "md"
+    name: "changelog_output"
+    path: "output/"
+    template: |
+      # Changelog
+      ## Version ${version}
+      ### Changes
+      ${changes}
+      
+      ### Bug Fixes
+      ${bugs}
+      
+      ### Contributors
+      ${contributors}
+    file_name: "ansible_readme"
+    file_format: ".md"
 
 # -----------------------------------------------------------------------------
 # EVALUATION METHOD

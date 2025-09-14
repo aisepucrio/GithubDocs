@@ -6,11 +6,13 @@ def _read_configuration(file_path: str) -> dict:
         config = yaml.safe_load(file)
     return config
 
+def sort_flow_steps(steps: List[dict]) -> List[dict]:
+    return sorted(steps, key=lambda x: x['step'])
+
 def read_configuration(file_path: str) -> FrameworkConfig:
     config = _read_configuration(file_path)
 
     target_information = TargetInformation(**config['target_information'])
-    extract_information = ExtractInformation(**config['extract_information'])
     
     llm_providers = {
         provider['name']: LLMProvider(**provider) 
@@ -24,8 +26,10 @@ def read_configuration(file_path: str) -> FrameworkConfig:
     agents = Agents(components=agent_components)
 
     flow_steps_data = config['orchestration']['flow']
+    # Sort the dictionaries before converting to OrchestrationFlowStep objects
+    sorted_flow_steps_data = sort_flow_steps(flow_steps_data)
     orchestration_flow = []
-    for step_data in flow_steps_data:
+    for step_data in sorted_flow_steps_data:
         step_data['from_step'] = step_data.pop('from')
         orchestration_flow.append(OrchestrationFlowStep(**step_data))
 
@@ -34,18 +38,13 @@ def read_configuration(file_path: str) -> FrameworkConfig:
         timeout_seconds=config['orchestration']['timeout_seconds'],
         flow=orchestration_flow
     )
-    
-    output_components = {
-        component['name']: OutputComponent(**component) 
-        for component in config['output']['components']
-    }
-    output = Output(components=output_components)
+
+    output = Output(**config['output'])
 
     evaluation = Evaluation(**config['evaluation'])
 
     framework_config = FrameworkConfig(
         target_information=target_information,
-        extract_information=extract_information,
         llm=llm,
         agents=agents,
         orchestration=orchestration,
@@ -58,7 +57,7 @@ def read_configuration(file_path: str) -> FrameworkConfig:
 if __name__ == "__main__":
     f = read_configuration("conf/config.yaml")
     print("--- Acesso ao Output Component 'changelog_output' ---")
-    changelog_conf = f.output.components['changelog_output']
+    changelog_conf = f.output
     print(f"File Name: {changelog_conf.file_name}")
     print(f"File Format: {changelog_conf.file_format}\n")
 
@@ -67,6 +66,11 @@ if __name__ == "__main__":
     print(f"Model: {gpt4_conf.model}")
     print(f"Temperature: {gpt4_conf.temperature}\n")
 
-    print("--- Acesso ao Agent 'Document Store' ---")
-    doc_store_agent = f.agents.components['Document Store']
+    print("--- Acesso ao Agent ---")
+    first_agent_key = next(iter(f.agents.components))
+    doc_store_agent = f.agents.components[first_agent_key]
     print(f"Description: {doc_store_agent.description}")
+
+    print("--- Orchestration Steps ---")
+    for step in f.orchestration.flow:
+        print(f"Step: {step.step}, Name: {step.from_step}, Extract: {step.extract_information_types}")

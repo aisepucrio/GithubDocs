@@ -14,15 +14,10 @@ class TargetInformation:
     expected_result_type: str
 
 @dataclass
-class ExtractInformation:
-    types: List[str]
-
-@dataclass
 class OrchestrationFlowStep:
     step: int
     from_step: str
     extract_information_types: str
-    to: str
 
 @dataclass
 class Orchestration:
@@ -61,21 +56,15 @@ class Agents:
     components: Dict[str, AgentComponent]
 
 @dataclass
-class OutputComponent:
+class Output:
     name: str
     path: str
     template: str
     file_name: str
     file_format: str
-
-@dataclass
-class Output:
-    components: Dict[str, OutputComponent]
-
 @dataclass
 class FrameworkConfig:
     target_information: TargetInformation
-    extract_information: ExtractInformation
     llm: LLM
     agents: Agents
     orchestration: Orchestration
