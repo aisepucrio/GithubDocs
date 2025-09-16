@@ -12,6 +12,9 @@ dependencies = [
     "PyYAML==6.0.2",
     "sqlalchemy==2.0.43",
     "gitpython==3.1.45",
+    "bert-score",
+    "nltk",
+    "rouge-score"
 ]
 
 [tool.ruff]
