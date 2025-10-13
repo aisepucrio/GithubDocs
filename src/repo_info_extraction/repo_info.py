@@ -118,8 +118,6 @@ class GitManager:
         tags = self.get_tags(repo_path)
         readme_content = self.get_readme_content(repo_path)
         repo_name = self.get_repo_name(repo_path)
-        
-        #print(len(hashes), "commits found.")
 
         return {
             'hashes': hashes,
@@ -141,26 +139,3 @@ class GitManager:
         repo = git.Repo(repo_path)
         repo.git.checkout(branch)
     
-    
-if __name__ == "__main__":
-    gm = GitManager()
-    repo_path = "/home/pedro/Documents/GithubDocs/external_repos/ansible"
-    branch = "stable-2.18"
-    start_date = "2025-08-27"
-    end_date = "2025-09-14"
-
-    gm.checkout_branch(repo_path, branch)
-    gm.git_pull(repo_path, branch)
-    
-
-    hashes = gm.get_hashes(repo_path, branch, start_date, end_date)
-
-    gm.get_dict_of_repo_info(repo_path, branch, start_date, end_date)
-    
-    # if hashes:
-    #     messages = gm.get_commits(repo_path, hashes)
-    #     for i, msg in enumerate(messages):
-    #         print(f"Commit {hashes[i]}:\n{msg}\n")
-        
-        # diff = gm.get_diffs(repo_path, hashes)
-        # print("Diff:\n", diff)

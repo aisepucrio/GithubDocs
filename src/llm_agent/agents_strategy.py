@@ -1,4 +1,4 @@
-from .ai_agent_interface import AIAgent
+from .agent_interface import AIAgent
 from google import genai
 
 from openai import OpenAI
@@ -38,10 +38,10 @@ class GPTAgent(AIAgent):
         encoding = tiktoken.get_encoding("cl100k_base")
         num_tokens = len(encoding.encode(input))
         return num_tokens
-    
 
-if __name__ == "__main__":
-    gemini_agent = GeminiAgent("gemini-2.0-flash-lite", "AIzaSyBJssh_vtQZBPFceyhWy4aGkYxwbn2T6MA", "This is a base prompt for Gemini.")
-    gemini_agent.generate_response("Hello, how are you?")
-    print(f"Gemini Agent Response: {gemini_agent.output}")
-    print(f"Gemini Agent Token Count: {gemini_agent._get_model_window_context()}")
+
+def get_agent_dictionary() -> dict:
+    return {
+        "gemini": GeminiAgent,
+        "gpt": GPTAgent,
+    }

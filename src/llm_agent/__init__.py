@@ -1,2 +1,2 @@
-from .agents_factory import get_agent_dictionary
-from .ai_agent_interface import AIAgent
+from .agent_interface import AIAgent
+from .agents_strategy import get_agent_dictionary, GeminiAgent, GPTAgent
