@@ -1,6 +1,12 @@
-[submodule "external_repos/ansible"]
-	path = external_repos/ansible
-	url = https://github.com/ansible/ansible
 [submodule "external_repos/EventFlow"]
 	path = external_repos/EventFlow
 	url = https://github.com/stone-payments/EventFlow
+[submodule "external_repos/pos-mamba-sdk"]
+	path = external_repos/pos-mamba-sdk
+	url = https://github.com/stone-payments/pos-mamba-sdk
+[submodule "external_repos/stnl-dataminer-web"]
+	path = external_repos/stnl-dataminer-web
+	url = https://github.com/aisepucrio/stnl-dataminer-web
+[submodule "external_repos/stnl-dataminer-api"]
+	path = external_repos/stnl-dataminer-api
+	url = https://github.com/aisepucrio/stnl-dataminer-api
