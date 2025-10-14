@@ -1,0 +1,30 @@
+[target_information]
+repo_path = "external_repos/ansible"
+branch_name = "devel"
+start_commit = "@8746192834691827"
+end_commit = "HEAD"
+
+[agents]
+
+[[agents.output]]
+result_path = "output/"
+log_path = "logs/"
+result_file_name = "changelog.md"
+
+[[agents.orchestration]]
+step = 1
+model_name = "gpt-4"
+temperature = 0.2
+prompt_path = "prompts/orchestration.jinja"
+extract_information_types = ["readme"]
+prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
+
+[[agents.orchestration]]
+step = 2
+model_name = "gemini-2.5-flash"
+temperature = 0.2
+prompt_path = "prompts/orchestration.jinja"
+extract_information_types = ["readme", "changelog", "diff"]
+prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
+
+
