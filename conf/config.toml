@@ -15,7 +15,7 @@ result_file_name = "changelog.md"
 step = 1
 model_name = "gpt-4"
 temperature = 0.2
-prompt_path = "prompts/orchestration.jinja"
+prompt_file = "orchestration.jinja"
 extract_information_types = ["readme"]
 prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
 
@@ -23,7 +23,7 @@ prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
 step = 2
 model_name = "gemini-2.5-flash"
 temperature = 0.2
-prompt_path = "prompts/orchestration.jinja"
+prompt_file = "orchestration.jinja"
 extract_information_types = ["readme", "changelog", "diff"]
 prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
 
