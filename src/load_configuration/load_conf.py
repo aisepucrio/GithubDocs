@@ -1,76 +1,52 @@
-from .conf_structures import *
-import yaml
+import tomli as tomllib
+from conf_structures import Target_info, Output_info, Orchestration_step
+from jinja2 import Environment, FileSystemLoader
+import os
 
-def _read_configuration(file_path: str) -> dict:
-    with open(file_path, 'r') as file:
-        config = yaml.safe_load(file)
+def read_config_file(file_path):
+    with open(file_path, "rb") as f:
+        config = tomllib.load(f)
     return config
 
-def sort_flow_steps(steps: List[dict]) -> List[dict]:
-    return sorted(steps, key=lambda x: x['step'])
+def render_prompt(template_path, variables):
+    env = Environment(loader=FileSystemLoader(os.getcwd() + '/prompt/'))
+    template = env.get_template(template_path)
+    return template.render(variables)
 
-def read_configuration(file_path: str) -> FrameworkConfig:
-    config = _read_configuration(file_path)
+def load_config(file_path):
+    config = read_config_file(file_path)
 
-    target_information = TargetInformation(**config['target_information'])
-    
-    llm_providers = {
-        provider['name']: LLMProvider(**provider) 
-        for provider in config['llm']['providers']
-    }
-    llm = LLM(providers=llm_providers, default_provider=config['llm']['default_provider'])
-    agent_components = {
-        comp['name']: AgentComponent(**comp) 
-        for comp in config['agents']['components']
-    }
-    agents = Agents(components=agent_components)
-
-    flow_steps_data = config['orchestration']['flow']
-    # Sort the dictionaries before converting to OrchestrationFlowStep objects
-    sorted_flow_steps_data = sort_flow_steps(flow_steps_data)
-    orchestration_flow = []
-    for step_data in sorted_flow_steps_data:
-        step_data['from_step'] = step_data.pop('from')
-        orchestration_flow.append(OrchestrationFlowStep(**step_data))
-
-    orchestration = Orchestration(
-        max_retries=config['orchestration']['max_retries'],
-        timeout_seconds=config['orchestration']['timeout_seconds'],
-        flow=orchestration_flow
+    target_info = Target_info(
+        repo_path=config["target_information"]["repo_path"],
+        branch_name=config["target_information"]["branch_name"],
+        start_commit=config["target_information"]["start_commit"],
+        end_commit=config["target_information"]["end_commit"]
     )
 
-    output = Output(**config['output'])
-
-    evaluation = Evaluation(**config['evaluation'])
-
-    framework_config = FrameworkConfig(
-        target_information=target_information,
-        llm=llm,
-        agents=agents,
-        orchestration=orchestration,
-        output=output,
-        evaluation=evaluation
+    output_info = Output_info(
+        result_path=config["agents"]["output"][0]["result_path"],
+        log_path=config["agents"]["output"][0]["log_path"],
+        result_file_name=config["agents"]["output"][0]["result_file_name"]
     )
 
-    return framework_config
+    orchestration_steps = [
+        Orchestration_step(
+            step=step["step"],
+            model_name=step["model_name"],
+            temperature=step["temperature"],
+            prompt_path=step["prompt_file"],
+            extract_information_types=step["extract_information_types"],
+            prompt_variables=step["prompt_variables"],
+            prompt=render_prompt(step["prompt_file"], step["prompt_variables"])
+        ) for step in config["agents"]["orchestration"]
+    ]
+
+    return {
+        "target_information": target_info,
+        "output_information": output_info,
+        "orchestration_steps": orchestration_steps
+    }
 
 if __name__ == "__main__":
-    f = read_configuration("conf/config.yaml")
-    print("--- Acesso ao Output Component 'changelog_output' ---")
-    changelog_conf = f.output
-    print(f"File Name: {changelog_conf.file_name}")
-    print(f"File Format: {changelog_conf.file_format}\n")
-
-    print("--- Acesso ao LLM Provider 'gpt4' ---")
-    gpt4_conf = f.llm.providers['gpt4']
-    print(f"Model: {gpt4_conf.model}")
-    print(f"Temperature: {gpt4_conf.temperature}\n")
-
-    print("--- Acesso ao Agent ---")
-    first_agent_key = next(iter(f.agents.components))
-    doc_store_agent = f.agents.components[first_agent_key]
-    print(f"Description: {doc_store_agent.description}")
-
-    print("--- Orchestration Steps ---")
-    for step in f.orchestration.flow:
-        print(f"Step: {step.step}, Name: {step.from_step}, Extract: {step.extract_information_types}")
+    config_data = load_config("conf/config.toml")
+    print(config_data)
