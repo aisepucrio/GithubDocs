@@ -1,8 +1,9 @@
 [target_information]
-repo_path = "external_repos/ansible"
+repo_path = "external_repos/EventFlow"
 branch_name = "devel"
-start_commit = "@8746192834691827"
+start_commit = "810311e416a4aa6363c4dac450782894147fd13d"
 end_commit = "HEAD"
+template_path = "prompt/"
 
 [agents]
 
