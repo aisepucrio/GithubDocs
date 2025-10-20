@@ -10,9 +10,9 @@ def read_config_file(file_path: str) -> dict[str, any]:
         config = tomllib.load(f)
     return config
 
-def render_prompt(template_path: str, variables: dict) -> str:
-    env = Environment(loader=FileSystemLoader((Path.cwd() / 'prompt')))
-    template = env.get_template(template_path)
+def render_prompt(template_path: str, prompt_file: str, variables: dict) -> str:
+    env = Environment(loader=FileSystemLoader(template_path))
+    template = env.get_template(prompt_file)
     return template.render(variables)
 
 def load_config(file_path: str) -> BaseAppConfig:
@@ -25,16 +25,17 @@ def load_config(file_path: str) -> BaseAppConfig:
 
     # this for generate the prompt with jinja2
     for step in config["agents"]["orchestration"]:
-        Orchestration_step.model_validate(step)
-        step['prompt_file'] = (Path.cwd() / 'prompt' / step['prompt_file']).resolve()
+        orch = Orchestration_step.model_validate(step)
+        prompt =  orch.prompt_file
         try:
-            step['prompt'] = render_prompt(step['prompt_file'], step['prompt_variables'])
+            step['prompt'] = render_prompt(target_info.template_path, prompt, step['prompt_variables'])
         except KeyError as e:
-            print(f"Missing key in orchestration step: {e}")
-            raise e
+            print(f"\u274C Missing key in orchestration step {step['step']}:\n {e}")
+            exit(1)
         except Exception as e:
-            print(f"Error rendering prompt for step")
-            raise e
+            print(f"\u274C Error rendering prompt for step {step['step']}:\n {e}")
+            exit(1)
+    
         orchestration_steps.append(Orchestration_step.model_validate(step))
     
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
@@ -46,5 +47,10 @@ def load_config(file_path: str) -> BaseAppConfig:
     )
 
 # if __name__ == "__main__":
-#     config_data = load_config("conf/config.toml")
-#     print(config_data)
+#     try:
+#         config_data = load_config("conf/config.toml")
+#         print("oi")
+#         print(config_data)
+#     except Exception as e:
+#         print(f"\u274C Error loading config: {e}")
+#         exit(1)

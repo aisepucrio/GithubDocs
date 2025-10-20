@@ -9,4 +9,5 @@ def solve_path_name(repo_path: str) -> str:
         p = Path.cwd() / p
 
     p = p.resolve(strict=False)
-    return str(p)
+    p = str(p)
+    return p
