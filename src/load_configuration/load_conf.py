@@ -1,14 +1,12 @@
 import tomli as tomllib
 from pathlib import Path
-from conf_structures import Target_info, Output_info, Orchestration_step, BaseAppConfig
+from .conf_structures import Target_info, Output_info, Orchestration_step, BaseAppConfig
 from jinja2 import Environment, FileSystemLoader
 import os
 
 
-def read_config_file(file_path: str) -> dict[str, any]:
-    with open(file_path, "rb") as f:
-        config = tomllib.load(f)
-    return config
+def read_config_file(file_data: str) -> dict[str, any]:
+    return tomllib.loads(file_data)
 
 def render_prompt(template_path: str, prompt_file: str, variables: dict) -> str:
     env = Environment(loader=FileSystemLoader(template_path))

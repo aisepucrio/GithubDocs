@@ -2,7 +2,7 @@ import re
 import git
 import os
 from pathlib import Path
-from util import solve_path_name
+from .util import solve_path_name
 
 def commit_validator(commit: str) -> bool:
     """Validate that a commit hash is a valid SHA-1 hash."""

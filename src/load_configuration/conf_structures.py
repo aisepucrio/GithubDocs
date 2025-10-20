@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pydantic import BaseModel, field_validator
-from validators import *
+from .validators import *
 import os
 class Target_info(BaseModel):
     repo_path: str
