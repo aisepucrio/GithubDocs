@@ -1,8 +1,9 @@
 [project]
 name = "GithubDocs"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
+    "pydriller",
     "google-generativeai",
     "ruff>=0.1.0",
     "openai",
@@ -12,8 +13,14 @@ dependencies = [
     "sqlalchemy==2.0.43",
     "gitpython==3.1.45",
     "nltk",
+<<<<<<< HEAD
     "Jinja2",
     "pydriller"
+=======
+    "Jinja2", 
+    "tomli", #This lib have compatibility with python 3.10 but not with 3.11 TODO: decicde the python version
+    "pydantic>=2.12.0",
+>>>>>>> refs/remotes/origin/main
 ]
 
 [tool.ruff]
