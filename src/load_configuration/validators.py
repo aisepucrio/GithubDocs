@@ -18,7 +18,3 @@ def path_validator(path: str) -> bool:
     """Validate that the output path is a valid directory."""
     path = solve_path_name(path)
     return os.path.isdir(path)
-
-def extract_information_types_validator(types: list[str], allowed_types: list[str]) -> bool:
-    """Validate that all extract information types are in the list of allowed types."""
-    return all(t in allowed_types for t in types)

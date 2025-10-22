@@ -2,9 +2,9 @@ import argparse
 import sys
 import logging
 
-#from src.load_configuration.load_conf import load_config
+from src.load_configuration.load_conf import load_config
 from util import solve_path_name
-from log import *
+from src.log import CustomLogger
 
 
 parser = argparse.ArgumentParser()
@@ -22,19 +22,24 @@ elif args.verbose == 1:
 else:
     level = logging.WARNING
 
-CustomFormatter.setup_logging(level)
+logger = CustomLogger(show_timestamp=True)
+logging.basicConfig(level=level, format='%(message)s')
 
 if args.file == '-' or args.file is None:
-    logging.info("Reading input from stdin")
+    logger.info("Reading input from stdin")
     input_text = sys.stdin.read()
 else:
     args.file = str(solve_path_name(args.file))
-    logging.info(f"Reading input from file: {args.file}")
+    logger.info(f"Reading input from file: {args.file}")
     with open(args.file, 'r', encoding='utf-8') as fh:
         input_text = fh.read()
 
-logging.info("Loading configuration...")
+logger.info("Loading configuration...")
+try:
+    config = load_config(input_text)
+except Exception as e:
+    logger.error(f"Error loading configuration: {e.args[0]}")
+    sys.exit(1)
 
-#config = load_config(input_text)
+logger.success("Configuration loaded successfully.")
 
-logging.success("Configuration loaded successfully.")

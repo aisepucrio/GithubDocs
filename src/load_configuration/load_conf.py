@@ -28,12 +28,10 @@ def load_config(file_path: str) -> BaseAppConfig:
         try:
             step['prompt'] = render_prompt(target_info.template_path, prompt, step['prompt_variables'])
         except KeyError as e:
-            print(f"\u274C Missing key in orchestration step {step['step']}:\n {e}")
-            exit(1)
+            raise KeyError(f"\u274C Missing key in orchestration step {step['step']}:\n {e}")
         except Exception as e:
-            print(f"\u274C Error rendering prompt for step {step['step']}:\n {e}")
-            exit(1)
-    
+            raise Exception(f"\u274C Error rendering prompt for step {step['step']}:\n {e}")
+
         orchestration_steps.append(Orchestration_step.model_validate(step))
     
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)

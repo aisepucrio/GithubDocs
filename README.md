@@ -85,6 +85,15 @@ Para atualizar um submodule específico:
 git submodule update --remote external_repos/<repo-name>
 ```
 
+# Folder creation
+
+To run the application, you going to need to create other two folders in the repository, the outputs and the logs folder
+
+you could do that running
+```
+mkdir output logs
+```
+
 # First Run and Flags
 
 To run the program with the basic configuration, use the following command:

@@ -12,19 +12,19 @@ class Target_info(BaseModel):
     @field_validator("start_commit", "end_commit")
     def validate_commit(cls, v):
         if not commit_validator(v):
-            raise ValueError("\u274C Invalid commit hash")
+            raise KeyError(f"\u274C Invalid commit \033[1m{v}\033[0m hash")
         return v
     
     @field_validator("repo_path")
     def validate_repo_path(cls, v):
         if not path_validator(v):
-            raise ValueError("\u274C Invalid repository path")
+            raise KeyError(f"\u274C Invalid repository \033[1m{v}\033[0m path")
         return v
     
     @field_validator("template_path")
     def validate_template_path(cls, v):
         if not path_validator(v):
-            raise ValueError("\u274C Invalid template path")
+            raise KeyError(f"\u274C Invalid template \033[1m{v}\033[0m path")
         return v
 
     def __str__(self):
@@ -39,7 +39,7 @@ class Output_info(BaseModel):
     @field_validator("result_path", "log_path")
     def validate_paths(cls, v):
         if not path_validator(v):
-            raise ValueError(f"\u274C Path does not exist or is not a directory: {v}\nPlease read the documentation carefully to set up the output paths.\n")
+            raise KeyError(f"\u274C Path does not exist or is not a directory: \033[1m{v}\033[0m\nPlease read the documentation carefully to set up the output paths.\n")
         return v
 
     def __str__(self):
@@ -58,13 +58,8 @@ class Orchestration_step(BaseModel):
     @field_validator("temperature")
     def validate_temperature(cls, v):
         if not temperature_validator(v):
-            raise ValueError("\u274C Temperature must be between 0.0 and 2.0")
+            raise KeyError(f"\u274C Temperature must be between \033[1m0.0\033[0m and \033[1m2.0\033[0m")
         return v
-    
-    @field_validator("extract_information_types")
-    def validate_extract_information_types(cls, v):
-        # In this validation is interesting desing a better communication between modules
-        return True
     
     def __str__(self):
         return f"Orchestration_step(step={self.step}, model_name={self.model_name}, temperature={self.temperature}, prompt_path={self.prompt_path}, extract_information_types={self.extract_information_types}, prompt_variables={self.prompt_variables}, prompt={self.prompt[:50]}...)"
