@@ -2,7 +2,7 @@ import re
 import git
 import os
 from pathlib import Path
-from .util import solve_path_name
+from ..utils.solve_path import PathSolver 
 
 def commit_validator(commit: str) -> bool:
     """Validate that a commit hash is a valid SHA-1 hash."""
@@ -16,5 +16,5 @@ def temperature_validator(temperature: float) -> bool:
 
 def path_validator(path: str) -> bool:
     """Validate that the output path is a valid directory."""
-    path = solve_path_name(path)
+    path = PathSolver.solve_path(path)
     return os.path.isdir(path)

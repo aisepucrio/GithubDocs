@@ -5,6 +5,7 @@ import logging
 from src.load_configuration.load_conf import load_config
 from util import solve_path_name
 from src.log import CustomLogger
+from src.utils.solve_path import PathSolver
 
 
 parser = argparse.ArgumentParser()
@@ -29,7 +30,7 @@ if args.file == '-' or args.file is None:
     logger.info("Reading input from stdin")
     input_text = sys.stdin.read()
 else:
-    args.file = str(solve_path_name(args.file))
+    args.file = str(PathSolver.solve_path(args.file))
     logger.info(f"Reading input from file: {args.file}")
     with open(args.file, 'r', encoding='utf-8') as fh:
         input_text = fh.read()
@@ -42,4 +43,6 @@ except Exception as e:
     sys.exit(1)
 
 logger.success("Configuration loaded successfully.")
+
+
 

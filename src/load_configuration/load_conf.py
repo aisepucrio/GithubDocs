@@ -21,17 +21,8 @@ def load_config(file_path: str) -> BaseAppConfig:
 
     orchestration_steps = []
 
-    # this for generate the prompt with jinja2
     for step in config["agents"]["orchestration"]:
         orch = Orchestration_step.model_validate(step)
-        prompt =  orch.prompt_file
-        try:
-            step['prompt'] = render_prompt(target_info.template_path, prompt, step['prompt_variables'])
-        except KeyError as e:
-            raise KeyError(f"\u274C Missing key in orchestration step {step['step']}:\n {e}")
-        except Exception as e:
-            raise Exception(f"\u274C Error rendering prompt for step {step['step']}:\n {e}")
-
         orchestration_steps.append(Orchestration_step.model_validate(step))
     
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
@@ -41,12 +32,3 @@ def load_config(file_path: str) -> BaseAppConfig:
         output_info=output_info,
         orchestration_steps=sorted_steps
     )
-
-# if __name__ == "__main__":
-#     try:
-#         config_data = load_config("conf/config.toml")
-#         print("oi")
-#         print(config_data)
-#     except Exception as e:
-#         print(f"\u274C Error loading config: {e}")
-#         exit(1)
