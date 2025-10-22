@@ -85,13 +85,18 @@ Para atualizar um submodule específico:
 git submodule update --remote external_repos/<repo-name>
 ```
 
-### Submodules Atuais
+# First Run and Flags
 
-A lista de repositórios externos utilizados para documentação é:
-
-  - *(Adicione os repositórios aqui conforme forem incluídos)*
-
-<!-- end list -->
-
+To run the program with the basic configuration, use the following command:
+```Bash
+python main.py -f conf/config.toml -v 2
 ```
-```
+Command-Line Flags
+
+Flag: `-f <file>`
+
+This flag specifies the configuration file to be loaded by the framework.
+
+Flag: `-v <level>`
+
+This flag sets the framework's verbosity level. Valid values range from 0 to 2, where 0 is the lowest (least output) and 2 is the highest (most detailed output).

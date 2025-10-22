@@ -12,7 +12,8 @@ dependencies = [
     "sqlalchemy==2.0.43",
     "gitpython==3.1.45",
     "nltk",
-    "Jinja2"
+    "Jinja2",
+    "pydriller"
 ]
 
 [tool.ruff]
