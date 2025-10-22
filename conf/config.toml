@@ -1,8 +1,9 @@
 [target_information]
-repo_path = "external_repos/ansible"
+repo_path = "external_repos/EventFlow"
 branch_name = "devel"
-start_commit = "@8746192834691827"
+start_commit = "810311e416a4aa6363c4dac450782894147fd13d"
 end_commit = "HEAD"
+template_path = "prompt/"
 
 [agents]
 
@@ -15,7 +16,7 @@ result_file_name = "changelog.md"
 step = 1
 model_name = "gpt-4"
 temperature = 0.2
-prompt_path = "prompts/orchestration.jinja"
+prompt_file = "orchestration.jinja"
 extract_information_types = ["readme"]
 prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
 
@@ -23,7 +24,7 @@ prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
 step = 2
 model_name = "gemini-2.5-flash"
 temperature = 0.2
-prompt_path = "prompts/orchestration.jinja"
+prompt_file = "orchestration.jinja"
 extract_information_types = ["readme", "changelog", "diff"]
 prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
 
