@@ -16,6 +16,7 @@ dependencies = [
     "jinja2", 
     "tomli", #This lib have compatibility with python 3.10 but not with 3.11 TODO: decicde the python version
     "pydantic>=2.12.0",
+    "ollama",
 ]
 
 [tool.ruff]
