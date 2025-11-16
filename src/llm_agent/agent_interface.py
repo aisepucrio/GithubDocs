@@ -19,7 +19,7 @@ class AIAgent(ABC):
         pass
 
     @abstractmethod
-    def generate_response(self, prompt: str, input: str) -> str:
+    def generate_response_with_prompt(self, prompt: str, input: str) -> str:
         pass
 
     @abstractmethod

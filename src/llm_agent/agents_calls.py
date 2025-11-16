@@ -7,7 +7,7 @@ def read_file(file_path: str)-> str:
     return content
 
 def summarize_text(text: str, agent: AIAgent) -> str:
-    return agent.generate_response("Summarize the following text concisely:", text)
+    return agent.generate_response_with_prompt("Summarize the following text concisely:", text)
 
 def sumarize_file(file_path: str, agent: AIAgent) -> str:
     content = read_file(file_path)

@@ -1,23 +1,26 @@
 import tomli as tomllib
 from pathlib import Path
-from .conf_structures import Target_info, Output_info, Orchestration_step, BaseAppConfig
+from .conf_structures import TargetInfo, OutputInfo, OrchestrationStep, BaseAppConfig
 from jinja2 import Environment, FileSystemLoader
 import os
+from typing import Any
 
 
-def read_config_file(file_data: str) -> dict[str, any]:
-    return tomllib.loads(file_data)
+def read_config_file(file_path: str) -> dict[str, object]:
+    with open(file_path, "rb") as f:
+        return tomllib.load(f)
 
 def load_config(file_path: str) -> BaseAppConfig:
     config = read_config_file(file_path)
 
-    target_info = Target_info.model_validate(config["target_information"])
-    output_info = Output_info.model_validate(config["agents"]["output"][0])
+
+    target_info = TargetInfo.model_validate(config["target_information"])
+    output_info = OutputInfo.model_validate(config["agents"]["output"][0])
 
     orchestration_steps = []
 
     for step in config["agents"]["orchestration"]:
-        orchestration_steps.append(Orchestration_step.model_validate(step))
+        orchestration_steps.append(OrchestrationStep.model_validate(step))
     
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
 

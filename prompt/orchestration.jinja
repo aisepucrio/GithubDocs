@@ -1,6 +1,23 @@
 You are an AI agent tasked with analyzing a repository.
 
-Repository: {{repo}}
-Name: {{name}}
+Here is a summary of the commits and their modifications:
 
-Please analyze the provided information and generate appropriate documentation based on the extracted information types.
+{% for commit in repo_info %}
+Commit: {{ commit.hash }}
+Author Date: {{ commit.date }}
+Message: {{ commit.message }}
+
+Modifications:
+{% for file_path, modification in commit.modifications.items() %}
+  File: {{ file_path }}
+  Change Type: {{ modification.change_type }}
+  Added Lines: {{ modification.added_lines }}
+  Diff:
+  ```diff
+  {{ modification.diff }}
+  ```
+{% endfor %}
+---
+{% endfor %}
+
+Please analyze the provided information and generate appropriate documentation.

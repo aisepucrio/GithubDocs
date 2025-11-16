@@ -1,48 +1,37 @@
 import argparse
-import sys
 import logging
-
-from src.load_configuration.load_conf import load_config
-from util import solve_path_name
+from src.facade import start
+from src.load_configuration import load_config
 from src.log import CustomLogger
-from src.utils.solve_path import PathSolver
 
+def main():
+    parser = argparse.ArgumentParser(description="Gemini Documentation Generator")
+    parser.add_argument("config_path", help="Path to the configuration file.")
+    parser.add_argument("--mock", action="store_true", help="Use mock agent for testing.")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
+    args = parser.parse_args()
 
-parser = argparse.ArgumentParser()
+    logger = CustomLogger()
+    if args.debug:
+        logger.log_level = logging.DEBUG
 
-parser.add_argument('-f', '--file', help='Input file path (use "-" or omit for stdin)', type=str, default='-')
+    logger.info("Loading configuration...")
+    config = load_config(args.config_path)
 
-parser.add_argument('-v', '--verbose', help='Verbose output level (0-2)', type=int, default=0)
+    if args.mock:
+        logger.warning("Using mock agent.")
+        for step in config.orchestration_steps:
+            step.model_name = "mock"
 
-args = parser.parse_args()
+    if args.debug:
+        logger.debug("Configuration loaded:")
+        logger.debug(f"Target Info: {config.target_info}")
+        logger.debug(f"Output Info: {config.output_info}")
+        for step in config.orchestration_steps:
+            logger.debug(f"Orchestration Step: {step}")
 
-if args.verbose == 2:
-    level = logging.DEBUG
-elif args.verbose == 1:
-    level = logging.INFO
-else:
-    level = logging.WARNING
+    logger.info("Starting documentation generation...")
+    start(config)
 
-logger = CustomLogger(show_timestamp=True)
-logging.basicConfig(level=level, format='%(message)s')
-
-if args.file == '-' or args.file is None:
-    logger.info("Reading input from stdin")
-    input_text = sys.stdin.read()
-else:
-    args.file = str(PathSolver.solve_path(args.file))
-    logger.info(f"Reading input from file: {args.file}")
-    with open(args.file, 'r', encoding='utf-8') as fh:
-        input_text = fh.read()
-
-logger.info("Loading configuration...")
-try:
-    config = load_config(input_text)
-except Exception as e:
-    logger.error(f"Error loading configuration: {e.args[0]}")
-    sys.exit(1)
-
-logger.success("Configuration loaded successfully.")
-
-
-
+if __name__ == "__main__":
+    main()

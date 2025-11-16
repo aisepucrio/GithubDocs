@@ -2,7 +2,7 @@ from pydriller import Repository
 from git import Repo
 from typing import Tuple
 
-from repo_info_exceptions import (
+from .repo_info_exceptions import (
     RepoInfoExtractionError,
     InvalidRepositoryPathError,
     InvalidBranchError,
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         extractor = RepoInfoExtractor("/home/PUC/Documentos/GithubDocs/external_repos/EventFlow",
                                        start_commit=start_commit,
                                        end_commit=end_commit,
-                                       target_branch="develop-v0")
+                                       target_branch="develop-v1")
 
         repo_info = extractor.extract_repo_info()
     except RepoInfoExtractionError as e:

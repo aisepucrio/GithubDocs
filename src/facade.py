@@ -1,13 +1,97 @@
+import copy
+import os
 from .llm_agent import *
 from .load_configuration import *
 from .repo_info_extraction import *
 from jinja2 import Environment, FileSystemLoader
+from .llm_agent.agents_calls import summarize_text
+from .log import CustomLogger
+
+AI_DICT = get_agent_dictionary()
+logger = CustomLogger()
 
 def render_prompt(template_path: str, prompt_file: str, variables: dict) -> str:
     env = Environment(loader=FileSystemLoader(template_path))
     template = env.get_template(prompt_file)
     return template.render(variables)
 
-def populate_template(template_path: str, prompt_file: str) -> str:
+def populate_template(template_path: str, prompt_file: str, variables: dict) -> str:
+    return render_prompt(template_path, prompt_file, variables)
 
-    return 
+def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "") -> AIAgent | None:
+    for key in AI_DICT:
+        if key in model_name:
+            agent_class = AI_DICT[key]
+            return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt)
+    return None
+
+def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: dict, last_step_output: str | None = None):
+    agent = build_ai_agent(orchestration_step.model_name)
+    if agent is None:
+        logger.error(f"Agent for model {orchestration_step.model_name} not found.")
+        exit(1)
+
+    template_vars = orchestration_step.prompt_variables.copy()
+    template_vars['repo_info'] = repo_info
+    if last_step_output:
+        template_vars['last_step_output'] = last_step_output
+
+    logger.debug(f"Template variables: {template_vars.keys()}")
+
+
+    prompt = populate_template(
+        orchestration_step.template_path,
+        orchestration_step.prompt_file,
+        template_vars
+    )
+
+    if agent.need_summarization(prompt):
+        logger.warning("Prompt exceeds context window size. Summarizing diffs.")
+        summarized_repo_info = copy.deepcopy(repo_info)
+        for commit in summarized_repo_info:
+            for modification in commit['modifications'].values():
+                if modification['diff']:
+                    modification['diff'] = summarize_text(modification['diff'], agent)
+        
+        template_vars['repo_info'] = summarized_repo_info
+        prompt = populate_template(
+            orchestration_step.template_path,
+            orchestration_step.prompt_file,
+            template_vars
+        )
+
+        if agent.need_summarization(prompt):
+            logger.error("Prompt still too large after summarization. Consider reducing the number of commits or files.")
+            exit(1)
+
+    response = agent.generate_response_with_prompt(prompt, "")
+    return response
+
+def start(base_config: BaseAppConfig):
+    try:
+        extractor = RepoInfoExtractor(
+            repository_path=base_config.target_info.repo_path,
+            start_commit=base_config.target_info.start_commit,
+            end_commit=base_config.target_info.end_commit,
+            target_branch=base_config.target_info.branch_name
+        )
+        repo_info = extractor.extract_repo_info()
+    except Exception as e:
+        logger.error(f"Failed to extract repository information: {e}")
+        exit(1)
+
+    final_result = ""
+    last_step_output = None
+    for step in base_config.orchestration_steps:
+        logger.info(f"Executing step {step.step}: {step.model_name}")
+        final_result = build_orchestration_step(step, repo_info, last_step_output)
+        last_step_output = final_result
+
+    output_path = os.path.join(base_config.output_info.result_path, base_config.output_info.result_file_name)
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(final_result)
+        logger.success(f"Documentation generated successfully at {output_path}")
+    except IOError as e:
+        logger.error(f"Failed to write output file at {output_path}: {e}")
+        exit(1)

@@ -9,7 +9,7 @@ dependencies = [
     "openai",
     "google-genai==1.31.0",
     "python-dotenv",
-    "tiktoken==0.11.0",
+    "tiktoken==0.12.0",
     "sqlalchemy==2.0.43",
     "gitpython==3.1.45",
     "nltk",

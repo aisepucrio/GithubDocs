@@ -1,9 +1,8 @@
 [target_information]
 repo_path = "external_repos/EventFlow"
-branch_name = "devel"
-start_commit = "810311e416a4aa6363c4dac450782894147fd13d"
-end_commit = "HEAD"
-template_path = "prompt/"
+branch_name = "develop-v1"
+start_commit = "1f5f3377099ff21d151e99c62e1fb7cc83dfe97c"
+end_commit = "7c91526eaefd63887cb34072b81cfec50d63d598" #This need to be the latest commit between the two
 
 [agents]
 
@@ -14,18 +13,18 @@ result_file_name = "changelog.md"
 
 [[agents.orchestration]]
 step = 1
-model_name = "gpt-4"
+model_name = "gemini-2.5-flash"
 temperature = 0.2
+template_path = "prompt/"
 prompt_file = "orchestration.jinja"
 extract_information_types = ["readme"]
-prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
+prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
 
 [[agents.orchestration]]
 step = 2
 model_name = "gemini-2.5-flash"
 temperature = 0.2
-prompt_file = "orchestration.jinja"
+template_path = "prompt/"
+prompt_file = "final.jinja"
 extract_information_types = ["readme", "changelog", "diff"]
-prompt_variables = { name = "GitHub Docs", repo = "external_repos/ansible" }
-
-
+prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
