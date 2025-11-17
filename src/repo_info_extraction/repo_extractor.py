@@ -75,8 +75,9 @@ class RepoInfoExtractor:
                 "message": commit.msg,
                 "modifications":{}
             }
-            for modified_file in modified_files:
-                commit_info["modifications"][modified_file.new_path] = {
+            for idx, modified_file in enumerate(modified_files):
+                key = f"{modified_file.new_path}_{idx}"
+                commit_info["modifications"][key] = {
                     "change_type": modified_file.change_type.name,
                     "added_lines": modified_file.added_lines,
                     "diff": modified_file.diff,
