@@ -88,14 +88,14 @@ class MockAgent(AIAgent):
 
     def generate_response(self, input: str) -> str:
         print("--- MOCK AGENT ---")
-        print("Prompt:", self.base_prompt)
+        print("Prompt:", self.base_prompt.encode('utf-8', errors='ignore'))
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response"
 
     def generate_response_with_prompt(self, prompt: str, input: str) -> str:
         print("--- MOCK AGENT ---")
-        print("Prompt:", prompt)
+        print("Prompt:", prompt.encode('utf-8', errors='ignore'))
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
