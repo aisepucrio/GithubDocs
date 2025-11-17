@@ -13,7 +13,11 @@ Instale o `uv` em seu sistema:
   
 #### Via curl (Linux/macOS)
 ``` bash
-curl -Ls [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+# for Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# for Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 #### Via pip
