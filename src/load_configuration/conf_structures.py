@@ -11,13 +11,13 @@ class TargetInfo(BaseModel):
     @field_validator("start_commit", "end_commit")
     def validate_commit(cls, v):
         if not commit_validator(v):
-            raise KeyError(f"\u274C Invalid commit \033[1m{v}\033[0m hash")
+            raise KeyError(f"\u274C Invalid commit {v}hash")
         return v
     
     @field_validator("repo_path")
     def validate_repo_path(cls, v):
         if not path_validator(v):
-            raise KeyError(f"\u274C Invalid repository \033[1m{v}\033[0m path")
+            raise KeyError(f"\u274C Invalid repository {v}path")
         return v
 
     def __str__(self):
@@ -32,7 +32,7 @@ class OutputInfo(BaseModel):
     @field_validator("result_path", "log_path")
     def validate_paths(cls, v):
         if not path_validator(v):
-            raise KeyError(f"\u274C Path does not exist or is not a directory: \033[1m{v}\033[0m\nPlease read the documentation carefully to set up the output paths.\n")
+            raise KeyError(f"\u274C Path does not exist or is not a directory: {v} Please read the documentation carefully to set up the output paths")
         return v
 
     def __str__(self):
@@ -45,24 +45,23 @@ class OrchestrationStep(BaseModel):
     temperature: float
     prompt_file: str
     template_path: str = ""
-    extract_information_types: list[str]
     prompt_variables: dict[str, str]
     prompt: str = ""
 
     @field_validator("temperature")
     def validate_temperature(cls, v):
         if not temperature_validator(v):
-            raise KeyError(f"\u274C Temperature must be between \033[1m0.0\033[0m and \033[1m2.0\033[0m")
+            raise KeyError(f"\u274C Temperature must be between 0.0and 2.0")
         return v
     
     @field_validator("template_path")
     def validate_template_path(cls, v):
         if not path_validator(v):
-            raise KeyError(f"\u274C Invalid template \033[1m{v}\033[0m path")
+            raise KeyError(f"\u274C Invalid template{v}path")
         return v
     
     def __str__(self):
-        return f"OrchestrationStep(step={self.step}, model_name={self.model_name}, temperature={self.temperature}, prompt_path={self.prompt_file}, extract_information_types={self.extract_information_types}, prompt_variables={self.prompt_variables}, prompt={self.prompt[:50]}...)"
+        return f"OrchestrationStep(step={self.step}, model_name={self.model_name}, temperature={self.temperature}, prompt_path={self.prompt_file}, prompt_variables={self.prompt_variables}, prompt={self.prompt[:50]}...)"
     
 class BaseAppConfig(BaseModel):
     target_info: TargetInfo

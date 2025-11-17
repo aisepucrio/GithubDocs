@@ -1,21 +1,34 @@
 You are an AI agent tasked with analyzing a repository.
 
-Here is a summary of the commits and their modifications:
+{% if repo_info.readme %}
+## Repository README:
+{{ repo_info.readme }}
 
-{% for commit in repo_info %}
+---
+{% endif %}
+
+{% if repo_info.file_tree %}
+## File Tree:
+{{ repo_info.file_tree }}
+
+---
+{% endif %}
+
+## Commit History and Modifications:
+{% for commit in repo_info.commits %}
 Commit: {{ commit.hash }}
 Author Date: {{ commit.date }}
 Message: {{ commit.message }}
-
 Modifications:
 {% for file_path, modification in commit.modifications.items() %}
   File: {{ file_path }}
   Change Type: {{ modification.change_type }}
   Added Lines: {{ modification.added_lines }}
+  Source code before: {{ modification.source_code_before }}
   Diff:
-  ```diff
+```diff
   {{ modification.diff }}
-  ```
+```
 {% endfor %}
 ---
 {% endfor %}

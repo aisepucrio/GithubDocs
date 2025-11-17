@@ -23,7 +23,40 @@ class RepoInfoExtractor:
         self.start_commit_date = None
         self.end_commit_date = None
         self.repo: Repository = self.get_repository()
-        
+        self.readme_text = self.get_readme_text()
+        self.file_tree = self.get_file_tree()
+    
+    def get_readme_text(self) -> str:
+        repo = Repo(self.repository_path)
+        readme_files = [
+            item.path for item in repo.tree().traverse() 
+            if item.type == 'blob' and item.name.lower().startswith("readme")
+        ]
+        readme_texts = []
+        for readme_file in readme_files:
+            try:
+                blob = repo.head.commit.tree / readme_file
+                readme_texts.append(
+                    f"--- {readme_file} ---\n"
+                    f"{blob.data_stream.read().decode('utf-8', errors='ignore')}\n"
+                )
+            except Exception as e:
+                #change it later for a logger warning
+                print(f"Warning: Could not read {readme_file}: {e}")
+                continue
+        return "\n".join(readme_texts) if readme_texts else "No README found"
+    
+    def get_file_tree(self) -> str:
+        repo = Repo(self.repository_path)
+        file_tree = []
+        excluded = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
+
+        for item in repo.tree().traverse():
+            if any(excluded_dir in item.path.split('/') for excluded_dir in excluded):
+                continue
+            file_tree.append(item.path)
+
+        return "\n".join(sorted(file_tree))
 
 
     def validate_branch(self, repo: Repo) -> bool:
@@ -65,7 +98,7 @@ class RepoInfoExtractor:
                             to=self.end_commit_date,
                             only_in_branch=self.target_branch)
 
-    def extract_repo_info(self) -> dict:
+    def extract_repo_info(self) -> list[dict]:
         commit_result = []
         for commit in self.repo.traverse_commits():
             modified_files = commit.modified_files
@@ -84,7 +117,11 @@ class RepoInfoExtractor:
                     "source_code_before": modified_file.source_code_before
                 }
             commit_result.append(commit_info)
-        return commit_result
+        return {
+            "readme": self.readme_text,
+            "file_tree": self.file_tree,
+            "commits": commit_result
+        }
 
 if __name__ == "__main__":
 
