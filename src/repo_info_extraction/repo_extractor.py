@@ -79,7 +79,8 @@ class RepoInfoExtractor:
                 commit_info["modifications"][modified_file.new_path] = {
                     "change_type": modified_file.change_type.name,
                     "added_lines": modified_file.added_lines,
-                    "diff": modified_file.diff
+                    "diff": modified_file.diff,
+                    "source_code_before": modified_file.source_code_before
                 }
             commit_result.append(commit_info)
         return commit_result
