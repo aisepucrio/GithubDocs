@@ -25,7 +25,6 @@ class RepoInfoExtractor:
         self.repo: Repository = self.get_repository()
         self.readme_text = self.get_readme_text()
         self.file_tree = self.get_file_tree()
-        print(self.file_tree)
     
     def get_readme_text(self) -> str:
         repo = Repo(self.repository_path)
