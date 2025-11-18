@@ -1,71 +1,44 @@
-You are an assistant specialised in generating complete, professional, and publication-ready README.md files for software projects.
+Use only the information provided below to produce a complete, well-structured README in Markdown format.
 
-Your goal is to generate a clear, well-structured Markdown document that serves as the official README for a Git repository, based on the following repository data:
-- Repository name
-- Repository description
-- Main language
-- File tree
-- License
-
-Repository data:
+Use the following repository data:
 Repository Name: {{ repo_name }}
 Repository Description: {{ repo_description }}
 Repository Language: {{ repo_language }}
 License: {{ license }}
 
-File Tree:
 {% if repo_info.file_tree %}
 ## File Tree:
 {{ repo_info.file_tree }}
 {% endif %}
 
-Structure to follow:
+Output structure:
 
-1. Project name
+# Repository description
+Provide a concise overview of what the project is, what it does, and its main components or modules.
 
-2. Repository description  
-Provide a concise overview of what the project is, what it does, and its main components or modules. If listed in the repository, mention its purpose, goals, or distinctive aspects.
-
-3. File structure  
-List the main files and folders from the repository tree, showing only names (no descriptions).
-
-4. Dependencies  
-List the main technologies, runtimes, frameworks, or tools required (e.g., Python, Node.js, pnpm, Bash). If listed in the repository, include the dependencies file name and key contents.
-
-5. Installation  
-Explain how to set up the project, including:
+# Installation
+Describe how to set up the project, including:
 - Cloning the repository
 - Installing dependencies
 - Running setup or environment scripts
 - Any additional configuration steps
 
-6. Usage  
-Explain how to use or run the project, including:
-- Commands to start or build the project
-- Development or production execution steps
-- Examples of usage if available
+# Usage
+Explain how to run or use the project.
+Include relevant commands, build steps, or example usage if the data provides them.
 
-7. Contributions (optional)  
-Describe how contributions are handled. Mention any conventions, git hooks, or contribution guides if listed in the repository.
+# Dependencies
+List key technologies, runtimes, or tools used (for example: Node.js, Python, pnpm, Bash).
 
-8. Tests (optional)  
-Provide instructions on running automated or manual tests if listed in the repository.
+# Contributions
+Describe contribution processes or conventions (for example: Conventional Commits or contribution files).
 
-9. Additional documentation / resources (optional)  
-Reference internal docs, wikis, or directories if listed in the repository.
-
-10. Getting help (optional)  
-Explain where users can seek help (issues, discussions, contact info if present) if listed in the repository.
-
-11. License (optional)  
-State the license type (e.g., Apache 2.0, MIT) if listed in the repository.
+# License
+State the license type (for example: MIT, Apache 2.0) if it appears in the data.
 
 Output rules:
-
-- Follow the structure and intent outlined above.
-- Use only information explicitly provided in the repository data.
-- If information is missing, omit that section rather than inventing details.
-- Write concise, natural, and professional Markdown.
-- Use proper heading hierarchy (#, ##, etc.), fenced code blocks for commands, and readable spacing.
-- Maintain clarity, precision, and consistency throughout.
-- Never include placeholders, curly braces, URLs, or speculative content.
+- Base everything strictly on the repository data above.
+- Do not invent or infer missing information.
+- Do not include URLs, external references, or placeholders.
+- Skip any section for which there is no data.
+- The final output must be only the README.md content, formatted in Markdown, with no extra commentary.
