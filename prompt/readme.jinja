@@ -14,9 +14,10 @@ Repository Language: {{ repo_language }}
 License: {{ license }}
 
 File Tree:
-```
-{% repo_info.file_tree %}
-```
+{% if repo_info.file_tree %}
+## File Tree:
+{{ repo_info.file_tree }}
+{% endif %}
 
 Structure to follow:
 
