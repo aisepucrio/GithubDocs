@@ -84,7 +84,8 @@ class RepoInfoExtractor:
 
         repo.git.checkout(self.target_branch)
         repo.remote().pull()
-
+        repo.git.submodule('update', '--init', '--recursive')
+        
         if self.start_commit and not self.validate_commit(self.start_commit, repo):
             raise InvalidCommitError(self.start_commit)
         if self.end_commit and not self.validate_commit(self.end_commit, repo):
