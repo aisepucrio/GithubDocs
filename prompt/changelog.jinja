@@ -25,7 +25,7 @@ Output rules:
 - If no valid factual output can be extracted, return: "No changelog items found."
 
 Input commits:
-{% for commit in repo_info %}
+{% for commit in repo_info.commits %}
 Commit: {{ commit.hash }}
 Author Date: {{ commit.date }}
 Message: {{ commit.message }}

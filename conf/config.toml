@@ -16,7 +16,7 @@ step = 1
 model_name = "gemini-2.5-flash"
 temperature = 0.2
 template_path = "prompt/"
-prompt_file = "orchestration.jinja"
+prompt_file = "changelog.jinja"
 prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
 
 [[agents.orchestration]]

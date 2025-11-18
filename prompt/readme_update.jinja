@@ -7,6 +7,7 @@ Your task is to intelligently analyze and update the README.md file of a GitHub 
 {{ readme }}
 
 2. Recent diff (latest code changes):
+{% for commit in repo_info.commits %}
 {% for file_path, modification in commit.modifications.items() %}
   File: {{ file_path }}
   Change Type: {{ modification.change_type }}
