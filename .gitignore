@@ -1,7 +1,10 @@
 .DS_Store
 .idea
 test.txt
-output/
+output/**
+
+conf/**
+!conf/config_example.toml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
