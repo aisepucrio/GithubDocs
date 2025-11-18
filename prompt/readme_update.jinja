@@ -4,7 +4,7 @@ Your task is to intelligently analyze and update the README.md file of a GitHub 
 
 ### INPUTS:
 1. Current README.md:
-{{ readme }}
+{{ repo_info.readme }}
 
 2. Recent diff (latest code changes):
 {% for commit in repo_info.commits %}
