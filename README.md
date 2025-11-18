@@ -197,3 +197,18 @@ commit_info = {
 ```
 
 **Note:** `file_name_id` represents each changed file. The ID exists to separate possible different alterations when there are two separate additions to a file.
+
+
+# Running the project
+
+You need to pass the path to a config file as arg of main.py. Ensure that the config follow the TOML format.
+
+```bash
+python main.py conf/config.toml
+```
+
+Additionaly to that this project have other two flags the debug flag that show some extra logs and the mock flag that print in the terminal the resulting prompt of you configuration without sending it to the ai. The `--mock` flag is only build for test purpose.
+
+```bash
+python main.py conf/config.toml --mock --debug
+```
