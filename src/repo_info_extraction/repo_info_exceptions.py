@@ -10,6 +10,17 @@ class RepoInfoExtractionError(Exception):
     def __str__(self: str):
         return self.message
 
+
+class ReadmeNotFoundError(RepoInfoExtractionError):
+    """Raised when no README file is found in the repository."""
+    def __init__(self: str):
+        super().__init__()
+        self.message = """No README file found in the repository.
+        Please ensure that a README file (e.g., README.md, README.txt) exists in the root directory of the repository.
+        If a README file exists, make sure it is committed to the repository.
+        """
+
+
 class InvalidRepositoryPathError(RepoInfoExtractionError):
     """Raised when the repository path is invalid."""
     def __init__(self: str):

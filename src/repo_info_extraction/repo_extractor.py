@@ -6,7 +6,8 @@ from .repo_info_exceptions import (
     RepoInfoExtractionError,
     InvalidRepositoryPathError,
     InvalidBranchError,
-    InvalidCommitError
+    InvalidCommitError,
+    ReadmeNotFoundError
 )
 
 # TODO: Some parts of that code are redundant with the operations made by pydriller.
@@ -28,23 +29,18 @@ class RepoInfoExtractor:
     
     def get_readme_text(self) -> str:
         repo = Repo(self.repository_path)
-        readme_files = [
-            item.path for item in repo.tree().traverse() 
-            if item.type == 'blob' and item.name.lower().startswith("readme")
-        ]
-        readme_texts = []
-        for readme_file in readme_files:
-            try:
-                blob = repo.head.commit.tree / readme_file
-                readme_texts.append(
-                    f"--- {readme_file} ---\n"
-                    f"{blob.data_stream.read().decode('utf-8', errors='ignore')}\n"
-                )
-            except Exception as e:
-                #change it later for a logger warning
-                print(f"Warning: Could not read {readme_file}: {e}")
-                continue
-        return "\n".join(readme_texts) if readme_texts else "No README found"
+        commit = repo.commit(self.end_commit) if self.end_commit else repo.head.commit
+        
+        readme_blob = None
+        for item in commit.tree.traverse():
+            if getattr(item, "type", None) == "blob" and getattr(item, "name", "").lower().startswith("readme"):
+                readme_blob = item
+                break
+
+        if not readme_blob:
+            raise ReadmeNotFoundError()
+
+        return readme_blob.data_stream.read().decode("utf-8", errors="replace")
     
     def get_file_tree(self) -> str:
         repo = Repo(self.repository_path)
