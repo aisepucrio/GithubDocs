@@ -1,6 +1,8 @@
 from pydriller import Repository
 from git import Repo
 from typing import Tuple
+from identify import identify
+
 
 from .repo_info_exceptions import (
     RepoInfoExtractionError,
@@ -202,6 +204,16 @@ def get_prog_lang(self) -> str:
         lines = [f"{lang}: {pct}%" for lang, pct in sorted(result.items(), key=lambda x: -x[1])]
         return "\n".join(lines)
 '''
+
+def get_license(self):
+    license_file_path = f"{self.repository_path}/LICENSE"
+
+    license = identify.license_id(license_file_path)
+
+    print(f"The identified license is: {license}")
+
+    return license
+
 
 if __name__ == "__main__":
 
