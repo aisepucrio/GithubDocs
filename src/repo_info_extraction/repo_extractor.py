@@ -15,11 +15,12 @@ from .repo_info_exceptions import (
 
 class RepoInfoExtractor:
 
-    def __init__(self, repository_path: str, start_commit: str = None, end_commit: str = None, target_branch: str = 'main'):
+    def __init__(self, repository_path: str, start_commit: str = None, end_commit: str = None, ignored_files: list[str] = None, target_branch: str = 'main'):
         self.repository_path = repository_path
         self.start_commit = start_commit
         self.end_commit = end_commit
         self.target_branch = target_branch
+        self.ignored_files = ignored_files or []
 
         self.start_commit_date = None
         self.end_commit_date = None
@@ -45,7 +46,8 @@ class RepoInfoExtractor:
     def get_file_tree(self) -> str:
         repo = Repo(self.repository_path)
         file_tree = []
-        excluded = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
+        excluded_defaults = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
+        excluded = excluded_defaults.union({s.strip() for s in self.ignored_files})
 
         for item in repo.tree().traverse():
             if any(excluded_dir in item.path.split('/') for excluded_dir in excluded):

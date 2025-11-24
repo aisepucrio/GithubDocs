@@ -7,6 +7,7 @@ class TargetInfo(BaseModel):
     branch_name: str
     start_commit: str
     end_commit: str
+    Ignore_files: list[str]
 
     @field_validator("start_commit", "end_commit")
     def validate_commit(cls, v):
