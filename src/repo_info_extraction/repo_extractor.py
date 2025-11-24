@@ -27,6 +27,7 @@ class RepoInfoExtractor:
         self.repo: Repository = self.get_repository()
         self.readme_text = self.get_readme_text()
         self.file_tree = self.get_file_tree()
+        self.license = self.get_license()
     
     def get_readme_text(self) -> str:
         repo = Repo(self.repository_path)
@@ -122,98 +123,16 @@ class RepoInfoExtractor:
         return {
             "readme": self.readme_text,
             "file_tree": self.file_tree,
-            "commits": commit_result
+            "commits": commit_result,
+            "license": self.license
         }
     
-'''
-def get_prog_lang(self) -> str:
-    import os
-    import subprocess
+    def get_license(self)-> str:
+        license_file_path = f"{self.repository_path}/LICENSE"
 
-    # Caminho do enry
-    enry_path = os.path.expanduser("~/go/bin/enry")
+        license = identify.license_id(license_file_path)
 
-    repo_dir = self.repository_path
-
-    try:
-        result = subprocess.run(
-            [enry_path, repo_dir],
-            capture_output=True,
-            text=True
-        )
-        return result.stdout.strip() if result.stdout else "No language detected"
-    except Exception as e:
-        return f"Error running enry: {e}"
-'''   
-''' def get_prog_lang(self) -> str:
-        import os
-
-        # map simples
-        extension_map = {
-            ".py": "Python",
-            ".js": "JavaScript",
-            ".ts": "TypeScript",
-            ".go": "Go",
-            ".java": "Java",
-            ".cpp": "C++",
-            ".c": "C",
-            ".h": "C/C++ Header",
-            ".cs": "C#",
-            ".rb": "Ruby",
-            ".php": "PHP",
-            ".html": "HTML",
-            ".css": "CSS",
-            ".json": "JSON",
-            ".yml": "YAML",
-            ".yaml": "YAML",
-            ".xml": "XML",
-            ".rs": "Rust",
-            ".kt": "Kotlin",
-            ".swift": "Swift",
-            ".sh": "Shell",
-            ".md": "Markdown",
-            ".sql": "SQL",
-        }
-
-        result = {}
-
-        for root, dirs, files in os.walk(self.repository_path):
-
-            dirs[:] = [d for d in dirs if d not in {'.git', 'node_modules', 'venv', '.venv', '__pycache__'}]
-
-            for file in files:
-                _, ext = os.path.splitext(file)
-                if ext.lower() in extension_map:
-                    lang = extension_map[ext.lower()]
-                    file_path = os.path.join(root, file)
-
-                    try:
-                        size = os.path.getsize(file_path)
-                    except:
-                        size = 0
-
-                    result[lang] = result.get(lang, 0) + size
-
-        total = sum(result.values())
-        if total > 0:
-            result = {lang: round(size / total * 100, 2) for lang, size in result.items()}
-
-        if not result:
-            return "No languages detected"
-
-        lines = [f"{lang}: {pct}%" for lang, pct in sorted(result.items(), key=lambda x: -x[1])]
-        return "\n".join(lines)
-'''
-
-def get_license(self):
-    license_file_path = f"{self.repository_path}/LICENSE"
-
-    license = identify.license_id(license_file_path)
-
-    print(f"The identified license is: {license}")
-
-    return license
-
+        return license
 
 if __name__ == "__main__":
 

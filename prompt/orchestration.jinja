@@ -1,7 +1,5 @@
 You are an AI agent tasked with analyzing a repository.
 
-repo_info.license: {{ repo_info.license }}
-
 {% if repo_info.readme %}
 ## Repository README:
 {{ repo_info.readme }}
@@ -34,5 +32,8 @@ Modifications:
 {% endfor %}
 ---
 {% endfor %}
+
+## LICENSE:
+{{ repo_info.license }}
 
 Please analyze the provided information and generate appropriate documentation.
