@@ -77,7 +77,6 @@ def start(base_config: BaseAppConfig):
             start_commit=base_config.target_info.start_commit,
             end_commit=base_config.target_info.end_commit,
             target_branch=base_config.target_info.branch_name,
-            branch_name=base_config.target_info.branch_name,
             ignored_files=base_config.target_info.Ignore_files
         )
         repo_info = extractor.extract_repo_info()
