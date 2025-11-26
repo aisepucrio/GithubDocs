@@ -2,7 +2,7 @@ You are an AI agent tasked with analyzing a repository.
 
 {% if repo_info.readme %}
 ## Repository README:
-{{ repo_info.readme }}
+{{"README.md" | read_file }}
 
 ---
 {% endif %}

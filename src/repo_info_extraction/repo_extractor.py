@@ -123,6 +123,7 @@ class RepoInfoExtractor:
                 }
             commit_result.append(commit_info)
         return {
+            "repo_path": self.repository_path,
             "readme": self.readme_text,
             "file_tree": self.file_tree,
             "commits": commit_result,
