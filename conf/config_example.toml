@@ -3,7 +3,8 @@ repo_path = "external_repos/EventFlow"
 branch_name = "develop-v1"
 start_commit = "1f5f3377099ff21d151e99c62e1fb7cc83dfe97c"
 end_commit = "7c91526eaefd63887cb34072b81cfec50d63d598" #This need to be the latest commit between the two
-Ignore_files = ["docs/README.md", "CHANGELOG.md", "CONTRIBUTING.md"]
+ignore_files = ["docs/README.md", "CHANGELOG.md", "CONTRIBUTING.md"]
+
 [agents]
 
 [[agents.output]]

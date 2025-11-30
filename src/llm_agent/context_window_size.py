@@ -9,5 +9,6 @@ LLM_CONTEXT_WINDOWS = {
     "gpt-5-mini-2025-08-07": 400_000,
     "gpt-5-nano": 400_000,
     "gpt-5-nano-2025-08-07": 400_000,
+    "mistral-nemo:latest": 128_000,
     "mock": 10000000000000
 }

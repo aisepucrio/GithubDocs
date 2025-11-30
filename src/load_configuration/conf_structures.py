@@ -1,13 +1,16 @@
 from dataclasses import dataclass
 from pydantic import BaseModel, field_validator
 from .validators import *
+from typing import Optional
 import os
+
+
 class TargetInfo(BaseModel):
     repo_path: str
     branch_name: str
     start_commit: str
     end_commit: str
-    Ignore_files: list[str]
+    ignore_files: Optional[list[str]] = None
 
     @field_validator("start_commit", "end_commit")
     def validate_commit(cls, v):
@@ -22,7 +25,7 @@ class TargetInfo(BaseModel):
         return v
 
     def __str__(self):
-        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, start_commit={self.start_commit}, end_commit={self.end_commit})"
+        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, start_commit={self.start_commit}, end_commit={self.end_commit}, ignore_files={self.ignore_files})"
 
 
 class OutputInfo(BaseModel):

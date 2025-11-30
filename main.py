@@ -1,8 +1,12 @@
 import argparse
 import logging
+
+from dotenv import load_dotenv
+
 from src.facade import start
 from src.load_configuration import load_config
 from src.log import CustomLogger
+
 
 def main():
     parser = argparse.ArgumentParser(description="Gemini Documentation Generator")
@@ -33,5 +37,7 @@ def main():
     logger.info("Starting documentation generation...")
     start(config)
 
+
 if __name__ == "__main__":
+    load_dotenv()
     main()
