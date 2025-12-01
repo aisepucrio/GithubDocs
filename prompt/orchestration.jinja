@@ -2,7 +2,7 @@ You are an AI agent tasked with analyzing a repository.
 
 {% if repo_info.readme %}
 ## Repository README:
-{{ repo_info.readme }}
+{{"README.md" | read_file }}
 
 ---
 {% endif %}
@@ -32,5 +32,11 @@ Modifications:
 {% endfor %}
 ---
 {% endfor %}
+
+## Most Common File Extensions:
+{{ repo_info.extensions }}
+
+## LICENSE:
+{{ repo_info.license }}
 
 Please analyze the provided information and generate appropriate documentation.

@@ -1,6 +1,9 @@
 from pydriller import Repository
 from git import Repo
 from typing import Tuple
+from identify import identify
+from collections import Counter
+import os
 
 from .repo_info_exceptions import (
     RepoInfoExtractionError,
@@ -27,6 +30,8 @@ class RepoInfoExtractor:
         self.repo: Repository = self.get_repository()
         self.readme_text = self.get_readme_text()
         self.file_tree = self.get_file_tree()
+        self.license = self.get_license()
+        self.extensions = self.get_extensions()
     
     def get_readme_text(self) -> str:
         repo = Repo(self.repository_path)
@@ -117,10 +122,59 @@ class RepoInfoExtractor:
                 }
             commit_result.append(commit_info)
         return {
+            "repo_path": self.repository_path,
             "readme": self.readme_text,
             "file_tree": self.file_tree,
-            "commits": commit_result
+            "commits": commit_result,
+            "license": self.license,
+            "extensions": self.extensions
         }
+    
+    def get_license(self)-> str:
+        license_file_path = f"{self.repository_path}/LICENSE"
+
+        license = identify.license_id(license_file_path)
+
+        return license
+    
+    def get_extensions(self, extra_excluded: list[str] = None) -> str:
+        repo = Repo(self.repository_path)
+        
+        excluded = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
+        
+        if extra_excluded:
+            excluded.update(extra_excluded)
+
+        extensions = []
+
+        for item in repo.tree().traverse():
+            parts = item.path.split('/')
+            if any(part in excluded for part in parts):
+                continue
+
+            if item.type == 'blob':
+                _, ext = os.path.splitext(item.path)
+                ext = ext.lower()
+                if ext: 
+                    extensions.append(ext)
+                extensions.append(ext)
+
+        counter = Counter(extensions)
+        total = sum(counter.values())
+
+        percentages = {
+            ext: round((count / total) * 100, 2)
+            for ext, count in counter.items()
+        }
+
+        percentages = {
+            ext: pct for ext, pct in sorted(percentages.items(), key=lambda item: item[1], reverse=True)
+        }
+
+        top_5_extensions = dict(list(percentages.items())[:5])
+        extensions_str = ", ".join([f"{k}: {v}%" for k, v in top_5_extensions.items()])
+
+        return extensions_str
 
 if __name__ == "__main__":
 

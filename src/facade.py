@@ -11,13 +11,24 @@ from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
 AI_DICT = get_agent_dictionary()
 logger = CustomLogger()
 
-def render_prompt(template_path: str, prompt_file: str, variables: dict) -> str:
+# MOVER PRA OUTRO LUGAR?
+def load_file(repo_path: str, relative_path: str) -> str:
+    file_path = os.path.join(repo_path, relative_path)
+
+    if not os.path.exists(file_path):
+        return f"Arquivo '{relative_path}' não encontrado"
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_path: str) -> str:
     env = Environment(loader=FileSystemLoader(template_path))
+    env.filters["read_file"] = lambda rel: load_file(repo_path, rel)
     template = env.get_template(prompt_file)
     return template.render(variables)
 
-def populate_template(template_path: str, prompt_file: str, variables: dict) -> str:
-    return render_prompt(template_path, prompt_file, variables)
+def populate_template(template_path: str, prompt_file: str, variables: dict, repo_path: str) -> str:
+    return render_prompt(template_path, prompt_file, variables, repo_path)
 
 def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None) -> AIAgent | None:
     agent_class = None
@@ -47,7 +58,8 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     prompt = populate_template(
         orchestration_step.template_path,
         orchestration_step.prompt_file,
-        template_vars
+        template_vars,
+        repo_info["repo_path"]
     )
 
     # I only summarize the diffs if the prompt is too large without that, probably the code will broke
