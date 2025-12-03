@@ -113,6 +113,10 @@ class RepoInfoExtractor:
                 "modifications":{}
             }
             for idx, modified_file in enumerate(modified_files):
+
+                if modified_file.new_path in self.ignored_files:
+                    continue
+
                 key = f"{modified_file.new_path}_{idx}"
                 commit_info["modifications"][key] = {
                     "change_type": modified_file.change_type.name,
