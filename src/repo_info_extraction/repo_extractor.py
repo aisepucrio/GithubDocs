@@ -18,15 +18,12 @@ from .repo_info_exceptions import (
 
 class RepoInfoExtractor:
 
-    def __init__(self, repository_path: str, start_commit: str = None, end_commit: str = None, ignored_files: list[str] = None, target_branch: str = 'main'):
+    def __init__(self, repository_path: str, commit_list: list[str] = None, ignored_files: list[str] = None, target_branch: str = 'main'):
         self.repository_path = repository_path
-        self.start_commit = start_commit
-        self.end_commit = end_commit
+        self.commit_list = commit_list
         self.target_branch = target_branch
         self.ignored_files = ignored_files or []
 
-        self.start_commit_date = None
-        self.end_commit_date = None
         self.repo: Repository = self.get_repository()
         self.readme_text = self.get_readme_text()
         self.file_tree = self.get_file_tree()
@@ -82,24 +79,32 @@ class RepoInfoExtractor:
 
         if not is_valid:
             raise InvalidRepositoryPathError()
-        if not self.validate_branch(repo):
-            raise InvalidBranchError()
 
-        repo.git.checkout(self.target_branch)
-        repo.remote().pull()
-        repo.git.submodule('update', '--init', '--recursive')
-        
-        if self.start_commit and not self.validate_commit(self.start_commit, repo):
-            raise InvalidCommitError(self.start_commit)
-        if self.end_commit and not self.validate_commit(self.end_commit, repo):
-            raise InvalidCommitError(self.end_commit)
+        all_repo_commits = [commit.hexsha for commit in repo.iter_commits()]
+        commit_list = []
 
-        self.start_commit_date = self.start_commit and repo.commit(self.start_commit).committed_datetime
-        self.end_commit_date = self.end_commit and repo.commit(self.end_commit).committed_datetime
+        for commit_hash in self.commit_list or []:
+            if ":" in commit_hash:
+                temp = commit_hash.split(":")
+                start_commit, end_commit = temp[0], temp[1]
+                index1 = all_repo_commits.index(start_commit)
+                index2 = all_repo_commits.index(end_commit)
+                if index1 == -1 or index2 == -1:
+                    raise InvalidCommitError(commit_hash)
+                if index1 < index2: # the order do not matter now
+                    index1, index2 = index2, index1
+                commit_list.extend(all_repo_commits[index2:index1 + 1])
+            else:
+                index1 = all_repo_commits.index(commit_hash) if commit_hash in all_repo_commits else -1
+                if index1 == -1:
+                    raise InvalidCommitError(commit_hash)
+                commit_list.append(commit_hash)
+            
+        if commit_list == []:
+            raise InvalidCommitError()
 
         return Repository(self.repository_path,
-                            since=self.start_commit_date,
-                            to=self.end_commit_date,
+                            only_commits=commit_list,
                             only_in_branch=self.target_branch)
 
     def extract_repo_info(self) -> list[dict]:
@@ -127,7 +132,7 @@ class RepoInfoExtractor:
             commit_result.append(commit_info)
         return {
             "repo_path": self.repository_path,
-            "readme": self.readme_text,
+            #"readme": self.readme_text,
             "file_tree": self.file_tree,
             "commits": commit_result,
             "license": self.license,
