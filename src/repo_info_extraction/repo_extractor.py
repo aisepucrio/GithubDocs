@@ -148,11 +148,13 @@ class RepoInfoExtractor:
         }
     
     def get_license(self)-> str:
-        license_file_path = f"{self.repository_path}/LICENSE"
-
-        license = identify.license_id(license_file_path)
-
-        return license
+        try:
+            license_file_path = f"{self.repository_path}/LICENSE"
+            license = identify.license_id(license_file_path)
+            if license == "":
+                license = "LICENSE exists, check License File"               
+        except Exception:
+            license = "No License File"
     
     def get_extensions(self, extra_excluded: list[str] = None) -> str:
         repo = Repo(self.repository_path)
