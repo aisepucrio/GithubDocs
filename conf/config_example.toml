@@ -1,0 +1,20 @@
+[target_information]
+repo_path = "external_repos/EventFlow"
+branch_name = "develop-v1"
+commit_list = ["6bcade563d627ea3d2b35f59d4d5dee56d6ea6a",
+"7c91526eaefd63887cb34072b81cfec5d63d598:13c67e50f66a6cc6a56dd2d3799c5fe37195d35"]
+ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
+[agents]
+
+[[agents.output]]
+result_path = "output/"
+log_path = "logs/"
+result_file_name = "r_event1.md"
+
+[[agents.orchestration]]
+step = 1
+model_name = "gemini-2.5-flash-lite"
+temperature = 0.2
+template_path = "prompt/"
+prompt_file = "changelog.jinja"
+prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
