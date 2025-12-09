@@ -91,8 +91,7 @@ def start(base_config: BaseAppConfig):
     try:
         extractor = RepoInfoExtractor(
             repository_path=base_config.target_info.repo_path,
-            start_commit=base_config.target_info.start_commit,
-            end_commit=base_config.target_info.end_commit,
+            commit_list=base_config.target_info.commit_list,
             target_branch=base_config.target_info.branch_name,
             ignored_files=base_config.target_info.ignore_files
         )

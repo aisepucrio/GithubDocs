@@ -8,15 +8,8 @@ import os
 class TargetInfo(BaseModel):
     repo_path: str
     branch_name: str
-    start_commit: str
-    end_commit: str
+    commit_list: Optional[list[str]] = None
     ignore_files: Optional[list[str]] = None
-
-    @field_validator("start_commit", "end_commit")
-    def validate_commit(cls, v):
-        if not commit_validator(v):
-            raise KeyError(f"\u274C Invalid commit {v}hash")
-        return v
     
     @field_validator("repo_path")
     def validate_repo_path(cls, v):

@@ -127,7 +127,8 @@ class MockAgent(AIAgent):
 
     def generate_response_with_prompt(self, prompt: str, input: str) -> str:
         print("--- MOCK AGENT ---")
-        print("Prompt:", prompt.encode('utf-8', errors='ignore'))
+        prompt = prompt.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+        print("Prompt:", f'{prompt}')
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
