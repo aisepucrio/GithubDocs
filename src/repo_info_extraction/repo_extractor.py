@@ -23,16 +23,18 @@ class RepoInfoExtractor:
         self.commit_list = commit_list
         self.target_branch = target_branch
         self.ignored_files = ignored_files or []
+        self.last_commit_hash = None
 
         self.repo: Repository = self.get_repository()
         self.readme_text = self.get_readme_text()
         self.file_tree = self.get_file_tree()
         self.license = self.get_license()
         self.extensions = self.get_extensions()
+        
     
     def get_readme_text(self) -> str:
-        repo = Repo(self.repository_path)
-        commit = repo.commit(self.end_commit) if self.end_commit else repo.head.commit
+        git_repo = Repo(self.repository_path)
+        commit = git_repo.commit(self.last_commit_hash)
         
         readme_blob = None
         for item in commit.tree.traverse():
@@ -83,6 +85,7 @@ class RepoInfoExtractor:
         all_repo_commits = [commit.hexsha for commit in repo.iter_commits()]
         commit_list = []
 
+        last_commit_index = 0xFFFFFFFF
         for commit_hash in self.commit_list or []:
             if ":" in commit_hash:
                 temp = commit_hash.split(":")
@@ -94,15 +97,20 @@ class RepoInfoExtractor:
                 if index1 < index2: # the order do not matter now
                     index1, index2 = index2, index1
                 commit_list.extend(all_repo_commits[index2:index1 + 1])
+                if index1 < last_commit_index:
+                    last_commit_index = index1
             else:
                 index1 = all_repo_commits.index(commit_hash) if commit_hash in all_repo_commits else -1
                 if index1 == -1:
                     raise InvalidCommitError(commit_hash)
                 commit_list.append(commit_hash)
+                if index1 < last_commit_index:
+                    last_commit_index = index1
             
         if commit_list == []:
             raise InvalidCommitError()
 
+        self.last_commit_hash = all_repo_commits[last_commit_index]
         return Repository(self.repository_path,
                             only_commits=commit_list,
                             only_in_branch=self.target_branch)
