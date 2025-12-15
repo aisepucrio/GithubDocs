@@ -6,6 +6,11 @@ Repository Description: {{ repo_description }}
 Repository Language: {{ repo_language }}
 License: {{ repo_license }}
 
+{% if repo_info.file_tree %}
+## File Tree:
+{{ repo_info.file_tree }}
+{% endif %}
+
 Output structure:
 
 # Repository description
