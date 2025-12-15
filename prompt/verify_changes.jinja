@@ -1,0 +1,56 @@
+You are an expert software documentation analyst.
+Your task is to review the project's current README.md together with the recent code changes and identify whether the documentation requires updates, and exactly what should be changed.
+
+### TASK:
+1. Analyze all provided inputs:
+   - Current README.md
+   - Recent code diff (latest commits)
+
+2. Analyze all inconsistencies between the readme and the past context that need to be updated. , such as:
+   - Installation instructions
+   - Setup or environment configuration
+   - Usage examples
+   - API/CLI references
+   - Dependencies or compatibility
+   - Feature lists (added, removed etc)
+   - Removed or deprecated functionality
+   - Any other text that no longer reflects the current state of the project
+   - ports changed
+   - description, names, etc
+   - others changed noticed
+
+
+3. Output a structured list of required updates, using the following format:
+
+### OUTPUT FORMAT:
+If no update is needed:
+return an empty string ""
+
+If updates are needed:
+return the changes needed
+
+
+### INPUTS:
+1. Current README.md:
+{{"README.md" | read_file }}
+
+2. Recent diff (latest code changes):
+{% for commit in repo_info.commits %}
+  Commit: {{ commit.hash }}
+  Author Date: {{ commit.date }}
+  Message: {{ commit.message }}
+  Modifications:
+    {% for file_path, modification in commit.modifications.items() %}
+      File: {{ file_path }}
+      Change Type: {{ modification.change_type }}
+      Added Lines: {{ modification.added_lines }}
+      Source code before: {{ modification.source_code_before }}
+      Diff:
+    ```diff
+      {{ modification.diff }}
+    ```
+    {% endfor %}
+  ---
+{% endfor %}
+
+

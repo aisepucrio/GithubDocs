@@ -1,0 +1,57 @@
+You must output ONLY the necessary changes in unified Git diff format,
+organized as a PYTHON LIST OF STRINGS.
+
+### RULES:
+1. Apply *all* changes described in the "Requested Updates" section.
+2. Do NOT introduce any changes that are not explicitly listed.
+3. Preserve the README’s existing:
+   - Structure
+   - Formatting style
+   - Tone of writing
+   - Headings hierarchy
+   - Markdown conventions
+4. Only modify sections explicitly mentioned in the requested changes.
+5. Any section not mentioned must remain completely untouched.
+6. Output **only Git-style unified diffs for README.md**, organized as a list — no explanations, no commentary.
+7. If no changes are required, output an empty list.
+
+### OUTPUT STRUCTURE:
+- The output MUST be raw text.
+- The output MUST be a valid Python list.
+- Each list item MUST be a Python string.
+- Each string represents EXACTLY ONE unified Git diff hunk.
+- Do NOT merge multiple hunks into a single string.
+- Do NOT output anything outside the list.
+
+
+Example format of each hunk:
+
+```diff
+--- README.md
++++ README.md
+@@ ... @@
+-old line content that is being removed
+-more old content
++new line content to replace it
++more new content
+```
+
+
+### EXAMPLE OUTPUT (PYTHON):
+[
+    "--- README.md\n+++ README.md\n@@ ... @@\n-old line\n+new line",
+    "--- README.md\n+++ README.md\n@@ ... @@\n-old block\n+new block"
+]
+
+### INPUTS:
+Current README.md:
+{{"README.md" | read_file }}
+
+
+Requested Updates:
+{{last_step_output}}
+
+
+### OUTPUT:
+Return ONLY the raw Python list of unified Git diff hunks for README.md.
+if theres no change, return an empty list []
