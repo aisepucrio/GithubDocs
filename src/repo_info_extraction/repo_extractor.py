@@ -82,6 +82,10 @@ class RepoInfoExtractor:
         if not is_valid:
             raise InvalidRepositoryPathError()
         
+        is_valid = self.validate_branch(repo)
+        if not is_valid:
+            raise InvalidBranchError()
+        
         if repo.is_dirty(untracked_files=True):
             try:
                 repo.git.stash('push', '--include-untracked')
