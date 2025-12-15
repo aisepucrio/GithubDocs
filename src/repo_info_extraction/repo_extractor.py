@@ -81,6 +81,30 @@ class RepoInfoExtractor:
 
         if not is_valid:
             raise InvalidRepositoryPathError()
+        
+        if repo.is_dirty(untracked_files=True):
+            try:
+                repo.git.stash('push', '--include-untracked')
+            except Exception:
+                try:
+                    repo.git.stash('save', '--include-untracked')
+                except Exception as e:
+                    raise RepoInfoExtractionError(f"Failed to stash local changes: {e}")
+
+        try:
+            repo.git.checkout(self.target_branch)
+        except Exception as e:
+            raise InvalidBranchError(f"Failed to checkout branch '{self.target_branch}': {e}")
+
+        try:
+            repo.remote().pull()
+        except Exception as e:
+            raise RepoInfoExtractionError(f"Failed to pull from remote: {e}")
+
+        try:
+            repo.git.submodule('update', '--init', '--recursive')
+        except Exception as e:
+            raise RepoInfoExtractionError(f"Failed to update submodules: {e}")
 
         all_repo_commits = [commit.hexsha for commit in repo.iter_commits()]
         commit_list = []
@@ -140,7 +164,7 @@ class RepoInfoExtractor:
             commit_result.append(commit_info)
         return {
             "repo_path": self.repository_path,
-            #"readme": self.readme_text,
+            "readme": self.readme_text,
             "file_tree": self.file_tree,
             "commits": commit_result,
             "license": self.license,

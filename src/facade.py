@@ -3,7 +3,8 @@ import os
 from .llm_agent import *
 from .load_configuration import *
 from .repo_info_extraction import *
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, meta
+from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
@@ -22,13 +23,14 @@ def load_file(repo_path: str, relative_path: str) -> str:
         return f.read()
 
 def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_path: str) -> str:
-    env = Environment(loader=FileSystemLoader(template_path))
+    LoggingUndefined = make_logging_undefined(logger=logger,base=Undefined)
+    env = Environment(loader=FileSystemLoader(template_path), undefined=LoggingUndefined)
+    # TODO: Its interesting to simplify this with all posibilities in one function only.
+    # without that, this function going to have a lot fo env.filters in the future.
     env.filters["read_file"] = lambda rel: load_file(repo_path, rel)
     template = env.get_template(prompt_file)
-    return template.render(variables)
 
-def populate_template(template_path: str, prompt_file: str, variables: dict, repo_path: str) -> str:
-    return render_prompt(template_path, prompt_file, variables, repo_path)
+    return template.render(variables)
 
 def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None) -> AIAgent | None:
     agent_class = None
@@ -55,30 +57,12 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     logger.debug(f"Template variables: {template_vars.keys()}")
 
 
-    prompt = populate_template(
+    prompt = render_prompt(
         orchestration_step.template_path,
         orchestration_step.prompt_file,
         template_vars,
         repo_info["repo_path"]
     )
-
-    # I only summarize the diffs if the prompt is too large without that, probably the code will broke
-    # Uncomment this part if needed
-    # This is a bit of skill issue of my part, Think on a better way to handle this in the future
-    # if agent.need_summarization(prompt):
-    #     logger.warning("Prompt exceeds context window size. Summarizing diffs.")
-    #     summarized_repo_info = copy.deepcopy(repo_info)
-    #     for commit in summarized_repo_info:
-    #         for modification in commit['modifications'].values():
-    #             if modification['diff']:
-    #                 modification['diff'] = summarize_text(modification['diff'], agent)
-        
-    #     template_vars['repo_info'] = summarized_repo_info
-    #     prompt = populate_template(
-    #         orchestration_step.template_path,
-    #         orchestration_step.prompt_file,
-    #         template_vars
-    #     )
 
     if agent.need_summarization(prompt):
         logger.error("Prompt still too large after summarization. Consider reducing the number of commits or files.")

@@ -99,10 +99,15 @@ class CustomLogger:
         """Log de sucesso"""
         if self.log_level <= logging.INFO:
             self._log(LogLevel.SUCCESS, message, Colors.GREEN)
-    
-    def warning(self, message: str):
-        """Log de aviso"""
+
+    def warning(self, format_string: str, variable=None):
         if self.log_level <= logging.WARNING:
+            # If a variable exists, format it. Otherwise, use the string as-is.
+            if variable is not None:
+                message = format_string % variable
+            else:
+                message = format_string
+                
             self._log(LogLevel.WARNING, message, Colors.YELLOW)
 
     def debug(self, message: str):

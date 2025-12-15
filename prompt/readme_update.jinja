@@ -57,8 +57,9 @@ Example format:
 ```
 
 ### INPUTS: 
-1. Current README.md:
-{{"README.md" | read_file }}
+{% if repo_info.readme %}
+## Repository README:
+{{repo_info.readme  }}
 
 2. Recent diff (latest code changes):
 {% for commit in repo_info.commits %}
