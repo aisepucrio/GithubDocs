@@ -3,7 +3,7 @@ Use only the information provided below to produce a complete, well-structured R
 Use the following repository data:
 Repository Name: {{ repo_name }}
 Repository Description: {{ repo_description }}
-Repository Language: {{ repo_language }}
+Repository Language: {{ repo_info.extensions }}
 License: {{ repo_info.license }}
 
 {% if repo_info.file_tree %}
