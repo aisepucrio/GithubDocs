@@ -1,14 +1,14 @@
 # GithubDocs
 
-Este projeto utiliza o [uv](https://github.com/astral-sh/uv), um instalador e gerenciador de pacotes Python ultra rápido que também inclui o linter/formatter Ruff.
+This project utilizes [uv](https://github.com/astral-sh/uv), an ultra-fast Python package installer and manager that also includes the Ruff linter/formatter.
 
-Além disso, o projeto gerencia dependências de repositórios externos para a geração de documentação através de Git submodules.
+Additionally, the project manages dependencies from external repositories for documentation generation via Git submodules.
 
-## Instalação e Configuração
+## Installation and Setup
 
-### 1. Pré-requisitos
+### 1. Prerequisites
 
-Instale o `uv` em seu sistema:
+Install `uv` on your system:
 
   
 #### Via curl (Linux/macOS)
@@ -25,64 +25,64 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 pip install uv
 ```
 
-### 2\. Clonando o Repositório
+### 2\. Cloning the Repository
 
-Para clonar este repositório pela primeira vez, incluindo os submodules, use o comando:
+To clone this repository for the first time, including submodules, use the command:
 
 ```bash
 git clone --recursive <this-repo-url>
 ```
 
-Se você já clonou o repositório sem os submodules, inicialize-os com:
+If you have already cloned the repository without submodules, initialize them with:
 
 ```bash
 git submodule init
 git submodule update
 ```
 
-### 3\. Instalando Dependências Python
+### 3\. Installing Python Dependencies
 
-Com o repositório clonado, crie um ambiente virtual e instale as dependências:
+With the repository cloned, create a virtual environment and install the dependencies:
 
 ```bash
-# Instale as dependências do projeto
+# Install project dependencies
 uv sync
 ```
 
-## Uso
+## Usage
 
-## Gerenciamento de Submodules
+## Submodule Management
 
-Este projeto usa Git submodules para gerenciar dependências de repositórios externos. Eles estão localizados no diretório `external_repos/`.
+This project uses Git submodules to manage dependencies from external repositories. They are located in the `external_repos/` directory.
 
-### Adicionando um Novo Submodule
+### Adding a New Submodule
 
-Para adicionar um novo repositório como um submodule:
+To add a new repository as a submodule:
 
 ```bash
 git submodule add <repository-url> external_repos/<repo-name>
 ```
 
-### Atualizando Submodules
+### Updating Submodules
 
-Para atualizar todos os submodules para seus commits mais recentes na branch padrão:
+To update all submodules to their latest commits on the default branch:
 
 ```bash
 git submodule update --remote
 ```
 
-Para atualizar um submodule específico:
+To update a specific submodule:
 
 ```bash
 git submodule update --remote external_repos/<repo-name>
 ```
 
-### Folder creation
+### Folder Creation
 
-To run the application, you going to need to create other two folders in the repository, the outputs and the logs folder
+To run the application, you will need to create two folders in the repository: `output` and `logs`.
 
-you could do that running
-```
+You can create these folders by running the following command:
+```bash
 mkdir output logs
 ```
 
@@ -90,67 +90,74 @@ mkdir output logs
 
 ## Config File
 
-The config file needs to be referenced when running the application by passing it via arguments. In the `conf/` directory, there is a simple example that configures the framework to run on the EventFlow repository. Note that this example is not suitable for real test scenarios.
+The configuration file must be passed as an argument when running the application. The `conf/` directory contains a simple example that sets up the framework to analyze the EventFlow repository. Please note that this example is intended for demonstration purposes only and is not suitable for real test scenarios.
 
 ## Config File Structure
 
 ### [target_information]
 
-This section provides information about the repository that will be used as the test subject.
+This section specifies the target repository that will be analyzed.
 
 #### repo_path
-The git repository path. This can be either a full path to a location on your PC or a relative location within this repository. This variable does not have a default value.
+The path to the Git repository. This can be an absolute path on your file system or a relative path within this project. This variable is mandatory and does not have a default value.
 
-Two verifications are performed with this information:
-1. Check if the path actually exists
-2. Verify if it is a valid git repository
+Two validations are performed on this path:
+1.  Checks if the specified path exists.
+2.  Verifies if it is a valid Git repository.
 
 #### branch_name
-The specific branch you want to test. This variable does not have a default value.
+The specific branch of the repository you wish to analyze. This variable is mandatory and does not have a default value.
 
 #### start & end commit
-These two variables represent the range between two commits that you want to explore.
+These two variables define the range of commits you want to explore. The framework will analyze all commits from `start_commit` up to and including `end_commit`.
 
-**Caution:** When dealing with these values, note that the end commit is the most recent commit, and the start commit is the older one.
+**Caution:** The `end_commit` should be a more recent commit than the `start_commit`. If `start_commit` is more recent than `end_commit`, the range will be empty.
 
 ### [[agents.output]]
 
 #### result & log paths
-These are the paths the framework will use to write the expected results. It's important to note that the folders need to exist beforehand. If you do not create them, a "KeyError: Path does not exist" message will appear.
+These paths specify where the framework will write the generated results and logs. It is crucial that these directories exist before running the application. If they do not exist, a `KeyError: Path does not exist` will occur.
 
 #### result_file_name
-The file name you want to use for output. It's important to ensure this follows the pattern you specified in the prompt. There is no validation between the file extension and the output format.
+The desired file name for the output. Ensure this adheres to any naming conventions specified in your prompt. There is no automatic validation between the file extension and the actual output format.
 
 ### [[agents.orchestration]]
 
+This section configures the orchestration of agents, defining their execution order and model parameters.
+
 #### step
-A simple number to define the execution order.
+A numerical value defining the execution order of this agent within the orchestration sequence. Lower numbers execute first.
 
 #### model_name
-The actual name of the model from the LLM family (e.g., `gemini-2.5-flash`). Using just "gemini" will cause an error.
+The specific name of the Large Language Model (LLM) to use (e.g., `gemini-2.5-flash`). Using a generic name like `gemini` will result in an error.
 
 #### temperature
-This represents the model temperature, a standard LLM parameter.
+This parameter controls the randomness of the model's output. It is a standard LLM parameter, typically a float between 0.0 and 1.0.
 
 #### template_path
-The path to the folder where the Jinja templates are located.
+The absolute or relative path to the directory containing your Jinja prompt templates.
 
 #### prompt_file
-The actual prompt file created using Jinja templates.
+The name of the Jinja template file (e.g., `my_prompt.jinja`) that will be rendered to create the actual prompt sent to the LLM.
+
+Jinja is a powerful templating tool that allows for dynamic prompt generation. It enables you to embed Python logic within your prompt files, making it possible to create highly flexible and robust prompts that can adapt to varying inputs and scenarios.
 
 #### prompt_variables
-A simple dictionary of variables that can be used in the prompt.
+These are simple key-value pairs that can be passed into your Jinja prompt templates. They are accessible within the template using the `{{ variable_name }}` syntax. The variables are defined as a dictionary.
 
-**Example:**
+Example of `prompt_variables` in the configuration:
 
-```toml
-# config.toml
-{ repo = "EventFlow" }
+```python
+{repo_name = "EventFlow", repo_description= "EventFlow is a basic CQRS+ES framework designed to be easy to use."}
+
 ```
-
+This variable could appear in the prompt where you mention it between curly braces. Example:
 ```jinja
-# prompt.jinja
-What do you know about this GitHub repository {{repo}}?
+Use the following repository data:
+Repository Name: {{ repo_name }}
+Repository Description: {{ repo_description }}
+Repository Language: {{ repo_info.extensions }}
+License: {{ repo_info.license }}
 ```
 
 ## Prompt Creation
@@ -176,7 +183,7 @@ Modifications:
 {% endfor %}
 ```
 
-This example is in the prompt folder with the name `orchestration.jinja`.
+This example is in the `prompt` folder with the name `orchestration.jinja`.
 
 This prompt is rendered by a function that receives a dictionary. The dictionary we use internally has the following structure:
 
@@ -196,10 +203,7 @@ commit_info = {
 }
 ```
 
-**Note:** `file_name_id` represents each changed file. The ID exists to separate possible different alterations when there are two separate additions to a file.
-
-
-Here is a corrected and polished version of your text. I've focused on improving clarity, flow, and standard technical writing conventions.
+**Note:** `file_name_id` acts as a unique identifier for each changed file within the `modifications` dictionary. All information automatically extracted from the repository will be placed into this structure.
 
 # Running the Project
 
@@ -210,15 +214,14 @@ You must pass the path to a **configuration file** as an argument to `main.py`. 
 ```bash
 python main.py conf/config.toml
 ```
-
 -----
 
 ### Optional Flags
 
 The project supports two additional optional flags:
 
-  * **`--debug`**: Enables **extra logs** for enhanced troubleshooting.
-  * **`--mock`**: Prints the **resulting AI prompt** based on your configuration directly to the terminal without sending it to the external AI service. This flag is **intended solely for testing and verification purposes**.
+  * **`--debug`**: Enables **verbose logging** for enhanced troubleshooting.
+  * **`--mock`**: Prints the **rendered AI prompt** (based on your configuration) directly to the terminal without sending it to the external AI service. This flag is **intended solely for testing and verification purposes**.
 
 ### Example with Flags
 
