@@ -92,6 +92,11 @@ def start(base_config: BaseAppConfig):
         logger.info(f"Executing step {step.step}: {step.model_name}")
         final_result = build_orchestration_step(step, repo_info, last_step_output)
         last_step_output = final_result
+        
+        if final_result is None or final_result.strip() == "":
+            logger.info("Final result vazio. Interrompendo o loop.")
+            break
+
 
     output_path = os.path.join(base_config.output_info.result_path, base_config.output_info.result_file_name)
     try:
