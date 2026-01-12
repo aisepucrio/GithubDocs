@@ -4,7 +4,7 @@ import tiktoken
 import ollama 
 
 from openai import OpenAI
-from google import genai
+
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
