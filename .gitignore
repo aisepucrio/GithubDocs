@@ -3,6 +3,7 @@
 test.txt
 output/**
 
+
 conf/**
 !conf/config_example.toml
 
