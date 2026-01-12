@@ -61,6 +61,8 @@ Example format:
 ## Repository README:
 {{repo_info.readme  }}
 
+{% endif %}
+
 2. Recent diff (latest code changes):
 {% for commit in repo_info.commits %}
   Commit: {{ commit.hash }}

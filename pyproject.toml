@@ -19,6 +19,8 @@ dependencies = [
     "ollama",
     "dotenv>=0.9.9",
     "identify[license]",
+    "langchain-core>=0.3.81",
+    "langchain[google-genai]>=0.3.27",
 ]
 
 [tool.ruff]
