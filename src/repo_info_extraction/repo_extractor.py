@@ -128,21 +128,75 @@ class RepoInfoExtractor:
                             only_commits=commit_list,
                             only_in_branch=self.target_branch)
 
+    # def extract_repo_info(self) -> list[dict]:
+    #     commit_result = []
+    #     for commit in self.repo.traverse_commits():
+    #         modified_files = commit.modified_files
+    #         commit_info = {
+    #             "hash": commit.hash,
+    #             "date": commit.author_date,
+    #             "message": commit.msg,
+    #             "modifications":{}
+    #         }
+    #         for idx, modified_file in enumerate(modified_files):
+
+    #             if modified_file.new_path in self.ignored_files:
+    #                 continue
+
+    #             key = f"{modified_file.new_path}_{idx}"
+    #             commit_info["modifications"][key] = {
+    #                 "change_type": modified_file.change_type.name,
+    #                 "added_lines": modified_file.added_lines,
+    #                 "diff": modified_file.diff,
+    #                 "source_code_before": modified_file.source_code_before
+    #             }
+    #         commit_result.append(commit_info)
+    #     return {
+    #         "repo_path": self.repository_path,
+    #         "readme": self.readme_text,
+    #         "file_tree": self.file_tree,
+    #         "commits": commit_result,
+    #         "license": self.license,
+    #         "extensions": self.extensions
+    #     }
+
     def extract_repo_info(self) -> list[dict]:
         commit_result = []
+
+        # extensões consideradas 
+        allowed_extensions = {
+            ".py", ".js"
+        }
+
         for commit in self.repo.traverse_commits():
             modified_files = commit.modified_files
             commit_info = {
                 "hash": commit.hash,
                 "date": commit.author_date,
                 "message": commit.msg,
-                "modifications":{}
+                "modifications": {}
             }
-            for idx, modified_file in enumerate(modified_files):
 
+            for idx, modified_file in enumerate(modified_files):
+                #print("ANALISANDO:", modified_file.new_path, modified_file.change_type.name)
+                # arquivo sem caminho 
+                if modified_file.new_path is None:
+                    continue
+                # arquivos ignorados 
                 if modified_file.new_path in self.ignored_files:
                     continue
-
+                # arquivos deletados
+                if modified_file.change_type.name == "DELETE":
+                    continue
+                # ignora mudanças sem diff
+                if not modified_file.diff:
+                    continue
+                # filtrar por tipo de arquivo (extensão)
+                _, ext = os.path.splitext(modified_file.new_path)
+                if ext.lower() not in allowed_extensions:
+                    continue
+                #print("ACEITO:", modified_file.new_path)
+                # snapshot aprovado → entra no resultado
                 key = f"{modified_file.new_path}_{idx}"
                 commit_info["modifications"][key] = {
                     "change_type": modified_file.change_type.name,
@@ -151,6 +205,7 @@ class RepoInfoExtractor:
                     "source_code_before": modified_file.source_code_before
                 }
             commit_result.append(commit_info)
+
         return {
             "repo_path": self.repository_path,
             "readme": self.readme_text,
@@ -159,6 +214,7 @@ class RepoInfoExtractor:
             "license": self.license,
             "extensions": self.extensions
         }
+
     
     def get_license(self)-> str:
         try:
