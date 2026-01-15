@@ -66,6 +66,8 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
 
     if agent.need_summarization(prompt):
         logger.error("Prompt still too large after summarization. Consider reducing the number of commits or files.")
+        
+        
         exit(1)
 
     response = agent.generate_response_with_prompt(prompt, "")

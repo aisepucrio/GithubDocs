@@ -30,12 +30,12 @@ class RepoInfoExtractor:
         self.file_tree = self.get_file_tree()
         self.license = self.get_license()
         self.extensions = self.get_extensions()
-        
-    
+
+
     def get_readme_text(self) -> str:
         git_repo = Repo(self.repository_path)
         commit = git_repo.commit(self.last_commit_hash)
-        
+
         readme_blob = None
         for item in commit.tree.traverse():
             if getattr(item, "type", None) == "blob" and getattr(item, "name", "").lower().startswith("readme"):
@@ -46,7 +46,7 @@ class RepoInfoExtractor:
             raise ReadmeNotFoundError()
 
         return readme_blob.data_stream.read().decode("utf-8", errors="replace")
-    
+
     def get_file_tree(self) -> str:
         repo = Repo(self.repository_path)
         file_tree = []
@@ -75,17 +75,17 @@ class RepoInfoExtractor:
             return (True, repo)
         except Exception:
             return (False, None)
-        
+
     def get_repository(self) -> Repository:
         is_valid, repo = self.validate_repository()
 
         if not is_valid:
             raise InvalidRepositoryPathError()
-        
+
         is_valid = self.validate_branch(repo)
         if not is_valid:
             raise InvalidBranchError()
-        
+
         if repo.is_dirty(untracked_files=True):
             try:
                 repo.git.stash('push', '--include-untracked')
@@ -107,7 +107,7 @@ class RepoInfoExtractor:
                 index2 = all_repo_commits.index(end_commit)
                 if index1 == -1 or index2 == -1:
                     raise InvalidCommitError(commit_hash)
-                if index1 < index2: # the order do not matter now
+                if index1 < index2:  # the order do not matter now
                     index1, index2 = index2, index1
                 commit_list.extend(all_repo_commits[index2:index1 + 1])
                 if index1 < last_commit_index:
@@ -119,55 +119,17 @@ class RepoInfoExtractor:
                 commit_list.append(commit_hash)
                 if index1 < last_commit_index:
                     last_commit_index = index1
-            
+
         if commit_list == []:
             raise InvalidCommitError()
 
         self.last_commit_hash = all_repo_commits[last_commit_index]
         return Repository(self.repository_path,
-                            only_commits=commit_list,
-                            only_in_branch=self.target_branch)
-
-    # def extract_repo_info(self) -> list[dict]:
-    #     commit_result = []
-    #     for commit in self.repo.traverse_commits():
-    #         modified_files = commit.modified_files
-    #         commit_info = {
-    #             "hash": commit.hash,
-    #             "date": commit.author_date,
-    #             "message": commit.msg,
-    #             "modifications":{}
-    #         }
-    #         for idx, modified_file in enumerate(modified_files):
-
-    #             if modified_file.new_path in self.ignored_files:
-    #                 continue
-
-    #             key = f"{modified_file.new_path}_{idx}"
-    #             commit_info["modifications"][key] = {
-    #                 "change_type": modified_file.change_type.name,
-    #                 "added_lines": modified_file.added_lines,
-    #                 "diff": modified_file.diff,
-    #                 "source_code_before": modified_file.source_code_before
-    #             }
-    #         commit_result.append(commit_info)
-    #     return {
-    #         "repo_path": self.repository_path,
-    #         "readme": self.readme_text,
-    #         "file_tree": self.file_tree,
-    #         "commits": commit_result,
-    #         "license": self.license,
-    #         "extensions": self.extensions
-    #     }
+                          only_commits=commit_list,
+                          only_in_branch=self.target_branch)
 
     def extract_repo_info(self) -> list[dict]:
         commit_result = []
-
-        # extensões consideradas 
-        allowed_extensions = {
-            ".py", ".js"
-        }
-
         for commit in self.repo.traverse_commits():
             modified_files = commit.modified_files
             commit_info = {
@@ -176,27 +138,11 @@ class RepoInfoExtractor:
                 "message": commit.msg,
                 "modifications": {}
             }
-
             for idx, modified_file in enumerate(modified_files):
-                #print("ANALISANDO:", modified_file.new_path, modified_file.change_type.name)
-                # arquivo sem caminho 
-                if modified_file.new_path is None:
-                    continue
-                # arquivos ignorados 
+
                 if modified_file.new_path in self.ignored_files:
                     continue
-                # arquivos deletados
-                if modified_file.change_type.name == "DELETE":
-                    continue
-                # ignora mudanças sem diff
-                if not modified_file.diff:
-                    continue
-                # filtrar por tipo de arquivo (extensão)
-                _, ext = os.path.splitext(modified_file.new_path)
-                if ext.lower() not in allowed_extensions:
-                    continue
-                #print("ACEITO:", modified_file.new_path)
-                # snapshot aprovado → entra no resultado
+
                 key = f"{modified_file.new_path}_{idx}"
                 commit_info["modifications"][key] = {
                     "change_type": modified_file.change_type.name,
@@ -205,7 +151,6 @@ class RepoInfoExtractor:
                     "source_code_before": modified_file.source_code_before
                 }
             commit_result.append(commit_info)
-
         return {
             "repo_path": self.repository_path,
             "readme": self.readme_text,
@@ -215,23 +160,23 @@ class RepoInfoExtractor:
             "extensions": self.extensions
         }
 
-    
-    def get_license(self)-> str:
+
+    def get_license(self) -> str:
         try:
             license_file_path = f"{self.repository_path}/LICENSE"
             license = identify.license_id(license_file_path)
             if license == None:
-                license = "LICENSE exists, check License File"     
-            return license     
+                license = "LICENSE exists, check License File"
+            return license
         except Exception:
             license = "No License File"
             return license
-    
+
     def get_extensions(self, extra_excluded: list[str] = None) -> str:
         repo = Repo(self.repository_path)
-        
+
         excluded = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
-        
+
         if extra_excluded:
             excluded.update(extra_excluded)
 
@@ -245,9 +190,8 @@ class RepoInfoExtractor:
             if item.type == 'blob':
                 _, ext = os.path.splitext(item.path)
                 ext = ext.lower()
-                if ext: 
+                if ext:
                     extensions.append(ext)
-                extensions.append(ext)
 
         counter = Counter(extensions)
         total = sum(counter.values())
@@ -266,6 +210,7 @@ class RepoInfoExtractor:
 
         return extensions_str
 
+
 if __name__ == "__main__":
 
     start_commit = "b4a27b33d3f7a886fa0ca09d6221602d98b52053"
@@ -275,10 +220,10 @@ if __name__ == "__main__":
 
     try:
         extractor = RepoInfoExtractor("/home/PUC/Documentos/GithubDocs/external_repos/EventFlow",
-                                       start_commit=start_commit,
-                                       end_commit=end_commit,
-                                       target_branch="develop-v1")
+                                      start_commit=start_commit,
+                                      end_commit=end_commit,
+                                      target_branch="develop-v1")
 
         repo_info = extractor.extract_repo_info()
     except RepoInfoExtractionError as e:
-        print(e)
+        pass

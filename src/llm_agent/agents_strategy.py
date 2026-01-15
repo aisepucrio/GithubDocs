@@ -41,7 +41,7 @@ class GPTAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2):
         api_key = api_key or os.environ.get("OPENAI_API_KEY")
         super().__init__(model_name, api_key, base_prompt, temperature)
-        self.client: OpenAI = OpenAI(api_key=self.api_key)
+        self.chat_model: BaseChatModel = init_chat_model("openai:" + model_name, api_key=api_key)
 
     def generate_response(self, input: str) -> str:
         parameters = {
@@ -50,8 +50,8 @@ class GPTAgent(AIAgent):
         }
         if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
             parameters["temperature"] = self.temperature
-        response = self.client.responses.create(**parameters)
-        self.output = response.output_text
+        response = self.chat_model.invoke(**parameters)
+        self.output = response.content
         return self.output
 
     def generate_response_with_prompt(self, prompt: str, input: str) -> str:
@@ -61,8 +61,8 @@ class GPTAgent(AIAgent):
         }
         if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
             parameters["temperature"] = self.temperature
-        response = self.client.responses.create(**parameters)
-        self.output = response.output_text
+        response = self.chat_model.invoke(**parameters)
+        self.output = response.content
         return self.output
 
     def _count_tokens(self, input: str) -> int:
