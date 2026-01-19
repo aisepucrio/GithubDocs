@@ -5,40 +5,57 @@ import ollama
 
 from openai import OpenAI
 
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain.agents.middleware import SummarizationMiddleware
+from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
-
 from .agent_interface import AIAgent
 
 class GeminiAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         api_key = api_key or os.environ.get("GEMINI_API_KEY")
-                
         super().__init__(model_name, api_key, base_prompt, temperature)
 
-        self.chat_model:BaseChatModel = init_chat_model("google_genai:" + model_name, api_key=api_key, temperature=temperature)
+        self.chat_model: BaseChatModel = init_chat_model(
+            "google_genai:" + model_name,
+            api_key=api_key,
+            temperature=temperature
+        )
+
+        self.agent = create_agent(
+            self.chat_model,
+            tools=[],
+            middleware=[
+            SummarizationMiddleware(
+            model="google_genai:" + model_name,
+            trigger=("tokens", 4000),
+            keep=("messages", 20),
+            ),],
+            checkpointer=context_memory
+        )
+
 
     def generate_response(self, input: str) -> str:
-        response = self.chat_model.invoke(self.base_prompt + "\n" + input,
+        response = self.agent.invoke(
+            {"messages": [("user", self.base_prompt + "\n" + input)]}
         )
-        self.output = response.content
+        self.output = response["messages"][-1].content
         return self.output
-    
-    def generate_response_with_prompt(self,  prompt: str, input: str) -> str:
-        response = self.chat_model.invoke(
-             prompt + "\n" + input,
+
+    def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
+        response = self.agent.invoke(
+            {"messages": [("user", prompt + "\n" + input)]},
+            config=config
         )
-        self.output = response.content
+        self.output = response["messages"][-1].content
         return self.output
-    
+
     def _count_tokens(self, input: str) -> int:
-        return self.chat_model.get_num_tokens(
-         self.base_prompt + "\n" + input
-        )
+        return self.chat_model.get_num_tokens(self.base_prompt + "\n" + input)
 
 class GPTAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         api_key = api_key or os.environ.get("OPENAI_API_KEY")
         super().__init__(model_name, api_key, base_prompt, temperature)
         self.chat_model: BaseChatModel = init_chat_model("openai:" + model_name, api_key=api_key)
@@ -54,7 +71,7 @@ class GPTAgent(AIAgent):
         self.output = response.content
         return self.output
 
-    def generate_response_with_prompt(self, prompt: str, input: str) -> str:
+    def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
         parameters = {
             "model": self.model_name,
             "input": prompt + "\n" + input,
@@ -71,14 +88,14 @@ class GPTAgent(AIAgent):
         return num_tokens
 
 class OllamaAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         super().__init__(model_name, api_key, base_prompt, temperature)
         self.client = ollama.Client()
 
-    def generate_response_with_prompt(self, prompt, input):
+    def generate_response_with_prompt(self, prompt, input, config: dict = None):
         full_prompt = prompt + "\n" + input
         response = self.client.chat(
-            model=self.model_name, 
+            model=self.model_name,
             messages=[
                 {"role": "user", "content": full_prompt},
             ],
@@ -117,7 +134,7 @@ class OllamaAgent(AIAgent):
 
 
 class MockAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         super().__init__(model_name, api_key, base_prompt, temperature)
 
     def generate_response(self, input: str) -> str:
@@ -127,7 +144,7 @@ class MockAgent(AIAgent):
         print("--- END MOCK AGENT ---")
         return "Mocked response"
 
-    def generate_response_with_prompt(self, prompt: str, input: str) -> str:
+    def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
         print("--- MOCK AGENT ---")
         prompt = prompt.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
         print("Prompt:", f'{prompt}')

@@ -8,9 +8,14 @@ from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
+from langgraph.checkpoint.memory import InMemorySaver
+
+
 
 AI_DICT = get_agent_dictionary()
 logger = CustomLogger()
+RUNNABLE_CONFIG = {"configurable": {"thread_id": "current-run"}}
+
 
 # MOVER PRA OUTRO LUGAR?
 def load_file(repo_path: str, relative_path: str) -> str:
@@ -32,7 +37,7 @@ def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_pa
 
     return template.render(variables)
 
-def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None) -> AIAgent | None:
+def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None) -> AIAgent | None:
     agent_class = None
     for key in AI_DICT:
         if key in model_name:
@@ -40,11 +45,11 @@ def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", te
     if not agent_class and model_name in LLM_CONTEXT_WINDOWS: # Fallback, if there is no direct match, check if the model_name is in the context window dict (ollama models). TODO: improve this
         agent_class = AI_DICT["ollama"]
     if agent_class:
-        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature)
+        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory)
     return None
 
-def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None):
-    agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature)
+def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, context_memory:InMemorySaver = None, config: dict = None):
+    agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature, context_memory=context_memory)
     if agent is None:
         logger.error(f"Agent for model {orchestration_step.model_name} not found.")
         exit(1)
@@ -70,7 +75,7 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
         
         exit(1)
 
-    response = agent.generate_response_with_prompt(prompt, "")
+    response = agent.generate_response_with_prompt(prompt, "", config=config)
     return response
 
 def start(base_config: BaseAppConfig):
@@ -90,9 +95,11 @@ def start(base_config: BaseAppConfig):
     last_step_output = None
     base_config.orchestration_steps.sort(key=lambda x: x.step)
 
+    context_memory = InMemorySaver()
+
     for step in base_config.orchestration_steps:
         logger.info(f"Executing step {step.step}: {step.model_name}")
-        final_result = build_orchestration_step(step, repo_info, last_step_output)
+        final_result = build_orchestration_step(step, repo_info, last_step_output, context_memory, RUNNABLE_CONFIG)
         last_step_output = final_result
         
         if final_result is None or final_result.strip() == "":
