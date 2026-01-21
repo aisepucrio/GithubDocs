@@ -10,6 +10,3 @@
 [submodule "external_repos/stnl-dataminer-api"]
 	path = external_repos/stnl-dataminer-api
 	url = https://github.com/aisepucrio/stnl-dataminer-api
-[submodule "external_repos/security-analysis-tool"]
-	path = external_repos/security-analysis-tool
-	url = https://github.com/databricks-industry-solutions/security-analysis-tool
