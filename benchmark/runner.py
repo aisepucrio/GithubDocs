@@ -1,0 +1,209 @@
+"""
+Runner de benchmark - executa os testes e coleta métricas.
+"""
+
+import time
+import traceback
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+import tomllib
+import sys
+import os
+
+# Adiciona o diretório pai ao path para importar o framework
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.facade import start
+from src.load_configuration import load_config
+from src.load_configuration.conf_structures import BaseAppConfig
+
+from .test_configs import TEST_CONFIGS, get_config_name
+
+
+@dataclass
+class BenchmarkResult:
+    """Resultado de um único benchmark."""
+    config_index: int
+    config_name: str
+    success: bool
+    execution_time_seconds: float
+    output_file: Optional[str] = None
+    output_content: Optional[str] = None
+    error_message: Optional[str] = None
+    timestamp: datetime = field(default_factory=datetime.now)
+    model_name: Optional[str] = None
+    temperature: Optional[float] = None
+    repo_path: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        """Converte para dicionário para exportação."""
+        return {
+            "config_index": self.config_index + 1,  # 1-based para usuário
+            "config_name": self.config_name,
+            "success": "Sim" if self.success else "Não",
+            "execution_time_seconds": round(self.execution_time_seconds, 2),
+            "output_file": self.output_file or "",
+            "error_message": self.error_message or "",
+            "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "model_name": self.model_name or "",
+            "temperature": self.temperature if self.temperature is not None else "",
+            "repo_path": self.repo_path or "",
+        }
+
+
+class BenchmarkRunner:
+    """Executa benchmarks de configs."""
+
+    def __init__(self, verbose: bool = True):
+        self.verbose = verbose
+        self.results: list[BenchmarkResult] = []
+
+    def _log(self, message: str):
+        """Log condicional."""
+        if self.verbose:
+            print(message)
+
+    def _parse_config_string(self, config_str: str) -> BaseAppConfig:
+        """
+        Parseia uma string TOML e retorna um BaseAppConfig.
+        Reutiliza a lógica do load_config mas com string em vez de arquivo.
+        """
+        data = tomllib.loads(config_str)
+
+        target_info = data.get("target_information", {})
+        agents = data.get("agents", {})
+
+        output_list = agents.get("output", [])
+        output_info = output_list[0] if output_list else {}
+
+        orchestration_list = agents.get("orchestration", [])
+
+        from src.load_configuration.conf_structures import (
+            TargetInfo,
+            OutputInfo,
+            OrchestrationStep,
+            BaseAppConfig,
+        )
+
+        config = BaseAppConfig(
+            target_info=TargetInfo(**target_info),
+            output_info=OutputInfo(**output_info),
+            orchestration_steps=[OrchestrationStep(**step) for step in orchestration_list],
+        )
+
+        return config
+
+    def run_single(self, config_index: int) -> BenchmarkResult:
+        """
+        Executa um único benchmark.
+
+        Args:
+            config_index: Índice da config (0-based)
+
+        Returns:
+            BenchmarkResult com os resultados
+        """
+        config_name = get_config_name(config_index)
+        config_str = TEST_CONFIGS[config_index]
+
+        self._log(f"\n{'='*60}")
+        self._log(f"Executando: {config_name} (índice {config_index + 1})")
+        self._log(f"{'='*60}")
+
+        start_time = time.time()
+        result = BenchmarkResult(
+            config_index=config_index,
+            config_name=config_name,
+            success=False,
+            execution_time_seconds=0,
+        )
+
+        try:
+            config = self._parse_config_string(config_str)
+
+            # Extrai metadados
+            result.repo_path = config.target_info.repo_path
+            if config.orchestration_steps:
+                result.model_name = config.orchestration_steps[0].model_name
+                result.temperature = config.orchestration_steps[0].temperature
+
+            result.output_file = os.path.join(
+                config.output_info.result_path,
+                config.output_info.result_file_name
+            )
+
+            self._log(f"Modelo: {result.model_name}")
+            self._log(f"Temperatura: {result.temperature}")
+            self._log(f"Repo: {result.repo_path}")
+            self._log(f"Output: {result.output_file}")
+            self._log("-" * 40)
+
+            # Executa o framework
+            start(config)
+
+            # Lê o output gerado
+            if os.path.exists(result.output_file):
+                with open(result.output_file, "r", encoding="utf-8") as f:
+                    result.output_content = f.read()
+
+            result.success = True
+            self._log(f"Sucesso!")
+
+        except Exception as e:
+            result.error_message = f"{type(e).__name__}: {str(e)}"
+            self._log(f"Erro: {result.error_message}")
+            if self.verbose:
+                traceback.print_exc()
+
+        finally:
+            result.execution_time_seconds = time.time() - start_time
+            result.timestamp = datetime.now()
+            self._log(f"Tempo: {result.execution_time_seconds:.2f}s")
+
+        self.results.append(result)
+        return result
+
+    def run_batch(self, indices: list[int]) -> list[BenchmarkResult]:
+        """
+        Executa múltiplos benchmarks.
+
+        Args:
+            indices: Lista de índices (0-based)
+
+        Returns:
+            Lista de BenchmarkResults
+        """
+        total = len(indices)
+        self._log(f"\nIniciando batch de {total} benchmark(s)...")
+        self._log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        batch_results = []
+        for i, idx in enumerate(indices, 1):
+            self._log(f"\n[{i}/{total}] ", )
+            result = self.run_single(idx)
+            batch_results.append(result)
+
+        # Resumo
+        self._log(f"\n{'='*60}")
+        self._log("RESUMO DO BENCHMARK")
+        self._log(f"{'='*60}")
+
+        success_count = sum(1 for r in batch_results if r.success)
+        total_time = sum(r.execution_time_seconds for r in batch_results)
+
+        self._log(f"Total: {total}")
+        self._log(f"Sucesso: {success_count}")
+        self._log(f"Falhas: {total - success_count}")
+        self._log(f"Tempo total: {total_time:.2f}s")
+        self._log(f"Tempo médio: {total_time/total:.2f}s")
+
+        return batch_results
+
+    def get_results_as_dicts(self) -> list[dict]:
+        """Retorna todos os resultados como lista de dicionários."""
+        return [r.to_dict() for r in self.results]
+
+    def clear_results(self):
+        """Limpa os resultados acumulados."""
+        self.results = []

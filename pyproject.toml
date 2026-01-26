@@ -24,6 +24,12 @@ dependencies = [
     "langchain"
 ]
 
+[project.optional-dependencies]
+benchmark = [
+    "gspread>=6.0.0",
+    "google-auth>=2.0.0",
+]
+
 [tool.ruff]
 # Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), naming (`N`), warning (`W`), pep8-naming (`N`), and Ruff-specific rules (`RUF`)
 select = ["E", "F", "I", "N", "W", "B", "RUF"]
