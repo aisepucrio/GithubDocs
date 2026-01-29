@@ -11,14 +11,17 @@ import tomllib
 import sys
 import os
 
-# Adiciona o diretório pai ao path para importar o framework
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Adiciona o diretório pai ao path para importar GithubDocs
+BENCHMARK_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(BENCHMARK_DIR)  # githubdocs/
+GITHUBDOCS_DIR = os.path.join(PARENT_DIR, "GithubDocs")  # for internal src imports
+sys.path.insert(0, PARENT_DIR)
+sys.path.insert(0, GITHUBDOCS_DIR)
 
 from src.facade import start
-from src.load_configuration import load_config
 from src.load_configuration.conf_structures import BaseAppConfig
 
-from .test_configs import TEST_CONFIGS, get_config_name
+from .test_configs import ConfigMetadata
 
 
 @dataclass
@@ -35,12 +38,15 @@ class BenchmarkResult:
     model_name: Optional[str] = None
     temperature: Optional[float] = None
     repo_path: Optional[str] = None
+    description: str = ""
+    commit_mixed: bool = False
 
     def to_dict(self) -> dict:
         """Converte para dicionário para exportação."""
         return {
             "config_index": self.config_index + 1,  # 1-based para usuário
-            "config_name": self.config_name,
+            "description": self.description,
+            "commit_mixed": "Sim" if self.commit_mixed else "Não",
             "success": "Sim" if self.success else "Não",
             "execution_time_seconds": round(self.execution_time_seconds, 2),
             "output_file": self.output_file or "",
@@ -55,9 +61,37 @@ class BenchmarkResult:
 class BenchmarkRunner:
     """Executa benchmarks de configs."""
 
-    def __init__(self, verbose: bool = True):
+    def __init__(
+        self,
+        configs: list[str],
+        names: list[str],
+        metadata: Optional[list[ConfigMetadata]] = None,
+        verbose: bool = True,
+    ):
+        """
+        Args:
+            configs: Lista de strings TOML com as configurações
+            names: Lista de nomes descritivos para cada config
+            metadata: Lista de metadados (description, commit_mixed) para cada config
+            verbose: Se True, imprime logs detalhados
+        """
+        self.configs = configs
+        self.names = names
+        self.metadata = metadata or [ConfigMetadata() for _ in configs]
         self.verbose = verbose
         self.results: list[BenchmarkResult] = []
+
+    def _get_config_name(self, index: int) -> str:
+        """Retorna o nome da config pelo índice."""
+        if index < len(self.names) and self.names[index]:
+            return self.names[index]
+        return f"Config {index + 1}"
+
+    def _get_metadata(self, index: int) -> ConfigMetadata:
+        """Retorna os metadados da config pelo índice."""
+        if index < len(self.metadata):
+            return self.metadata[index]
+        return ConfigMetadata()
 
     def _log(self, message: str):
         """Log condicional."""
@@ -104,8 +138,9 @@ class BenchmarkRunner:
         Returns:
             BenchmarkResult com os resultados
         """
-        config_name = get_config_name(config_index)
-        config_str = TEST_CONFIGS[config_index]
+        config_name = self._get_config_name(config_index)
+        config_str = self.configs[config_index]
+        meta = self._get_metadata(config_index)
 
         self._log(f"\n{'='*60}")
         self._log(f"Executando: {config_name} (índice {config_index + 1})")
@@ -117,6 +152,8 @@ class BenchmarkRunner:
             config_name=config_name,
             success=False,
             execution_time_seconds=0,
+            description=meta.description,
+            commit_mixed=meta.commit_mixed,
         )
 
         try:

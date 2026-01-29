@@ -19,7 +19,11 @@ EXEMPLO DE URL:
 
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
+
+# Diretório base do benchmark para resolver caminhos relativos
+BENCHMARK_DIR = Path(__file__).parent
 
 try:
     import gspread
@@ -39,13 +43,14 @@ class GoogleSheetsExporter:
 
     HEADERS = [
         "Índice",
-        "Nome Config",
+        "Descrição",
+        "Commit Mixed",
         "Sucesso",
         "Tempo (s)",
         "Modelo",
         "Temperatura",
         "Repo",
-        "Arquivo Output",
+        "Conteúdo Output",
         "Erro",
         "Timestamp",
     ]
@@ -67,7 +72,11 @@ class GoogleSheetsExporter:
                 "gspread não instalado. Execute: pip install gspread google-auth"
             )
 
-        self.credentials_path = credentials_path or os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+        creds = credentials_path or os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+        # Resolve caminhos relativos baseado no diretório do benchmark
+        if creds and not Path(creds).is_absolute():
+            creds = str(BENCHMARK_DIR / creds)
+        self.credentials_path = creds
         self.spreadsheet_id = spreadsheet_id or os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")
 
         if not self.credentials_path:
@@ -136,7 +145,11 @@ class GoogleSheetsExporter:
         self._connect()
 
         if worksheet_name is None:
-            worksheet_name = f"Benchmark_{datetime.now().strftime('%Y-%m-%d')}"
+            # Agrupa por repo - usa o nome do repo do primeiro resultado
+            repo_path = results[0].get("repo_path", "Unknown")
+            # Extrai só o nome do repo (última parte do caminho)
+            repo_name = Path(repo_path).name if repo_path else "Unknown"
+            worksheet_name = repo_name
 
         worksheet = self._get_or_create_worksheet(worksheet_name)
 
@@ -146,15 +159,25 @@ class GoogleSheetsExporter:
 
         rows = []
         for r in results:
+            # Lê o conteúdo do arquivo de output se existir
+            output_content = ""
+            output_file = r.get("output_file", "")
+            if output_file and Path(output_file).exists():
+                try:
+                    output_content = Path(output_file).read_text(encoding="utf-8")
+                except Exception:
+                    output_content = f"[Erro ao ler: {output_file}]"
+
             row = [
                 r.get("config_index", ""),
-                r.get("config_name", ""),
+                r.get("commit_mixed", ""),
                 r.get("success", ""),
                 r.get("execution_time_seconds", ""),
                 r.get("model_name", ""),
                 r.get("temperature", ""),
                 r.get("repo_path", ""),
-                r.get("output_file", ""),
+                output_content,
+                r.get("description", ""),
                 r.get("error_message", ""),
                 r.get("timestamp", ""),
             ]

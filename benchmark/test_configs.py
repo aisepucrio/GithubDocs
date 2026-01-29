@@ -1,34 +1,243 @@
 """
 Arquivo de configurações de teste para benchmark.
 
-COMO USAR:
-    1. Cole suas configs TOML como strings no array TEST_CONFIGS abaixo
-    2. Cada config é uma string com o conteúdo TOML completo
-    3. Dê um nome descritivo para cada config no array CONFIG_NAMES
+MODOS DE USO:
+    1. MANUAL: Cole configs TOML como strings no array TEST_CONFIGS
+    2. GOOGLE SHEETS: Use fetch_configs_from_sheets() para carregar do Sheets
 
-EXEMPLO:
-    TEST_CONFIGS = [
-        '''
-        [target_information]
-        repo_path = "external_repos/MyRepo"
-        ...
-        ''',
-        '''
-        [target_information]
-        repo_path = "external_repos/OtherRepo"
-        ...
-        ''',
-    ]
-
-    CONFIG_NAMES = [
-        "MyRepo - Gemini Flash",
-        "OtherRepo - GPT-4",
-    ]
+CAMPOS DO GOOGLE SHEETS:
+    - ini_commit: Commit inicial do range
+    - end_commit: Commit final do range
+    - branch_name: Nome da branch
+    - commit_mixed: Se True, usa range de commits
+    - type: Tipo do teste (README_CREATE, README_UPDATE, CHANGELOG)
+    - description: Descrição/nome do teste
 """
 
-# Cole suas configs TOML aqui como strings
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+import os
+
+# Diretório base do benchmark para resolver caminhos relativos
+BENCHMARK_DIR = Path(__file__).parent
+
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials
+    GSPREAD_AVAILABLE = True
+except ImportError:
+    GSPREAD_AVAILABLE = False
+
+
+class TestType(Enum):
+    """Tipos de teste suportados."""
+    README_CREATE = "readme"
+    README_UPDATE = "readme_update"
+    CHANGELOG = "changelog"
+
+
+@dataclass
+class TestConfigRow:
+    """Representa uma linha de configuração do Google Sheets."""
+    repo_path: str
+    ini_commit: str
+    end_commit: str
+    branch_name: str
+    commit_mixed: bool
+    test_type: TestType
+    description: str
+
+    # Campos opcionais com defaults
+    model_name: str = "gemini-2.5-flash-lite"
+    temperature: float = 0.2
+
+    @classmethod
+    def from_sheet_row(cls, row: dict) -> "TestConfigRow":
+        """Cria instância a partir de uma linha do Sheets."""
+        return cls(
+            ini_commit=row.get("ini_commit", ""),
+            end_commit=row.get("end_commit", ""),
+            branch_name=row.get("branch_name", "main"),
+            commit_mixed=str(row.get("commit_mixed", "")).lower() in ("true", "1", "yes", "sim"),
+            test_type=TestType(row.get("type", "readme")),
+            description=row.get("description", ""),
+            repo_path=row.get("repo_path", "external_repos/EventFlow"),
+            model_name=(row.get("model_name", "gemini-2.5-flash-lite")) or "gemini-2.5-flash-lite",
+            temperature=float(row.get("temperature", 0.2) or 0.2),
+        )
+
+
+# Mapeamento de tipo de teste para prompt file
+TEST_TYPE_PROMPTS = {
+    TestType.README_CREATE: "readme_create.jinja",
+    TestType.README_UPDATE: "readme_update.jinja",
+    TestType.CHANGELOG: "changelog.jinja",
+}
+
+
+def build_commit_list(ini_commit: str, end_commit: str, mixed: bool) -> list[str]:
+    """
+    Constrói a lista de commits.
+
+    Se mixed=False, retorna apenas [end_commit].
+    Se mixed=True, retorna [ini_commit, end_commit] (para range).
+    """
+    if mixed and ini_commit and end_commit:
+        return [ini_commit, end_commit]
+    return [end_commit] if end_commit else [ini_commit]
+
+
+def _sanitize_toml_string(value: str) -> str:
+    """Sanitiza uma string para uso em TOML."""
+    # Remove quebras de linha e espaços extras
+    value = " ".join(value.split())
+    # Escapa barras invertidas primeiro, depois aspas duplas
+    value = value.replace("\\", "\\\\").replace('"', '\\"')
+    return value
+
+
+def build_config_toml(row: TestConfigRow, index: int) -> str:
+    """
+    Constrói uma string TOML a partir de uma TestConfigRow.
+
+    Args:
+        row: Dados da configuração
+        index: Índice do teste (para nome do arquivo output)
+
+    Returns:
+        String TOML válida
+    """
+    commits = build_commit_list(row.ini_commit, row.end_commit, row.commit_mixed)
+    commits_str = ", ".join(f'"{c}"' for c in commits)
+    prompt_file = TEST_TYPE_PROMPTS.get(row.test_type, "changelog.jinja")
+
+    # Sanitiza valores que vêm da planilha
+    safe_desc = _sanitize_toml_string(row.description)
+    safe_repo = _sanitize_toml_string(row.repo_path)
+    safe_branch = _sanitize_toml_string(row.branch_name)
+
+    return f'''[target_information]
+repo_path = "{safe_repo}"
+branch_name = "{safe_branch}"
+commit_list = [{commits_str}]
+ignore_files = ["README.md", "CHANGELOG.md"]
+
+[agents]
+
+[[agents.output]]
+result_path = "output/"
+log_path = "logs/"
+result_file_name = "benchmark_{index}.md"
+
+[[agents.orchestration]]
+step = 1
+model_name = "{row.model_name}"
+temperature = {row.temperature}
+template_path = "prompt/"
+prompt_file = "{prompt_file}"
+prompt_variables = {{ name = "{safe_desc}", repo = "{safe_repo}" }}
+'''
+
+
+@dataclass
+class ConfigMetadata:
+    """Metadados de uma configuração de teste."""
+    description: str = ""
+    commit_mixed: bool = False
+
+
+def fetch_configs_from_sheets(
+    worksheet_name: str = "TestConfigs",
+    credentials_path: Optional[str] = None,
+    spreadsheet_id: Optional[str] = None,
+) -> tuple[list[str], list[str], list[ConfigMetadata]]:
+    """
+    Busca configurações de teste do Google Sheets.
+
+    Args:
+        worksheet_name: Nome da aba com as configs
+        credentials_path: Caminho para credenciais (ou via env)
+        spreadsheet_id: ID da planilha (ou via env)
+
+    Returns:
+        Tupla (TEST_CONFIGS, CONFIG_NAMES, CONFIG_METADATA)
+    """
+    if not GSPREAD_AVAILABLE:
+        raise ImportError(
+            "gspread não instalado. Execute: pip install gspread google-auth"
+        )
+
+    creds_path = credentials_path or os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+    # Resolve caminhos relativos baseado no diretório do benchmark
+    if creds_path and not Path(creds_path).is_absolute():
+        creds_path = str(BENCHMARK_DIR / creds_path)
+    sheet_id = spreadsheet_id or os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")
+
+    if not creds_path or not sheet_id:
+        raise ValueError(
+            "Configure GOOGLE_SHEETS_CREDENTIALS e GOOGLE_SHEETS_SPREADSHEET_ID"
+        )
+
+    credentials = Credentials.from_service_account_file(
+        creds_path,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets.readonly",
+            "https://www.googleapis.com/auth/drive.readonly",
+        ],
+    )
+    client = gspread.authorize(credentials)
+    spreadsheet = client.open_by_key(sheet_id)
+    worksheet = spreadsheet.worksheet(worksheet_name)
+
+    # Pega todas as linhas como dicts (primeira linha = headers)
+    records = worksheet.get_all_records()
+
+    configs: list[str] = []
+    names: list[str] = []
+    metadata: list[ConfigMetadata] = []
+
+    for i, record in enumerate(records, start=1):
+        if not record.get("ini_commit") and not record.get("end_commit"):
+            continue  # Pula linhas vazias
+
+        row = TestConfigRow.from_sheet_row(record)
+        config_toml = build_config_toml(row, i)
+        configs.append(config_toml)
+        names.append(row.description or f"Test {i}")
+        metadata.append(ConfigMetadata(
+            description=row.description,
+            commit_mixed=row.commit_mixed,
+        ))
+
+    return configs, names, metadata
+
+
+def load_configs(from_sheets: bool = False, **sheets_kwargs) -> tuple[list[str], list[str], list[ConfigMetadata]]:
+    """
+    Carrega configs do Sheets ou usa as manuais.
+
+    Args:
+        from_sheets: Se True, busca do Google Sheets
+        **sheets_kwargs: Argumentos para fetch_configs_from_sheets
+
+    Returns:
+        Tupla (TEST_CONFIGS, CONFIG_NAMES, CONFIG_METADATA)
+    """
+    if from_sheets:
+        return fetch_configs_from_sheets(**sheets_kwargs)
+
+    # Metadados padrão para configs locais
+    metadata = [ConfigMetadata(description=name) for name in CONFIG_NAMES]
+    return TEST_CONFIGS, CONFIG_NAMES, metadata
+
+
+# ============================================================================
+# CONFIGS MANUAIS (fallback quando não usa Sheets)
+# ============================================================================
+
 TEST_CONFIGS: list[str] = [
-    # Config 1 - Exemplo
     '''
 [target_information]
 repo_path = "external_repos/EventFlow"
@@ -51,40 +260,10 @@ template_path = "prompt/"
 prompt_file = "changelog.jinja"
 prompt_variables = { name = "Benchmark Test 1", repo = "external_repos/EventFlow" }
 ''',
-
-    # Config 2 - Exemplo com temperatura diferente
-    '''
-[target_information]
-repo_path = "external_repos/EventFlow"
-branch_name = "develop-v1"
-commit_list = ["6bcade563d627ea3d2b35f59d4d5dee56d6ea6a"]
-ignore_files = ["README.md", "CHANGELOG.md"]
-
-[agents]
-
-[[agents.output]]
-result_path = "output/"
-log_path = "logs/"
-result_file_name = "benchmark_test_2.md"
-
-[[agents.orchestration]]
-step = 1
-model_name = "gemini-2.5-flash-lite"
-temperature = 0.8
-template_path = "prompt/"
-prompt_file = "changelog.jinja"
-prompt_variables = { name = "Benchmark Test 2", repo = "external_repos/EventFlow" }
-''',
-
-    # Adicione mais configs aqui...
 ]
 
-# Nomes descritivos para cada config (opcional, mas recomendado)
-# Se vazio, será usado "Config 1", "Config 2", etc.
 CONFIG_NAMES: list[str] = [
-    "EventFlow - Temp 0.2",
-    "EventFlow - Temp 0.8",
-    # Adicione mais nomes aqui...
+    "EventFlow - Default",
 ]
 
 

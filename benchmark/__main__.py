@@ -2,36 +2,47 @@
 Ponto de entrada do módulo de benchmark.
 
 Uso:
-    python -m benchmark "1-20"        # Testa configs 1 a 20
-    python -m benchmark "1,4,7"       # Testa configs 1, 4 e 7
-    python -m benchmark "1-5,10,15"   # Testa configs 1-5, 10 e 15
-    python -m benchmark "all"         # Testa todos os configs
+    python -m benchmark "1-20"        # Testa linhas 1 a 20 do Google Sheets
+    python -m benchmark "1,4,7"       # Testa linhas 1, 4 e 7
+    python -m benchmark "1-5,10,15"   # Testa linhas 1-5, 10 e 15
+    python -m benchmark "all"         # Testa todas as linhas
 
     # Com opções:
-    python -m benchmark "1-10" --no-sheets    # Sem exportar para Sheets
+    python -m benchmark "1-10" --no-export    # Sem exportar resultados para Sheets
     python -m benchmark "1-10" --quiet        # Sem output verboso
-    python -m benchmark "1-10" --list         # Lista configs disponíveis
+    python -m benchmark --list                # Lista configs disponíveis
+    python -m benchmark "1-10" --local        # Usa configs locais em vez do Sheets
+
+Configuração:
+    Crie um arquivo .env no diretório benchmark/ com:
+        GOOGLE_SHEETS_CREDENTIALS=path/to/credentials.json
+        GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id
 """
 
 import argparse
 import sys
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-from .test_configs import TEST_CONFIGS, get_config_name, get_total_configs
+from .test_configs import load_configs
 from .index_parser import parse_indices, format_indices_summary
 from .runner import BenchmarkRunner
 
+# Carrega .env do diretório do benchmark
+BENCHMARK_DIR = Path(__file__).parent.parent.resolve()
+load_dotenv(".env")
 
-def list_configs():
+
+def list_configs(configs: list[str], names: list[str]):
     """Lista todas as configs disponíveis."""
-    total = get_total_configs()
+    total = len(configs)
     print(f"\nConfigs disponíveis: {total}\n")
     print("-" * 60)
 
     for i in range(total):
-        name = get_config_name(i)
+        name = names[i] if i < len(names) and names[i] else f"Config {i + 1}"
         print(f"  {i+1:3d}. {name}")
 
     print("-" * 60)
@@ -40,18 +51,17 @@ def list_configs():
 
 
 def main():
-    load_dotenv()
-
     parser = argparse.ArgumentParser(
         description="Benchmark tool para GithubDocs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemplos:
-    python -m benchmark "1-20"        Testa configs 1 a 20
-    python -m benchmark "1,4,7"       Testa configs 1, 4 e 7
-    python -m benchmark "1-5,10"      Testa configs 1-5 e 10
-    python -m benchmark "all"         Testa todos
-    python -m benchmark --list        Lista configs disponíveis
+    python -m benchmark "1-20"          Testa linhas 1 a 20 do Sheets
+    python -m benchmark "1,4,7"         Testa linhas 1, 4 e 7
+    python -m benchmark "1-5,10"        Testa linhas 1-5 e 10
+    python -m benchmark "all"           Testa todas as linhas
+    python -m benchmark --list          Lista configs disponíveis
+    python -m benchmark "1-5" --local   Usa configs locais (test_configs.py)
         """,
     )
 
@@ -69,9 +79,9 @@ Exemplos:
     )
 
     parser.add_argument(
-        "--no-sheets",
+        "--no-export",
         action="store_true",
-        help="Não exporta para Google Sheets",
+        help="Não exporta resultados para Google Sheets",
     )
 
     parser.add_argument(
@@ -101,10 +111,42 @@ Exemplos:
         help="ID da planilha Google Sheets",
     )
 
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Usa configs locais (test_configs.py) em vez do Google Sheets",
+    )
+
+    parser.add_argument(
+        "--config-worksheet",
+        type=str,
+        default=os.getenv("GOOGLE_SHEETS_CONFIG_WORKSHEET", "TestConfigs"),
+        help="Nome da aba com configs de teste (default: TestConfigs ou env)",
+    )
+
     args = parser.parse_args()
 
+    # Carrega configs: Sheets por padrão, local com --local
+    if args.local:
+        print("Usando configs locais (test_configs.py)...")
+        configs, names, metadata = load_configs(from_sheets=False)
+    else:
+        try:
+            print("Carregando configs do Google Sheets...")
+            configs, names, metadata = load_configs(
+                from_sheets=True,
+                worksheet_name=args.config_worksheet,
+                credentials_path=args.credentials,
+                spreadsheet_id=args.spreadsheet,
+            )
+            print(f"Carregadas {len(configs)} configs (linhas do Sheets)")
+        except Exception as e:
+            print(f"Erro ao carregar configs do Sheets: {e}")
+            print("Use --local para usar configs locais ou configure o .env")
+            return 1
+
     if args.list:
-        list_configs()
+        list_configs(configs, names)
         return 0
 
     if args.indices is None:
@@ -112,11 +154,14 @@ Exemplos:
         print("\nErro: Especifique os índices ou use --list para ver configs disponíveis")
         return 1
 
-    total_configs = get_total_configs()
+    total_configs = len(configs)
 
     if total_configs == 0:
-        print("Erro: Nenhuma config definida em benchmark/test_configs.py")
-        print("Adicione suas configs TOML no array TEST_CONFIGS")
+        print("Erro: Nenhuma config definida")
+        if args.local:
+            print("Adicione suas configs TOML no array TEST_CONFIGS em test_configs.py")
+        else:
+            print("Verifique se a aba do Sheets contém dados válidos")
         return 1
 
     try:
@@ -134,10 +179,10 @@ Exemplos:
     print(f"Configs selecionadas: {format_indices_summary(indices)}")
     print(f"Total: {len(indices)} de {total_configs} disponíveis")
 
-    runner = BenchmarkRunner(verbose=not args.quiet)
+    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet)
     results = runner.run_batch(indices)
 
-    if not args.no_sheets:
+    if not args.no_export:
         try:
             from .sheets_exporter import export_to_sheets
 
