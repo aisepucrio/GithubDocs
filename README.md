@@ -53,7 +53,10 @@ uv sync
 
 ## Submodule Management
 
-This project uses Git submodules to manage dependencies from external repositories. They are located in the `external_repos/` directory.
+This project uses Git submodules to manage external repositories used as test subjects. They are located in the `external_repos/` directory.
+The GitModules is just used as Formality and Testability. You could find interest cases, about this git modules, to test in this google sheets: https://docs.google.com/spreadsheets/d/1tR-glo3Wky11PWpasvBAdzWIHSlkXx9W76VPLKVU_Vk/edit?gid=911701213#gid=911701213.
+
+You also could specify repositories in your computer that are not in the git modules, see more about the variable **repo_path** in the "Config File Structure".
 
 ### Adding a New Submodule
 
