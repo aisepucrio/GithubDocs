@@ -3,6 +3,7 @@ from git import Repo
 from typing import Tuple
 from identify import identify
 from collections import Counter
+import fnmatch
 import os
 
 from .repo_info_exceptions import (
@@ -47,14 +48,25 @@ class RepoInfoExtractor:
 
         return readme_blob.data_stream.read().decode("utf-8", errors="replace")
 
+    def _is_ignored(self, path: str) -> bool:
+        """Check if a path matches any of the ignore patterns (supports glob)."""
+        for pattern in self.ignored_files:
+            if fnmatch.fnmatch(path, pattern):
+                return True
+            # Also match against the basename for patterns like *.jpg
+            if fnmatch.fnmatch(os.path.basename(path), pattern):
+                return True
+        return False
+
     def get_file_tree(self) -> str:
         repo = Repo(self.repository_path)
         file_tree = []
         excluded_defaults = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
-        excluded = excluded_defaults.union({s.strip() for s in self.ignored_files})
 
         for item in repo.tree().traverse():
-            if any(excluded_dir in item.path.split('/') for excluded_dir in excluded):
+            if any(excluded_dir in item.path.split('/') for excluded_dir in excluded_defaults):
+                continue
+            if self._is_ignored(item.path):
                 continue
             file_tree.append(item.path)
 
@@ -140,7 +152,7 @@ class RepoInfoExtractor:
             }
             for idx, modified_file in enumerate(modified_files):
 
-                if modified_file.new_path in self.ignored_files:
+                if self._is_ignored(modified_file.new_path):
                     continue
 
                 key = f"{modified_file.new_path}_{idx}"

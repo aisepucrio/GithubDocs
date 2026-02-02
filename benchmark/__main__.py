@@ -13,7 +13,7 @@ Uso:
     python -m benchmark --list                # Lista configs disponíveis
     python -m benchmark "1-10" --local        # Usa configs locais em vez do Sheets
 
-Configuração:
+Configuração Mínima:
     Crie um arquivo .env no diretório benchmark/ com:
         GOOGLE_SHEETS_CREDENTIALS=path/to/credentials.json
         GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id

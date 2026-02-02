@@ -51,6 +51,7 @@ class GoogleSheetsExporter:
         "Temperatura",
         "Repo",
         "Conteúdo Output",
+        "Prompt",
         "Erro",
         "Timestamp",
     ]
@@ -178,6 +179,7 @@ class GoogleSheetsExporter:
                 r.get("repo_path", ""),
                 output_content,
                 r.get("description", ""),
+                r.get("prompt_content", "")[:49000],  # maximo do sheets e 50000 chars
                 r.get("error_message", ""),
                 r.get("timestamp", ""),
             ]
@@ -268,11 +270,14 @@ def export_to_sheets(
     """
     Função helper para exportar resultados rapidamente.
 
+    Quando worksheet_name não é fornecido, agrupa resultados por repo_path
+    e exporta cada grupo para sua própria aba.
+
     Args:
         results: Lista de dicionários com os resultados
         credentials_path: Caminho para credenciais (ou via env)
         spreadsheet_id: ID da planilha (ou via env)
-        worksheet_name: Nome da aba
+        worksheet_name: Nome da aba (se None, agrupa por repo)
         create_summary: Se True, cria aba de resumo
 
     Returns:
@@ -283,7 +288,20 @@ def export_to_sheets(
         spreadsheet_id=spreadsheet_id,
     )
 
-    url = exporter.export_results(results, worksheet_name=worksheet_name)
+    if worksheet_name is not None:
+        # Nome explícito: exporta tudo para a mesma aba
+        url = exporter.export_results(results, worksheet_name=worksheet_name)
+    else:
+        # Agrupa resultados por repo_path e exporta cada grupo separadamente
+        groups: dict[str, list[dict]] = {}
+        for r in results:
+            repo_path = r.get("repo_path", "Unknown")
+            repo_name = Path(repo_path).name if repo_path else "Unknown"
+            groups.setdefault(repo_name, []).append(r)
+
+        url = ""
+        for repo_name, group_results in groups.items():
+            url = exporter.export_results(group_results, worksheet_name=repo_name)
 
     if create_summary:
         exporter.create_summary_sheet(results)
