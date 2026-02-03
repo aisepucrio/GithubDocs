@@ -116,13 +116,10 @@ class OllamaAgent(AIAgent):
         )
 
         actual_tools = get_tools_from_names(self.tools) if self.tools else []
-
-        print("tools aqui: ", self.tools)
+        print("actual tools: ", actual_tools)
 
         self.agent = create_agent(
             self.chat_model,
-            # tools=[],
-            # tools=self.tools, 
             tools=actual_tools,  
             middleware=[
                 SummarizationMiddleware(
