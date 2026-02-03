@@ -1,8 +1,7 @@
 [target_information]
 repo_path = "external_repos/EventFlow"
 branch_name = "develop-v1"
-commit_list = ["6bcade563d627ea3d2b35f59d4d5dee56d6ea6a",
-"7c91526eaefd63887cb34072b81cfec5d63d598:13c67e50f66a6cc6a56dd2d3799c5fe37195d35"]
+commit_list = ["6bc5eb39eb34792ccbd6b5dbb0d98c2354c950f5"]
 ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
 [agents]
 
