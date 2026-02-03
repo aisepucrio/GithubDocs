@@ -23,6 +23,8 @@ dependencies = [
     "langchain",
     "gspread>=6.2.1",
     "google-auth>=2.48.0",
+    "langchain-ollama>=1.0.1",
+    "langchain-community>=0.4.1",
 ]
 
 [project.optional-dependencies]

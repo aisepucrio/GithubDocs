@@ -44,6 +44,7 @@ class OrchestrationStep(BaseModel):
     template_path: str = ""
     prompt_variables: dict[str, str]
     prompt: str = ""
+    tools: list[str] = []
 
     @field_validator("temperature")
     def validate_temperature(cls, v):
