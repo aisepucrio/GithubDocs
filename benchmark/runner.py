@@ -18,8 +18,9 @@ GITHUBDOCS_DIR = os.path.join(PARENT_DIR, "GithubDocs")  # for internal src impo
 sys.path.insert(0, PARENT_DIR)
 sys.path.insert(0, GITHUBDOCS_DIR)
 
-from src.facade import start
+from src.facade import start, render_prompt
 from src.load_configuration.conf_structures import BaseAppConfig
+from src.repo_info_extraction import RepoInfoExtractor
 
 from .test_configs import ConfigMetadata
 
@@ -40,6 +41,7 @@ class BenchmarkResult:
     repo_path: Optional[str] = None
     description: str = ""
     commit_mixed: bool = False
+    prompt_content: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Converte para dicionário para exportação."""
@@ -55,6 +57,7 @@ class BenchmarkResult:
             "model_name": self.model_name or "",
             "temperature": self.temperature if self.temperature is not None else "",
             "repo_path": self.repo_path or "",
+            "prompt_content": self.prompt_content or "",
         }
 
 
@@ -175,6 +178,29 @@ class BenchmarkRunner:
             self._log(f"Repo: {result.repo_path}")
             self._log(f"Output: {result.output_file}")
             self._log("-" * 40)
+
+            # Captura o prompt renderizado antes de executar
+            try:
+                extractor = RepoInfoExtractor(
+                    repository_path=config.target_info.repo_path,
+                    commit_list=config.target_info.commit_list,
+                    target_branch=config.target_info.branch_name,
+                    ignored_files=config.target_info.ignore_files
+                )
+                repo_info = extractor.extract_repo_info()
+
+                if config.orchestration_steps:
+                    step = config.orchestration_steps[0]
+                    template_vars = step.prompt_variables.copy()
+                    template_vars['repo_info'] = repo_info
+                    result.prompt_content = render_prompt(
+                        step.template_path,
+                        step.prompt_file,
+                        template_vars,
+                        repo_info["repo_path"]
+                    )
+            except Exception as prompt_err:
+                self._log(f"Aviso: Não foi possível capturar o prompt: {prompt_err}")
 
             # Executa o framework
             start(config)

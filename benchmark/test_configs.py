@@ -42,8 +42,7 @@ class TestType(Enum):
 class TestConfigRow:
     """Representa uma linha de configuração do Google Sheets."""
     repo_path: str
-    ini_commit: str
-    end_commit: str
+    commits: str
     branch_name: str
     commit_mixed: bool
     test_type: TestType
@@ -57,8 +56,7 @@ class TestConfigRow:
     def from_sheet_row(cls, row: dict) -> "TestConfigRow":
         """Cria instância a partir de uma linha do Sheets."""
         return cls(
-            ini_commit=row.get("ini_commit", ""),
-            end_commit=row.get("end_commit", ""),
+            commits=row.get("commits", ""),
             branch_name=row.get("branch_name", "main"),
             commit_mixed=str(row.get("commit_mixed", "")).lower() in ("true", "1", "yes", "sim"),
             test_type=TestType(row.get("type", "readme")),
@@ -75,19 +73,6 @@ TEST_TYPE_PROMPTS = {
     TestType.README_UPDATE: "readme_update.jinja",
     TestType.CHANGELOG: "changelog.jinja",
 }
-
-
-def build_commit_list(ini_commit: str, end_commit: str, mixed: bool) -> list[str]:
-    """
-    Constrói a lista de commits.
-
-    Se mixed=False, retorna apenas [end_commit].
-    Se mixed=True, retorna [ini_commit, end_commit] (para range).
-    """
-    if mixed and ini_commit and end_commit:
-        return [ini_commit, end_commit]
-    return [end_commit] if end_commit else [ini_commit]
-
 
 def _sanitize_toml_string(value: str) -> str:
     """Sanitiza uma string para uso em TOML."""
@@ -109,36 +94,51 @@ def build_config_toml(row: TestConfigRow, index: int) -> str:
     Returns:
         String TOML válida
     """
-    commits = build_commit_list(row.ini_commit, row.end_commit, row.commit_mixed)
-    commits_str = ", ".join(f'"{c}"' for c in commits)
+    print("commits : ", row.commits)
+
+    commits_str = _build_commit_list(row.commits)
+
+    if not row.commits: 
+        raise ValueError("Lista de commits vazia na configuração")
     prompt_file = TEST_TYPE_PROMPTS.get(row.test_type, "changelog.jinja")
 
     # Sanitiza valores que vêm da planilha
     safe_desc = _sanitize_toml_string(row.description)
     safe_repo = _sanitize_toml_string(row.repo_path)
     safe_branch = _sanitize_toml_string(row.branch_name)
+    safe_model = _sanitize_toml_string(row.model_name)
 
-    return f'''[target_information]
-repo_path = "{safe_repo}"
-branch_name = "{safe_branch}"
-commit_list = [{commits_str}]
-ignore_files = ["README.md", "CHANGELOG.md"]
+    conf = f'''[target_information]
+    repo_path = "{safe_repo}"
+    branch_name = "{safe_branch}"
+    commit_list = [{commits_str}]
+    ignore_files = ["IGNORED_PRESET", "RELEASE_NOTES.md","CHANGELOG.md","README.md"]
 
-[agents]
+    [agents]
 
-[[agents.output]]
-result_path = "output/"
-log_path = "logs/"
-result_file_name = "benchmark_{index}.md"
+    [[agents.output]]
+    result_path = "output/"
+    log_path = "logs/"
+    result_file_name = "benchmark_{index}.md"
 
-[[agents.orchestration]]
-step = 1
-model_name = "{row.model_name}"
-temperature = {row.temperature}
-template_path = "prompt/"
-prompt_file = "{prompt_file}"
-prompt_variables = {{ name = "{safe_desc}", repo = "{safe_repo}" }}
-'''
+    [[agents.orchestration]]
+    step = 1
+    model_name = "{safe_model}"
+    temperature = {row.temperature}
+    template_path = "prompt/"
+    prompt_file = "{prompt_file}"
+    prompt_variables = {{ name = "{safe_desc}", repo = "{safe_repo}" }}
+    '''
+
+    print(conf)
+
+    return conf
+
+def _build_commit_list(commits: str) -> str:
+    """Converte string de commits separados por vírgula em string TOML de lista."""
+    cmts = commits.split(",")
+    quoted = [f'"{c.strip()}"' for c in cmts if c.strip()]
+    return ", ".join(quoted)
 
 
 @dataclass
@@ -199,9 +199,9 @@ def fetch_configs_from_sheets(
     metadata: list[ConfigMetadata] = []
 
     for i, record in enumerate(records, start=1):
-        if not record.get("ini_commit") and not record.get("end_commit"):
-            continue  # Pula linhas vazias
-
+        if not record.get("commits"):
+            print(f"Aviso: Teste de índice {i} ignorada por não ter commits definidos.")
+            continue
         row = TestConfigRow.from_sheet_row(record)
         config_toml = build_config_toml(row, i)
         configs.append(config_toml)
@@ -265,7 +265,6 @@ prompt_variables = { name = "Benchmark Test 1", repo = "external_repos/EventFlow
 CONFIG_NAMES: list[str] = [
     "EventFlow - Default",
 ]
-
 
 def get_config_name(index: int) -> str:
     """Retorna o nome da config pelo índice (0-based)."""
