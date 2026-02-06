@@ -1,19 +1,19 @@
 [target_information]
 repo_path = "external_repos/EventFlow"
 branch_name = "develop-v1"
-commit_list = ["19cb381c6b36d3e174da7ecba977112716794f91"]
-ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
-[agents]
+commit_list = ["5f8dada7f75cf374cdd2c7ad8ecf3f44c74116e9", "29ef55571eb3808972f97f8ffab0ae48381c206f"]
+ignore_files = ["IGNORED_PRESET", "RELEASE_NOTES.md","CHANGELOG.md","README.md"]
 
+[agents]
 [[agents.output]]
 result_path = "output/"
 log_path = "logs/"
-result_file_name = "r_event1.md"
+result_file_name = "benchmark_14.md"
 
 [[agents.orchestration]]
 step = 1
-model_name = "gemini-2.5-flash-lite"
+model_name = "gemini-2.5-flash"
 temperature = 0.2
 template_path = "prompt/"
-prompt_file = "changelog.jinja"
-prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
+prompt_file = "readme_update.jinja"
+prompt_variables = { name = "Sao 2 commits unicos. Pontos interessantes do porque da selecao. O primeiro commit apresenta diversas atualizacoes de versao, mas nao 'e isso que esta no readme, o que esta no readme 'e a adicao do hangfire(aparentemente algo parecido com o celery) ao projeto, o segundo commit apresenta as mudancas em codigos. A mudanca tambem nao 'e pequena, sendo assim util para testar casos de alucinacao em modelos menores.", repo = "external_repos/EventFlow" }

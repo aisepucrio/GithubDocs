@@ -58,18 +58,18 @@ class TestConfigRow:
         return cls(
             commits=row.get("commits", ""),
             branch_name=row.get("branch_name", "main"),
-            commit_mixed=str(row.get("commit_mixed", "")).lower() in ("true", "1", "yes", "sim"),
+            commit_mixed=str(row.get("commit_mixed", "")).lower() in ("true", "1", "yes", "sim","y"),
             test_type=TestType(row.get("type", "readme")),
             description=row.get("description", ""),
             repo_path=row.get("repo_path", "external_repos/EventFlow"),
-            model_name=(row.get("model_name", "gemini-2.5-flash-lite")) or "gemini-2.5-flash-lite",
+            model_name=(row.get("model_name", "gemini-2.5-flash")) or "gemini-2.5-flash",
             temperature=float(row.get("temperature", 0.2) or 0.2),
         )
 
 
 # Mapeamento de tipo de teste para prompt file
 TEST_TYPE_PROMPTS = {
-    TestType.README_CREATE: "readme_create.jinja",
+    TestType.README_CREATE: "readme.jinja",
     TestType.README_UPDATE: "readme_update.jinja",
     TestType.CHANGELOG: "changelog.jinja",
 }

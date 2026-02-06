@@ -13,3 +13,9 @@
 [submodule "external_repos/security-analysis-tool"]
 	path = external_repos/security-analysis-tool
 	url = https://github.com/databricks-industry-solutions/security-analysis-tool
+[submodule "buddyments"]
+	path = buddyments
+	url = https://github.com/aisepucrio/buddyments
+[submodule "external_repos/buddyments"]
+	path = external_repos/buddyments
+	url = https://github.com/aisepucrio/buddyments
