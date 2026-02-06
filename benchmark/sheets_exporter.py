@@ -43,13 +43,14 @@ class GoogleSheetsExporter:
 
     HEADERS = [
         "Índice",
-        "Descrição",
         "Commit Mixed",
         "Sucesso",
         "Tempo (s)",
         "Modelo",
         "Temperatura",
         "Repo",
+        "Tipo",
+        "Descrição do Teste",
         "Conteúdo Output",
         "Prompt",
         "Erro",
@@ -177,8 +178,9 @@ class GoogleSheetsExporter:
                 r.get("model_name", ""),
                 r.get("temperature", ""),
                 r.get("repo_path", ""),
-                output_content,
+                r.get("test_type", ""),
                 r.get("description", ""),
+                output_content,
                 r.get("prompt_content", "")[:49000],  # maximo do sheets e 50000 chars
                 r.get("error_message", ""),
                 r.get("timestamp", ""),
