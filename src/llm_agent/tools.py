@@ -64,3 +64,42 @@ def search_in_repo_at_commit(self, commit_hash: str, search_term: str, case_sens
                                                                                                                                                                                
       return "\n".join(results)           
 '''
+
+from langchain.tools import tool
+
+@tool
+def soma(a: float, b: float) -> float:
+    """Soma dois números."""
+    print("a + b = ", a + b)
+    return a + b
+
+
+@tool
+def subtrai(a: float, b: float) -> float:
+    """Subtrai b de a."""
+    print("a - b = ", a-b)
+    return a - b
+
+
+@tool
+def multiplica(a: float, b: float) -> float:
+    """Multiplica dois números."""
+    print("a * b = ",a * b)
+    return a * b
+
+
+@tool
+def divide(a: float, b: float) -> float:
+    """Divide a por b. Lança erro se b for zero."""
+    if b == 0:
+        raise ValueError("Divisão por zero não é permitida.")
+    print("a / b = ",a / b)
+    return a / b
+
+
+ALL_TOOLS = {
+    "soma": soma,
+    "subtrai": subtrai,
+    "multiplica": multiplica,
+    "divide": divide,
+}
