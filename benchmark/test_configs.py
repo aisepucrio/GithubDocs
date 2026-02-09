@@ -128,6 +128,7 @@ def build_config_toml(row: TestConfigRow, index: int) -> str:
     template_path = "prompt/"
     prompt_file = "{prompt_file}"
     prompt_variables = {{ name = "{safe_desc}", repo = "{safe_repo}" }}
+    tools = []
     '''
 
     print(conf)
@@ -259,6 +260,7 @@ temperature = 0.2
 template_path = "prompt/"
 prompt_file = "changelog.jinja"
 prompt_variables = { name = "Benchmark Test 1", repo = "external_repos/EventFlow" }
+tools = []
 ''',
 ]
 

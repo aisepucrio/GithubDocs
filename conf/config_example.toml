@@ -18,3 +18,4 @@ temperature = 0.2
 template_path = "prompt/"
 prompt_file = "readme_update.jinja"
 prompt_variables = { name = "mais instrucoes de como rodar o framework (atencao ao modelo antigo de rodar o framework, nao o atual)", repo = "external_repos/GithubDocs" }
+tools = []

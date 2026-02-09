@@ -27,9 +27,9 @@ class LogLLMCallback(BaseCallbackHandler):
 
 
 class GeminiAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None, tools: list[str] = None):
         api_key  = api_key or os.environ.get("GEMINI_API_KEY") or ""
-        super().__init__(model_name, api_key, base_prompt, temperature)
+        super().__init__(model_name, api_key, base_prompt, temperature, tools)
 
         self.chat_model: BaseChatModel = init_chat_model(
             "google_genai:" + model_name,
@@ -37,9 +37,13 @@ class GeminiAgent(AIAgent):
             temperature=temperature
         )
 
+        actual_tools = get_tools_from_names(self.tools) if self.tools else []
+        print("actual tools: ", actual_tools)
+
+
         self.agent = create_agent(
             self.chat_model,
-            tools=[],
+            tools=actual_tools,  
             middleware=[
             SummarizationMiddleware(
             model="google_genai:" + model_name,
