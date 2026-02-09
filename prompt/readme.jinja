@@ -11,6 +11,14 @@ License: {{ repo_info.license }}
 {{ repo_info.file_tree }}
 {% endif %}
 
+{% for f in ['package.json', 'pyproject.toml', 'Cargo.toml', 'requirements.txt', 'go.mod', 'Makefile', 'Dockerfile', 'docker-compose.yml', 'setup.py', 'setup.cfg'] %}
+{% set content = f | read_file %}
+{% if content %}
+## File: {{ f }}
+{{ content }}
+{% endif %}
+{% endfor %}
+
 Output structure:
 
 # Repository description

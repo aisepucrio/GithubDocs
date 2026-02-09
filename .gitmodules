@@ -19,3 +19,9 @@
 [submodule "external_repos/buddyments"]
 	path = external_repos/buddyments
 	url = https://github.com/aisepucrio/buddyments
+[submodule "external_repos/raise"]
+	path = external_repos/raise
+	url = https://github.com/aisepucrio/stnl-dataminer-api
+[submodule "external_repos/GithubDocs"]
+	path = external_repos/GithubDocs
+	url = https://github.com/aisepucrio/GithubDocs
