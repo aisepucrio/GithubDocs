@@ -44,8 +44,7 @@ class RepoInfoExtractor:
                 break
 
         if not readme_blob:
-            raise ReadmeNotFoundError()
-
+            return None
         return readme_blob.data_stream.read().decode("utf-8", errors="replace")
 
     def _is_ignored(self, path: str) -> bool:
@@ -151,8 +150,9 @@ class RepoInfoExtractor:
                 "modifications": {}
             }
             for idx, modified_file in enumerate(modified_files):
-
-                if self._is_ignored(modified_file.new_path):
+                # resolve o caso onde o commit deleta um file (new_path é None)
+                path_to_check = modified_file.new_path or modified_file.old_path
+                if self._is_ignored(path_to_check):
                     continue
 
                 key = f"{modified_file.new_path}_{idx}"

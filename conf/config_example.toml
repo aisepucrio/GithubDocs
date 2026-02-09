@@ -1,19 +1,20 @@
 [target_information]
-repo_path = "external_repos/EventFlow"
-branch_name = "develop-v1"
-commit_list = ["19cb381c6b36d3e174da7ecba977112716794f91"]
-ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
+repo_path = "external_repos/GithubDocs"
+branch_name = "main"
+commit_list = ["232d1c9438b28953a68cdee9c9665ebb74949fbb"]
+ignore_files = ["IGNORED_PRESET", "RELEASE_NOTES.md","CHANGELOG.md","README.md"]
+
 [agents]
 
 [[agents.output]]
 result_path = "output/"
 log_path = "logs/"
-result_file_name = "r_event1.md"
+result_file_name = "benchmark_22.md"
 
 [[agents.orchestration]]
 step = 1
-model_name = "gemini-2.5-flash-lite"
+model_name = "gemini-2.5-flash"
 temperature = 0.2
 template_path = "prompt/"
-prompt_file = "changelog.jinja"
-prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
+prompt_file = "readme_update.jinja"
+prompt_variables = { name = "mais instrucoes de como rodar o framework (atencao ao modelo antigo de rodar o framework, nao o atual)", repo = "external_repos/GithubDocs" }

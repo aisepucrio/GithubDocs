@@ -42,6 +42,7 @@ class BenchmarkResult:
     description: str = ""
     commit_mixed: bool = False
     prompt_content: Optional[str] = None
+    test_type: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Converte para dicionário para exportação."""
@@ -58,6 +59,7 @@ class BenchmarkResult:
             "temperature": self.temperature if self.temperature is not None else "",
             "repo_path": self.repo_path or "",
             "prompt_content": self.prompt_content or "",
+            "test_type": self.test_type or "",
         }
 
 
@@ -167,6 +169,10 @@ class BenchmarkRunner:
             if config.orchestration_steps:
                 result.model_name = config.orchestration_steps[0].model_name
                 result.temperature = config.orchestration_steps[0].temperature
+                # Extrai tipo do teste do nome do arquivo de prompt (e.g., "readme_update.jinja" -> "readme_update")
+                prompt_file = config.orchestration_steps[0].prompt_file
+                if prompt_file:
+                    result.test_type = os.path.splitext(prompt_file)[0]
 
             result.output_file = os.path.join(
                 config.output_info.result_path,
