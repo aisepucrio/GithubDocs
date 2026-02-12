@@ -10,6 +10,8 @@ class TargetInfo(BaseModel):
     branch_name: str
     commit_list: Optional[list[str]] = None
     ignore_files: Optional[list[str]] = None
+    github_token: Optional[str] = None
+    github_repo_name: Optional[str] = None
     
     @field_validator("repo_path")
     def validate_repo_path(cls, v):

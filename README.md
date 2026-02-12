@@ -229,15 +229,17 @@ python main.py conf/config.toml
 
 ### Optional Flags
 
-The project supports two additional optional flags:
+The project supports the following optional flags:
 
   * **`--debug`**: Enables **verbose logging** for enhanced troubleshooting.
   * **`--mock`**: Prints the **rendered AI prompt** (based on your configuration) directly to the terminal without sending it to the external AI service. This flag is **intended solely for testing and verification purposes**.
+  * **`--issuelog`**: Prints **GitHub issues analysis** directly to the terminal instead of including it in the generated documentation. Useful for viewing issue information without polluting the output file.
 
 ### Example with Flags
 
 ```bash
 python main.py conf/config.toml --mock --debug
+python main.py conf/config_mamba_test.toml --issuelog
 ```
 ---
 

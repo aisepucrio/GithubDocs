@@ -21,7 +21,8 @@ dependencies = [
     "identify[license]",
     "langchain-core>=1.2.7",
     "langchain-google-genai>=4.2.0",
-    "langchain"
+    "langchain",
+    "pygithub>=2.1.0"
 ]
 
 [tool.ruff]

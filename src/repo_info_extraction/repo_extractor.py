@@ -95,7 +95,7 @@ class RepoInfoExtractor:
                 except Exception as e:
                     raise RepoInfoExtractionError(f"Failed to stash local changes: {e}")
 
-        all_repo_commits = [commit.hexsha for commit in repo.iter_commits()]
+        all_repo_commits = [commit.hexsha for commit in repo.iter_commits(self.target_branch)]
         commit_list = []
 
         last_commit_index = 0xFFFFFFFF

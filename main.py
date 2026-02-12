@@ -13,6 +13,7 @@ def main():
     parser.add_argument("config_path", help="Path to the configuration file.")
     parser.add_argument("--mock", action="store_true", help="Use mock agent for testing.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
+    parser.add_argument("--issuelog", action="store_true", help="Print GitHub issues analysis to terminal.")
     args = parser.parse_args()
 
     logger = CustomLogger()
@@ -35,7 +36,7 @@ def main():
             logger.debug(f"Orchestration Step: {step}")
 
     logger.info("Starting documentation generation...")
-    start(config)
+    start(config, enable_issue_log=args.issuelog)
 
 
 if __name__ == "__main__":
