@@ -25,7 +25,7 @@ def search_github_issues_in_commits() -> str:
         return "Nenhuma mensagem de commit disponível para análise."
     
     try:
-        # analiza todos os commits fornecidos em busca de issues
+        # analisa todos os commits fornecidos em busca de issues
         all_issues = {}
         for message in _commit_messages:
             issues = _issue_tracker.find_issues_in_text(message)
