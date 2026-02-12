@@ -1,9 +1,8 @@
 [target_information]
-repo_path = "external_repos/GithubDocs"
-branch_name = "main"
-commit_list = ["232d1c9438b28953a68cdee9c9665ebb74949fbb"]
-ignore_files = ["IGNORED_PRESET", "RELEASE_NOTES.md","CHANGELOG.md","README.md"]
-
+repo_path = "external_repos/EventFlow"
+branch_name = "develop-v1"
+commit_list = ["6bc5eb39eb34792ccbd6b5dbb0d98c2354c950f5"]
+ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
 [agents]
 
 [[agents.output]]
