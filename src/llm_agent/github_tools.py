@@ -5,7 +5,7 @@ from src.log import CustomLogger
 
 logger = CustomLogger()
 
-# Variável global para armazenar o tracker (será injetada pelo facade)
+# Global variable to store the tracker (will be injected by the facade)
 _issue_tracker: Optional[IssueTracker] = None
 _commit_messages: List[str] = []
 
@@ -18,14 +18,15 @@ def set_issue_tracker(tracker: Optional[IssueTracker], commit_messages: List[str
 
 @tool
 def search_github_issues_in_commits() -> str:
+    """Search for GitHub issues mentioned in commit messages. Returns information about referenced issues including title, status, author, labels, and description."""
     if not _issue_tracker:
-        return "Funcionalidade de issues do GitHub não está configurada. Nenhum token foi fornecido."
+        return "GitHub issues functionality is not configured. No token was provided."
     
     if not _commit_messages:
-        return "Nenhuma mensagem de commit disponível para análise."
+        return "No commit messages available for analysis."
     
     try:
-        # analiza todos os commits fornecidos em busca de issues
+        # Analyze all provided commits searching for issues
         all_issues = {}
         for message in _commit_messages:
             issues = _issue_tracker.find_issues_in_text(message)
@@ -34,64 +35,66 @@ def search_github_issues_in_commits() -> str:
                     all_issues[num] = info.to_dict()
         
         if not all_issues:
-            return "Nenhuma issue do GitHub foi mencionada nos commits analisados."
+            return "No GitHub issues were mentioned in the analyzed commits."
         
-        result = f"Encontradas {len(all_issues)} issue(s) mencionadas nos commits:\n\n"
+        result = f"Found {len(all_issues)} issue(s) mentioned in commits:\n\n"
         
         for num, issue in sorted(all_issues.items()):
             result += f"Issue #{num}: {issue['title']}\n"
             result += f"  Status: {issue['state']}\n"
-            result += f"  Autor: {issue['author']}\n"
+            result += f"  Author: {issue['author']}\n"
             
             if issue.get('labels'):
                 result += f"  Labels: {', '.join(issue['labels'])}\n"
             
             if issue.get('body'):
-                # limita o tamanho da descrição (contexto worries)
+                # Limit description size (context concerns)
                 body = issue['body'][:300]
                 if len(issue['body']) > 300:
                     body += "..."
-                result += f"  Descrição: {body}\n"
+                result += f"  Description: {body}\n"
             
             result += "\n"
         
         return result.strip()
         
     except Exception as e:
-        logger.warning(f"Erro ao buscar issues: {e}")
-        return f"Erro ao buscar informações de issues: {str(e)}"
+        logger.warning(f"Error fetching issues: {e}")
+        return f"Error fetching issue information: {str(e)}"
 
 
 @tool
 def get_github_issue_details(issue_number: int) -> str:
+    """Get detailed information about a specific GitHub issue by its number. Returns the full context needed to understand and resolve the issue."""
     if not _issue_tracker:
-        return "Funcionalidade de issues do GitHub não está configurada."
+        return "GitHub issues functionality is not configured."
     
     try:
         context = _issue_tracker.get_issue_resolution_context(issue_number)
         
         if not context:
-            return f"Issue #{issue_number} não foi encontrada no repositório."
+            return f"Issue #{issue_number} was not found in the repository."
         
         return context
         
     except Exception as e:
-        logger.warning(f"Erro ao buscar issue #{issue_number}: {e}")
-        return f"Erro ao buscar issue #{issue_number}: {str(e)}"
+        logger.warning(f"Error fetching issue #{issue_number}: {e}")
+        return f"Error fetching issue #{issue_number}: {str(e)}"
 
 
 @tool
 def extract_issue_numbers_from_text(text: str) -> str:
+    """Extract GitHub issue numbers from a given text. Identifies patterns like #123, #456, etc. and returns the list of found issue numbers."""
     try:
         issue_numbers = IssueTracker.extract_issue_numbers(text)
         
         if not issue_numbers:
-            return "Nenhuma referência a issue foi encontrada no texto fornecido."
+            return "No issue references were found in the provided text."
         
-        return f"Issues encontradas no texto: {', '.join(f'#{num}' for num in issue_numbers)}"
+        return f"Issues found in text: {', '.join(f'#{num}' for num in issue_numbers)}"
         
     except Exception as e:
-        return f"Erro ao extrair números de issues: {str(e)}"
+        return f"Error extracting issue numbers: {str(e)}"
 
 
 def get_github_issue_tools() -> List:

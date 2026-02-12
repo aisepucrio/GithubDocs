@@ -36,7 +36,7 @@ def main():
             logger.debug(f"Orchestration Step: {step}")
 
     logger.info("Starting documentation generation...")
-    start(config, enable_issue_log=args.issuelog)
+    start(config, enable_issue_log=args.issuelog or args.debug)
 
 
 if __name__ == "__main__":

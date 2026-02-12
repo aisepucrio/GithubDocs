@@ -1,46 +1,18 @@
 import re
 from typing import Dict, List, Optional
-from dataclasses import dataclass
 from github import Github, GithubException
 from src.log import CustomLogger
+from .issue_dto import IssueInfo
 
 logger = CustomLogger()
 
 
-@dataclass
-class IssueInfo:
-    number: int
-    title: str
-    state: str
-    body: Optional[str]
-    author: str
-    created_at: str
-    closed_at: Optional[str]
-    labels: List[str]
-    pull_requests: List[int]
-    closing_commit: Optional[str]
-
-    def to_dict(self) -> Dict:
-        return {
-            "number": self.number,
-            "title": self.title,
-            "state": self.state,
-            "body": self.body,
-            "author": self.author,
-            "created_at": self.created_at,
-            "closed_at": self.closed_at,
-            "labels": self.labels,
-            "pull_requests": self.pull_requests,
-            "closing_commit": self.closing_commit
-        }
-
-
 class IssueTracker:
-    # patterns comuns pra issues
+    # common patterns for issues
     ISSUE_PATTERNS = [
-        r'#(\d+)',                          # #123
+        r'#(\d+)',  # #123
         r'(?:fix|fixes|fixed|close|closes|closed|resolve|resolves|resolved)\s+#(\d+)',  # fix #123
-        r'(?:issue|gh)-?(\d+)',             # issue-123, gh123
+        r'(?:issue|gh)-?(\d+)',  # issue-123, gh123
     ]
 
     @staticmethod
@@ -63,38 +35,51 @@ class IssueTracker:
             self.github = Github(github_token)
         else:
             self.github = Github()
-            logger.warning("GitHub token não fornecido. Usando API sem autenticação (limite de taxa reduzido).")
+            logger.warning("GitHub token not provided. Using API without authentication (reduced rate limit).")
         
         try:
             self.repo = self.github.get_repo(repo_full_name)
-            logger.info(f"Conectado ao repositório: {repo_full_name}")
+            logger.info(f"Connected to repository: {repo_full_name}")
         except GithubException as e:
-            logger.error(f"Erro ao acessar repositório {repo_full_name}: {e}")
+            logger.error(f"Error accessing repository {repo_full_name}: {e}")
             raise
 
+    def _get_related_pull_requests(self, issue, issue_number: int) -> List[int]:
+        """Fetch Pull Requests related to the issue through the timeline."""
+        pr_numbers = []
+        try:
+            timeline = issue.get_timeline()
+            for event in timeline:
+                if event.event == "cross-referenced" and hasattr(event, 'source'):
+                    if hasattr(event.source, 'issue') and event.source.issue.pull_request:
+                        pr_numbers.append(event.source.issue.number)
+        except Exception as e:
+            logger.debug(f"Could not fetch timeline for issue #{issue_number}: {e}")
+        
+        return pr_numbers
+
+    def _get_closing_commit(self, issue, issue_number: int) -> Optional[str]:
+        """Fetch the commit that closed the issue."""
+        if issue.state != "closed":
+            return None
+        
+        try:
+            events = issue.get_events()
+            for event in events:
+                if event.event == "closed" and event.commit_id:
+                    return event.commit_id
+        except Exception as e:
+            logger.debug(f"Could not fetch events for issue #{issue_number}: {e}")
+        
+        return None
+
     def get_issue(self, issue_number: int) -> Optional[IssueInfo]:
+        """Main method that fetches an issue and returns the complete IssueInfo object."""
         try:
             issue = self.repo.get_issue(issue_number)
-            pr_numbers = []
-            try:
-                timeline = issue.get_timeline()
-                for event in timeline:
-                    if event.event == "cross-referenced" and hasattr(event, 'source'):
-                        if hasattr(event.source, 'issue') and event.source.issue.pull_request:
-                            pr_numbers.append(event.source.issue.number)
-            except Exception as e:
-                logger.debug(f"Não foi possível buscar timeline da issue #{issue_number}: {e}")
             
-            closing_commit = None
-            if issue.state == "closed":
-                try:
-                    events = issue.get_events()
-                    for event in events:
-                        if event.event == "closed" and event.commit_id:
-                            closing_commit = event.commit_id
-                            break
-                except Exception as e:
-                    logger.debug(f"Não foi possível buscar eventos da issue #{issue_number}: {e}")
+            pr_numbers = self._get_related_pull_requests(issue, issue_number)
+            closing_commit = self._get_closing_commit(issue, issue_number)
             
             return IssueInfo(
                 number=issue.number,
@@ -111,9 +96,9 @@ class IssueTracker:
             
         except GithubException as e:
             if e.status == 404:
-                logger.warning(f"Issue #{issue_number} não encontrada no repositório {self.repo_full_name}")
+                logger.warning(f"Issue #{issue_number} not found in repository {self.repo_full_name}")
             else:
-                logger.error(f"Erro ao buscar issue #{issue_number}: {e}")
+                logger.error(f"Error fetching issue #{issue_number}: {e}")
             return None
 
     def find_issues_in_text(self, text: str) -> Dict[int, IssueInfo]:
@@ -163,25 +148,25 @@ class IssueTracker:
         context = f"""
                     Issue #{issue.number}: {issue.title}
                     Status: {issue.state}
-                    Autor: {issue.author}
-                    Criada em: {issue.created_at}
+                    Author: {issue.author}
+                    Created at: {issue.created_at}
                    """
         
         if issue.closed_at:
-            context += f"Fechada em: {issue.closed_at}\n"
+            context += f"Closed at: {issue.closed_at}\n"
         
         if issue.labels:
             context += f"Labels: {', '.join(issue.labels)}\n"
         
         if issue.closing_commit:
-            context += f"Commit que fechou: {issue.closing_commit}\n"
+            context += f"Closing commit: {issue.closing_commit}\n"
         
         if issue.pull_requests:
-            context += f"Pull Requests relacionados: {', '.join(f'#{pr}' for pr in issue.pull_requests)}\n"
+            context += f"Related Pull Requests: {', '.join(f'#{pr}' for pr in issue.pull_requests)}\n"
         
         if issue.body:
             body_preview = issue.body[:500] + "..." if len(issue.body) > 500 else issue.body
-            context += f"\nDescrição:\n{body_preview}\n"
+            context += f"\nDescription:\n{body_preview}\n"
         
         return context.strip()
 

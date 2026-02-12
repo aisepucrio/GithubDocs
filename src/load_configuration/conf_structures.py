@@ -19,7 +19,7 @@ class TargetInfo(BaseModel):
         return v
 
     def __str__(self):
-        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, start_commit={self.start_commit}, end_commit={self.end_commit}, ignore_files={self.ignore_files})"
+        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, commit_list={self.commit_list}, ignore_files={self.ignore_files}, github_repo_name={self.github_repo_name})"
 
 
 class OutputInfo(BaseModel):

@@ -28,27 +28,32 @@ class GeminiAgent(AIAgent):
             pass
 
     def generate_response(self, input: str) -> str:
-        response = self.chat_model.invoke(self.base_prompt + "\n" + input)
+        full_input = self.base_prompt + "\n" + input
+        response = self.chat_model.invoke(full_input)
         
         if hasattr(response, 'tool_calls') and response.tool_calls:
-            return self._handle_tool_calls(response)
+            return self._handle_tool_calls(response, full_input)
         
         self.output = response.content
         return self.output
     
     def generate_response_with_prompt(self,  prompt: str, input: str) -> str:
-        response = self.chat_model.invoke(prompt + "\n" + input)
+        full_input = prompt + "\n" + input
+        response = self.chat_model.invoke(full_input)
         
         if hasattr(response, 'tool_calls') and response.tool_calls:
-            return self._handle_tool_calls(response)
+            return self._handle_tool_calls(response, full_input)
         
         self.output = response.content
         return self.output
     
-    def _handle_tool_calls(self, response) -> str:
+    def _handle_tool_calls(self, response, original_input: str) -> str:
         from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
         
-        messages = [response]
+        messages = [
+            HumanMessage(content=original_input),
+            response
+        ]
         
         for tool_call in response.tool_calls:
             tool_name = tool_call['name']
@@ -86,39 +91,44 @@ class GPTAgent(AIAgent):
             pass
 
     def generate_response(self, input: str) -> str:
+        full_input = self.base_prompt + "\n" + input
         parameters = {
             "model": self.model_name,
-            "input": self.base_prompt + "\n" + input,
+            "input": full_input,
         }
         if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
             parameters["temperature"] = self.temperature
         response = self.chat_model.invoke(**parameters)
         
         if hasattr(response, 'tool_calls') and response.tool_calls:
-            return self._handle_tool_calls_gpt(response)
+            return self._handle_tool_calls_gpt(response, full_input)
         
         self.output = response.content
         return self.output
 
     def generate_response_with_prompt(self, prompt: str, input: str) -> str:
+        full_input = prompt + "\n" + input
         parameters = {
             "model": self.model_name,
-            "input": prompt + "\n" + input,
+            "input": full_input,
         }
         if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
             parameters["temperature"] = self.temperature
         response = self.chat_model.invoke(**parameters)
         
         if hasattr(response, 'tool_calls') and response.tool_calls:
-            return self._handle_tool_calls_gpt(response)
+            return self._handle_tool_calls_gpt(response, full_input)
         
         self.output = response.content
         return self.output
     
-    def _handle_tool_calls_gpt(self, response) -> str:
-        from langchain_core.messages import ToolMessage
+    def _handle_tool_calls_gpt(self, response, original_input: str) -> str:
+        from langchain_core.messages import HumanMessage, ToolMessage
         
-        messages = [response]
+        messages = [
+            HumanMessage(content=original_input),
+            response
+        ]
         
         for tool_call in response.tool_calls:
             tool_name = tool_call['name']
