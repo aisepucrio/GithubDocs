@@ -53,7 +53,10 @@ uv sync
 
 ## Submodule Management
 
-This project uses Git submodules to manage dependencies from external repositories. They are located in the `external_repos/` directory.
+This project uses Git submodules to manage external repositories used as test subjects. They are located in the `external_repos/` directory.
+The GitModules is just used as Formality and Testability. You could find interest cases, about this git modules, to test in this google sheets: https://docs.google.com/spreadsheets/d/1tR-glo3Wky11PWpasvBAdzWIHSlkXx9W76VPLKVU_Vk/edit?gid=911701213#gid=911701213.
+
+You also could specify repositories in your computer that are not in the git modules, see more about the variable **repo_path** in the "Config File Structure".
 
 ### Adding a New Submodule
 
@@ -108,10 +111,18 @@ Two validations are performed on this path:
 #### branch_name
 The specific branch of the repository you wish to analyze. This variable is mandatory and does not have a default value.
 
-#### start & end commit
-These two variables define the range of commits you want to explore. The framework will analyze all commits from `start_commit` up to and including `end_commit`.
+#### commit_list
+Commit list as the name suggests, is a list of commits separated by a comma. You can also simplify a range of commits by adding a colon or two dots between two commits. You could check the examples below.
 
-**Caution:** The `end_commit` should be a more recent commit than the `start_commit`. If `start_commit` is more recent than `end_commit`, the range will be empty.
+##### Range example
+```Python
+commit_list = ["a962c3657a3c90f5132a479ab6aac4fbbade9996:bb820fef78d2b8476733d9b21fa7cce1421a7ba3"]
+```
+
+##### Distinct example
+``` Python
+commit_list = ["6bcade563d627ea3d2b35f59d4d5dee56d6ea6a","a962c3657a3c90f5132a479ab6aac4fbbade9996"]
+```
 
 ### [[agents.output]]
 

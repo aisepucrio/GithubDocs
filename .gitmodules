@@ -25,3 +25,6 @@
 [submodule "external_repos/GithubDocs"]
 	path = external_repos/GithubDocs
 	url = https://github.com/aisepucrio/GithubDocs
+[submodule "external_repos/ngx-admin-lte"]
+	path = external_repos/ngx-admin-lte
+	url = https://github.com/stone-payments/ngx-admin-lte
