@@ -10,3 +10,6 @@
 [submodule "external_repos/stnl-dataminer-api"]
 	path = external_repos/stnl-dataminer-api
 	url = https://github.com/aisepucrio/stnl-dataminer-api
+[submodule "external_repos/ngx-admin-lte"]
+	path = external_repos/ngx-admin-lte
+	url = https://github.com/stone-payments/ngx-admin-lte
