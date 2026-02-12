@@ -1,5 +1,6 @@
 from langchain.tools import tool
 from git import Repo
+import os
 '''
 @tool("git_file_tree_at_commit",description="Get the file tree of the repository at a specific commit hash. Input is a commit hash string, output is a newline-separated list of file paths.")
 def get_file_tree_at_commit(self, commit_hash: str) -> str:                                                                                                                  
@@ -96,6 +97,41 @@ def divide(a: float, b: float) -> float:
     print("a / b = ",a / b)
     return a / b
 
+@tool
+def read_file(file_path: str) -> str:
+    """Opens a file by its path and returns its content as text."""
+    
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File '{file_path}' not found.")
+    
+    if not os.path.isfile(file_path):
+        raise ValueError(f"'{file_path}' is not a valid file.")
+    
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        raise RuntimeError(f"Error reading file: {str(e)}")
+
+@tool
+def save_readme(content: str) -> str:
+    """
+    Saves the provided content as README.md inside the 'output' folder.
+    """
+
+    try:
+        output_dir = "output"
+        os.makedirs(output_dir, exist_ok=True)
+
+        file_path = os.path.join(output_dir, "README.md")
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return f"README saved successfully at: {file_path}"
+
+    except Exception as e:
+        return f"Error saving README: {str(e)}"
 
 ALL_TOOLS = {
     "soma": soma,
