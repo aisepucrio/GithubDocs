@@ -154,10 +154,11 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
     issue_tracker = None
     commit_messages = []
     
-    if hasattr(base_config.target_info, 'github_token') and base_config.target_info.github_token:
+    github_token = os.getenv('GITHUB_TOKEN')
+    if github_token and hasattr(base_config.target_info, 'github_repo_name') and base_config.target_info.github_repo_name:
         try:
             repo_name = base_config.target_info.github_repo_name
-            issue_tracker = IssueTracker(repo_name, base_config.target_info.github_token)
+            issue_tracker = IssueTracker(repo_name, github_token)
             
             commit_messages = [commit.get("message", "") for commit in repo_info["commits"]]
             
