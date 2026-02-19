@@ -9,9 +9,14 @@ from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
+from langgraph.checkpoint.memory import InMemorySaver
+from .llm_agent.tools import ALL_TOOLS
+
+
 
 AI_DICT = get_agent_dictionary()
 logger = CustomLogger()
+RUNNABLE_CONFIG = {"configurable": {"thread_id": "current-run"}}
 
 # MOVER PRA OUTRO LUGAR?
 def load_file(repo_path: str, relative_path: str) -> str:
@@ -96,7 +101,7 @@ def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_pa
 
     return template.render(variables)
 
-def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None) -> AIAgent | None:
+def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None,tools: list[str] = None) -> AIAgent | None:
     agent_class = None
     for key in AI_DICT:
         if key in model_name:
@@ -104,11 +109,12 @@ def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", te
     if not agent_class and model_name in LLM_CONTEXT_WINDOWS: # Fallback, if there is no direct match, check if the model_name is in the context window dict (ollama models). TODO: improve this
         agent_class = AI_DICT["ollama"]
     if agent_class:
-        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature)
+        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory, tools=tools )
     return None
 
-def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, issue_tracker: IssueTracker = None):
-    agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature)
+def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, issue_tracker: IssueTracker = None, context_memory:InMemorySaver = None, config: dict = None):
+    agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature, context_memory=context_memory)
+    print(" \n orgestrarion step:", orchestration_step.tools, " \n" )
     if agent is None:
         logger.error(f"Agent for model {orchestration_step.model_name} not found.")
         exit(1)
@@ -135,8 +141,84 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
         
         exit(1)
 
-    response = agent.generate_response_with_prompt(prompt, "")
+    response = agent.generate_response_with_prompt(prompt, "", config=config)
     return response
+
+def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver):
+    """Cria uma função para executar uma step específica"""
+    
+    def execute_step(last_output: str) -> str:
+        logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
+                
+        # Instancia o agente
+        agent = build_ai_agent(
+            orchestration_step.model_name, 
+            temperature=orchestration_step.temperature, 
+            context_memory=context_memory,
+            tools=orchestration_step.tools
+        )
+
+        
+        if agent is None:
+            logger.error(f"Agent for model {orchestration_step.model_name} not found.")
+            exit(1)
+
+        # Prepara as variáveis do template
+        template_vars = orchestration_step.prompt_variables.copy()
+        template_vars['repo_info'] = repo_info
+        if last_output:
+            template_vars['last_step_output'] = last_output
+
+        logger.debug(f"Template variables: {template_vars.keys()}")
+
+        # Renderiza o prompt
+        prompt = render_prompt(
+            orchestration_step.template_path,
+            orchestration_step.prompt_file,
+            template_vars,
+            repo_info["repo_path"]
+        )
+
+        # Verifica se precisa de sumarização (mexer nessa parte depois)
+        if agent.need_summarization(prompt):
+            logger.error("Prompt still too large after summarization.")
+            exit(1)
+
+        # Gera a resposta
+        config = {"configurable": {"thread_id": f"step-{orchestration_step.step}"}}
+        response = agent.generate_response_with_prompt(prompt, "", config=config)
+        
+        return response
+    
+    return execute_step
+
+def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver):
+    """Encadeia as steps usando composição de funções"""
+    
+    # Ordena as steps
+    sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
+    
+    # Cria as funções para cada step
+    step_functions = [
+        create_step_chain(step, repo_info, context_memory) 
+        for step in sorted_steps
+    ]
+    
+    def execute_chain(initial_input: str = "") -> str:
+        """Executa a cadeia de steps sequencialmente"""
+        result = initial_input
+        
+        for step_func in step_functions:
+            result = step_func(result)
+            
+            # Para se o resultado estiver vazio
+            if result is None or result.strip() == "":
+                logger.info("Result vazio. Interrompendo a chain.")
+                break
+        
+        return result
+    
+    return execute_chain
 
 def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
     try:
@@ -184,15 +266,26 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
     last_step_output = None
     base_config.orchestration_steps.sort(key=lambda x: x.step)
 
-    for step in base_config.orchestration_steps:
-        logger.info(f"Executing step {step.step}: {step.model_name}")
-        final_result = build_orchestration_step(step, repo_info, last_step_output, issue_tracker)
-        last_step_output = final_result
-        
-        if final_result is None or final_result.strip() == "":
-            logger.info("Final result vazio. Interrompendo o loop.")
-            break
+    context_memory = InMemorySaver()
 
+    # criação da orquestração anterior
+    # for step in base_config.orchestration_steps:
+    #     logger.info(f"Executing step {step.step}: {step.model_name}")
+    #     final_result = build_orchestration_step(step, repo_info, last_step_output, issue_tracker, context_memory, RUNNABLE_CONFIG)
+    #     last_step_output = final_result
+        
+    #     if final_result is None or final_result.strip() == "":
+    #         logger.info("Final result vazio. Interrompendo o loop.")
+    #         break
+
+    #  criação da orquestração utilizando chains atualmente:
+
+    # CRIA UMA CHAIN (cadeia) de funções ----------------------
+    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory)
+    
+    # EXECUTA a chain de uma vez
+    final_result = chain("")
+    #  --------------------------------------------------------
 
     output_path = os.path.join(base_config.output_info.result_path, base_config.output_info.result_file_name)
     try:

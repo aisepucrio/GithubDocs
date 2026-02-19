@@ -10,12 +10,13 @@ ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.m
 [[agents.output]]
 result_path = "output/"
 log_path = "logs/"
-result_file_name = "r_event1.md"
+result_file_name = "benchmark_22.md"
 
 [[agents.orchestration]]
 step = 1
-model_name = "gemini-2.5-flash-lite"
+model_name = "gemini-2.5-flash"
 temperature = 0.2
 template_path = "prompt/"
-prompt_file = "changelog.jinja"
-prompt_variables = { name = "GitHub Docs", repo = "external_repos/EventFlow" }
+prompt_file = "readme_update.jinja"
+prompt_variables = { name = "mais instrucoes de como rodar o framework (atencao ao modelo antigo de rodar o framework, nao o atual)", repo = "external_repos/GithubDocs" }
+tools = []

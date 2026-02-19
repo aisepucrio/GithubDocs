@@ -7,7 +7,6 @@ dependencies = [
     "google-generativeai",
     "ruff>=0.1.0",
     "openai",
-    
     "python-dotenv",
     "tiktoken==0.12.0",
     "sqlalchemy==2.0.43",
@@ -22,7 +21,17 @@ dependencies = [
     "langchain-core>=1.2.7",
     "langchain-google-genai>=4.2.0",
     "langchain",
-    "pygithub>=2.1.0"
+    "pygithub>=2.1.0",
+    "gspread>=6.2.1",
+    "google-auth>=2.48.0",
+    "langchain-ollama>=1.0.1",
+    "langchain-community>=0.4.1",
+]
+
+[project.optional-dependencies]
+benchmark = [
+    "gspread>=6.0.0",
+    "google-auth>=2.0.0",
 ]
 
 [tool.ruff]
