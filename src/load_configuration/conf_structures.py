@@ -161,6 +161,7 @@ class TargetInfo(BaseModel):
     branch_name: str
     commit_list: Optional[list[str]] = None
     ignore_files: Optional[list[str]] = None
+    github_repo_name: Optional[str] = None
     
     @field_validator("repo_path")
     def validate_repo_path(cls, v):
@@ -178,7 +179,7 @@ class TargetInfo(BaseModel):
       super().__init__(**kwargs)
 
     def __str__(self):
-        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, start_commit={self.start_commit}, end_commit={self.end_commit}, ignore_files={self.ignore_files})"
+        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, commit_list={self.commit_list}, ignore_files={self.ignore_files}, github_repo_name={self.github_repo_name})"
 
 
 class OutputInfo(BaseModel):

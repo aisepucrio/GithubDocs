@@ -89,6 +89,37 @@ You can create these folders by running the following command:
 mkdir output logs
 ```
 
+### Environment Variables
+
+The framework uses environment variables for sensitive configuration:
+
+#### GITHUB_TOKEN (Optional)
+Optional token for **GitHub Issues integration**. The framework can work without it, but with reduced API rate limits (60 requests/hour vs 5000 with authentication).
+
+**How to obtain a GitHub Personal Access Token:**
+1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Click "Generate new token (classic)"
+3. Select scopes: `repo` (for private repos) or `public_repo` (for public repos only)
+4. Copy the generated token
+
+**How to configure:**
+
+Create a `.env` file in the project root:
+```bash
+GITHUB_TOKEN=your_token_here
+```
+
+Or set it directly in your environment:
+```bash
+# Linux/macOS
+export GITHUB_TOKEN=your_token_here
+
+# Windows PowerShell
+$env:GITHUB_TOKEN="your_token_here"
+```
+
+**Note:** Without a token, GitHub Issues integration will still work but with GitHub's unauthenticated API rate limit (60 requests/hour instead of 5000/hour).
+
 # Configuration Documentation
 
 ## Config File
@@ -124,6 +155,50 @@ commit_list = ["a962c3657a3c90f5132a479ab6aac4fbbade9996:bb820fef78d2b8476733d9b
 commit_list = ["6bcade563d627ea3d2b35f59d4d5dee56d6ea6a","a962c3657a3c90f5132a479ab6aac4fbbade9996"]
 ```
 
+#### ignore_files
+Optional list of file paths or patterns to exclude from repository analysis. You can use glob patterns for flexible matching.
+
+**`"IGNORED_PRESET"`** - Uses a pre-configured list of commonly ignored files and directories including:
+- Lock files (package-lock.json, yarn.lock, etc.)
+- Dependency directories (node_modules, vendor, etc.)
+- Media files (images, videos, audio)
+- Build outputs (dist, build, target, etc.)
+- IDE configurations (.vscode, .idea, etc.)
+- And more...
+
+##### Examples
+```Python
+# Use preset only
+ignore_files = ["IGNORED_PRESET"]
+
+# Use preset + additional files
+ignore_files = ["IGNORED_PRESET", "README.md", "docs/**"]
+
+# Custom list
+ignore_files = ["*.log", "temp/**", "config.json"]
+```
+
+#### github_repo_name
+Optional parameter to enable **GitHub Issues integration**. Specify the repository in the format `"owner/repo"`.
+
+When configured, the framework will:
+- Automatically detect issue references in commit messages (patterns like `#123`, `fix #456`, `closes #789`)
+- Fetch detailed information about referenced issues via GitHub API
+- Make issue data available to LLM agents through specialized tools
+- Include issue context in documentation generation
+
+**Requirements:**
+- A GitHub Personal Access Token in the `GITHUB_TOKEN` environment variable is **recommended** for higher API rate limits
+- Without a token, the GitHub API has a rate limit of 60 requests/hour
+- The repository must be publicly accessible (or accessible with the provided token if private)
+
+##### Example
+```Python
+github_repo_name = "stone-payments/pos-mamba-sdk"
+```
+
+**Note:** The framework works without a token but with reduced rate limits (60 requests/hour). For better performance, especially with repositories that have many issues, it's recommended to configure a token.
+
 ### [[agents.output]]
 
 #### result & log paths
@@ -147,6 +222,23 @@ This parameter controls the randomness of the model's output. It is a standard L
 
 #### template_path
 The absolute or relative path to the directory containing your Jinja prompt templates.
+
+#### tools
+Optional list of tool names that the LLM agent can use during execution. Tools extend the agent's capabilities beyond text generation.
+
+**Available tool categories:**
+- **GitHub Issues Tools** (automatically enabled when `github_repo_name` is configured):
+  - `search_github_issues_in_commits`: Searches for issues mentioned in commit messages
+  - `get_github_issue_details`: Retrieves detailed information about a specific issue
+  - `extract_issue_numbers_from_text`: Extracts issue numbers from any text
+
+When GitHub tools are enabled, the LLM agent can autonomously search for and retrieve issue information during documentation generation, providing richer context about bug fixes, feature implementations, and project evolution.
+
+##### Example
+```Python
+tools = []  # No special tools (default)
+# Tools are automatically available when github_repo_name is set
+```
 
 #### prompt_file
 The name of the Jinja template file (e.g., `my_prompt.jinja`) that will be rendered to create the actual prompt sent to the LLM.
@@ -229,69 +321,94 @@ python main.py conf/config.toml
 
 ### Optional Flags
 
-The project supports two additional optional flags:
+The project supports the following optional flags:
 
   * **`--debug`**: Enables **verbose logging** for enhanced troubleshooting.
   * **`--mock`**: Prints the **rendered AI prompt** (based on your configuration) directly to the terminal without sending it to the external AI service. This flag is **intended solely for testing and verification purposes**.
+  * **`--issuelog`**: Prints **GitHub issues analysis** directly to the terminal instead of including it in the generated documentation. Useful for reviewing issue information without adding it to the output file. Automatically enabled when using `--debug`.
 
 ### Example with Flags
 
 ```bash
 python main.py conf/config.toml --mock --debug
+python main.py conf/config_mamba_test.toml --issuelog
 ```
 ---
 
 # Templates
 
-At the root of the project there is a **`prompts/`** folder, responsible for centralizing all prompts templates used by the LLMs (Gemini, ChatGPT, and local models).  
+At the root of the project there is a **`prompt/`** folder, responsible for centralizing all prompts templates used by the LLMs (Gemini, ChatGPT, and local models).  
 Each prompt is written in **Jinja**, allowing dynamic context injection (commits, diffs, files, outputs from previous steps, etc.).
 
 
-###  Prompts Structure
+## Baseline Prompts
 
-Currently, the `prompts/` folder contains the following files:
+The framework provides **three main baseline prompts** that cover the core documentation generation tasks:
 
-- **`changelog.jinja`**  
-  Prompt responsible for generating **changelogs** from commits, diffs, or repository history.
+### **1. changelog.jinja**  
+Generates **changelogs** from commit history, diffs, and repository context.
+- **Use case:** Automated release notes, version history documentation
+- **Execution:** Single-step
+- **Input:** Commit list, diffs, repository information
 
-- **`readme.jinja`**  
-  Prompt used to **create a README from scratch**, based on the project context.
+### **2. readme.jinja**  
+Creates a **README from scratch** based on the project context.
+- **Use case:** Initial documentation for new projects or complete rewrites
+- **Execution:** Single-step
+- **Input:** Repository structure, file tree, commits, license
 
-- **`readme_update.jinja`**  
-  Prompt used to **update an existing README**, taking into account:
-  - recent commits  
-  - diffs  
-  - additional context provided by the framework  
-
-  ###  Execution Flows
-
-The framework supports two types of prompt execution:
-
-#### ✅ Single-step execution
-Most prompts are executed in a **single step**, where context is sent to the LLM and the result is applied directly.
-
-Examples:
-- `changelog.jinja`
-- `readme.jinja`
-- `readme_update.jinja`
-
-#### 🔍 Multi-step execution (2 steps or more)
-
-For more sensitive scenarios (such as automated updates), the framework uses a **two or more steps execution flow**, providing greater control and safety over generated changes.
-
-###  two-steps update readme:
-
-1. **`verify_changes.jinja`**  
-   - Analyzes the provided context  
-   - Returns **only the proposed modifications**, if any  
-   - Does not apply changes directly  
-
-2. **`apply_changes.jinja`**  
-   - Receives the output from the previous step  
-   - Applies the returned modifications using an LLM  
+### **3. readme_update.jinja**  
+Updates an **existing README** intelligently, preserving structure and style.
+- **Use case:** Keeping documentation up-to-date with code changes
+- **Execution:** Single-step (default) or multi-step (see below)
+- **Input:** Current README, recent commits, diffs, additional context
 
 
-   ### 🔗 Step-to-Step Communication
+## Alternative Execution Flows
+
+### Two-Step README Update
+
+For scenarios requiring **greater control and safety** over automated changes, the framework supports a **two-step execution flow** for README updates.
+
+This approach is available in `prompt/other-examples/two-step-flow/`:
+
+**Step 1: verify_changes.jinja**  
+- Analyzes the repository context (commits, diffs, current README)
+- Identifies **only the sections that need updates**
+- Returns a structured list of proposed modifications
+- **Does not apply changes directly**
+
+**Step 2: apply_changes.jinja**  
+- Receives the output from `verify_changes.jinja`
+- Generates Git-style unified diffs for the proposed changes
+- Preserves the README's structure, formatting, and tone
+- Applies modifications in a controlled manner
+
+#### How to Use Two-Step Flow
+
+Configure your `config.toml` with two sequential orchestration steps:
+
+```toml
+[[agents.orchestration]]
+step = 1
+model_name = "gemini-2.5-flash"
+temperature = 0.2
+template_path = "prompt/other-examples/two-step-flow/"
+prompt_file = "verify_changes.jinja"
+prompt_variables = {}
+tools = []
+
+[[agents.orchestration]]
+step = 2
+model_name = "gemini-2.5-flash"
+temperature = 0.2
+template_path = "prompt/other-examples/two-step-flow/"
+prompt_file = "apply_changes.jinja"
+prompt_variables = {}
+tools = []
+```
+
+### Step-to-Step Communication
 
 To enable chained multi-step execution, the framework uses the special variable:
 
@@ -300,15 +417,102 @@ To enable chained multi-step execution, the framework uses the special variable:
 ```
 
 This variable automatically injects into the current prompt the output generated by the previous step, allowing the LLM to:
-
-* analyze
-* refine
-* or apply changes based on the prior result
-
-example: 
+- Analyze the previous result
+- Refine the output
+- Apply changes based on prior context
 
 
-this is a two-step update readme:
+## Other Examples and Deprecated Files
 
+The `prompt/other-examples/deprecated/` folder contains older experimental prompts that are **no longer actively used** but are kept for historical reference and potential future experimentation:
 
-![alt text](image.png)
+- **orchestration.jinja** - Generic repository analysis template
+
+These files are not part of the main workflow but remain available for reference or testing alternative approaches
+
+---
+
+# GitHub Issues Integration
+
+The framework includes powerful GitHub Issues integration, allowing LLM agents to automatically discover and analyze issues referenced in commits.
+
+## Features
+
+### Automatic Issue Detection
+The framework automatically scans commit messages for issue references using various patterns:
+- `#123` - Direct issue reference
+- `fix #456`, `fixes #456`, `fixed #456` - Fix patterns
+- `close #789`, `closes #789`, `closed #789` - Close patterns  
+- `resolve #101`, `resolves #101`, `resolved #101` - Resolve patterns
+- `issue-123`, `gh-123` - Alternative formats
+
+### Issue Data Extraction
+For each detected issue, the framework fetches:
+- Title and description
+- Current state (open/closed)
+- Author information
+- Labels and milestone
+- Related pull requests
+- Closing commit (if applicable)
+- Creation and close timestamps
+
+### LLM Agent Tools
+When GitHub integration is enabled, LLM agents gain access to specialized tools:
+
+**`search_github_issues_in_commits()`**  
+Searches all commit messages for issue references and returns a summary of found issues with their details.
+
+**`get_github_issue_details(issue_number: int)`**  
+Retrieves comprehensive information about a specific issue, including description, timeline, and resolution context.
+
+**`extract_issue_numbers_from_text(text: str)`**  
+Extracts issue numbers from any given text using pattern matching.
+
+These tools allow the LLM to autonomously gather issue context during documentation generation, producing more accurate and contextual documentation.
+
+## Configuration Example
+
+```toml
+[target_information]
+repo_path = "external_repos/pos-mamba-sdk"
+branch_name = "master"
+commit_list = ["abc123..def456"]
+github_repo_name = "stone-payments/pos-mamba-sdk"  # Enable GitHub integration
+
+[[agents.orchestration]]
+step = 1
+model_name = "gemini-2.5-flash"
+template_path = "prompt/"
+prompt_file = "changelog.jinja"
+tools = []  # GitHub tools are automatically available
+```
+
+## Usage in Prompts
+
+Issue data is automatically available in your Jinja templates when not using `--issuelog`:
+
+```jinja
+{% if issues_analysis %}
+## Related Issues
+
+This release addresses {{ issues_analysis.total_issues_referenced }} issue(s):
+
+{% for issue_num, issue in issues_analysis.issues.items() %}
+- **#{{ issue_num }}**: {{ issue.title }} ({{ issue.state }})
+  - Author: {{ issue.author }}
+  {% if issue.labels %}
+  - Labels: {{ issue.labels | join(', ') }}
+  {% endif %}
+{% endfor %}
+{% endif %}
+```
+
+## Terminal Output Mode
+
+Use the `--issuelog` flag to print issue analysis to the terminal instead of including it in documentation:
+
+```bash
+python main.py conf/config.toml --issuelog
+```
+
+This displays a formatted report of all detected issues without adding them to the generated output file.
