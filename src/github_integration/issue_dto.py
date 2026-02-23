@@ -1,9 +1,8 @@
 from typing import Dict, List, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class IssueInfo:
+class IssueInfo(BaseModel):
     """DTO (Data Transfer Object) for GitHub issue information."""
     number: int
     title: str
