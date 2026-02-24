@@ -23,6 +23,5 @@ Describe how the changes were tested to ensure the functionality works as expect
 - [ ] Code follows the project standards.
 - [ ] My solution adheres to the project's guidelines.
 - [ ] Self-review has been completed.
-- [ ] I have included details about the new product version in `CHANGELOG.md` following the [Keep a Changelog](https://keepachangelog.com/en) format.
 - [ ] I have added tests that prove my fix is effective or that my feature works correctly.
 - [ ] Documentation has been updated (if necessary).

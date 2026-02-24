@@ -34,7 +34,3 @@ If any content is written in Portuguese (or any language other than English):
 
 Prefer clear, professional, and concise English.
 Avoid slang, abbreviations, or mixed-language terms.
-
-## Verification of Changelog Updates
-
-When a pull request includes changes to the codebase, ensure that the `CHANGELOG.md` file is updated accordingly.
