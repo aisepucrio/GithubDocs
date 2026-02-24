@@ -116,8 +116,9 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature, context_memory=context_memory)
     print(" \n orgestrarion step:", orchestration_step.tools, " \n" )
     if agent is None:
-        logger.error(f"Agent for model {orchestration_step.model_name} not found.")
-        exit(1)
+        error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
+        logger.error(str(error))
+        raise error
 
     template_vars = orchestration_step.prompt_variables.copy()
     template_vars['repo_info'] = repo_info
@@ -136,10 +137,9 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     )
 
     if agent.need_summarization(prompt):
-        logger.error("Prompt still too large after summarization. Consider reducing the number of commits or files.")
-        
-        
-        exit(1)
+        error = RuntimeError("Prompt still too large after summarization. Consider reducing the number of commits or files.")
+        logger.error(str(error))
+        raise error
 
     response = agent.generate_response_with_prompt(prompt, "", config=config)
     return response
@@ -160,8 +160,9 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
 
         
         if agent is None:
-            logger.error(f"Agent for model {orchestration_step.model_name} not found.")
-            exit(1)
+            error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
+            logger.error(str(error))
+            raise error
 
         # Prepara as variáveis do template
         template_vars = orchestration_step.prompt_variables.copy()
@@ -181,8 +182,9 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
 
         # Verifica se precisa de sumarização (mexer nessa parte depois)
         if agent.need_summarization(prompt):
-            logger.error("Prompt still too large after summarization.")
-            exit(1)
+            error = RuntimeError("Prompt still too large after summarization.")
+            logger.error(str(error))
+            raise error
 
         # Gera a resposta
         config = {"configurable": {"thread_id": f"step-{orchestration_step.step}"}}
@@ -231,7 +233,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
         repo_info = extractor.extract_repo_info()
     except Exception as e:
         logger.error(f"Failed to extract repository information: {e}")
-        exit(1)
+        raise
 
     issue_tracker = None
     commit_messages = []
@@ -294,4 +296,4 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
         logger.success(f"Documentation generated successfully at {output_path}")
     except IOError as e:
         logger.error(f"Failed to write output file at {output_path}: {e}")
-        exit(1)
+        raise
