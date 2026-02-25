@@ -1,4 +1,5 @@
 import os
+from langchain_core.documents import Document
 
 import tiktoken
 # import ollama 
@@ -14,7 +15,8 @@ from .agent_interface import AIAgent
 from .github_tools import get_github_issue_tools
 from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
-
+from langchain_classic.chains.summarize.chain import load_summarize_chain
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .tools import ALL_TOOLS
 
 def get_tools_from_names(names: list[str]):
@@ -46,6 +48,13 @@ class GeminiAgent(AIAgent):
         )
         self.output = response.content
         return self.output
+    
+    def refine_content(self, text: str) -> str:
+        chunk_size = self.context_window // 4
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
+        docs = [Document(page_content=c) for c in splitter.split_text(text)]
+        chain = load_summarize_chain(self.chat_model, chain_type="refine",verbose=True)
+        return chain.invoke(docs)["output_text"]
     
     def _count_tokens(self, input: str) -> int:
         return self.chat_model.get_num_tokens(self.base_prompt + "\n" + input)

@@ -72,6 +72,7 @@ class BenchmarkRunner:
         names: list[str],
         metadata: Optional[list[ConfigMetadata]] = None,
         verbose: bool = True,
+        refine: bool = False,
     ):
         """
         Args:
@@ -79,11 +80,13 @@ class BenchmarkRunner:
             names: Lista de nomes descritivos para cada config
             metadata: Lista de metadados (description, commit_mixed) para cada config
             verbose: Se True, imprime logs detalhados
+            refine: Se True, ativa refinamento de arquivos grandes via load_summarize_chain
         """
         self.configs = configs
         self.names = names
         self.metadata = metadata or [ConfigMetadata() for _ in configs]
         self.verbose = verbose
+        self.refine = refine
         self.results: list[BenchmarkResult] = []
 
     def _get_config_name(self, index: int) -> str:
@@ -209,7 +212,7 @@ class BenchmarkRunner:
                 self._log(f"Aviso: Não foi possível capturar o prompt: {prompt_err}")
 
             # Executa o framework
-            start(config)
+            start(config, refine=self.refine)
 
             # Lê o output gerado
             if os.path.exists(result.output_file):

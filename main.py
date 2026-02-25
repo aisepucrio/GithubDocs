@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--mock", action="store_true", help="Use mock agent for testing.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     parser.add_argument("--issuelog", action="store_true", help="Print GitHub issues analysis to terminal.")
+    parser.add_argument("--refine", action="store_true", help="Ativa refinamento de arquivos grandes via load_summarize_chain antes de enviar ao modelo.")
     args = parser.parse_args()
 
     logger = CustomLogger()
@@ -36,7 +37,7 @@ def main():
             logger.debug(f"Orchestration Step: {step}")
 
     logger.info("Starting documentation generation...")
-    start(config, enable_issue_log=args.issuelog or args.debug)
+    start(config, enable_issue_log=args.issuelog or args.debug, refine=args.refine)
 
 
 if __name__ == "__main__":

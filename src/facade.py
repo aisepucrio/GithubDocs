@@ -101,6 +101,22 @@ def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_pa
 
     return template.render(variables)
 
+def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_budget: int) -> dict:
+    """Refina diffs e source_code_before que excedem per_file_budget tokens.
+
+    Retorna um deep copy de repo_info com os campos refinados via refine_content.
+    """
+    refined = copy.deepcopy(repo_info)
+    for commit in refined.get("commits", []):
+        for mod in commit.get("modifications", {}).values():
+            content = (mod.get("diff") or "") + (mod.get("source_code_before") or "")
+            if agent._count_tokens(content) > per_file_budget:
+                if mod.get("diff"):
+                    mod["diff"] = agent.refine_content(mod["diff"])
+                if mod.get("source_code_before"):
+                    mod["source_code_before"] = agent.refine_content(mod["source_code_before"])
+    return refined
+
 def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None,tools: list[str] = None) -> AIAgent | None:
     agent_class = None
     for key in AI_DICT:
@@ -144,21 +160,21 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     response = agent.generate_response_with_prompt(prompt, "", config=config)
     return response
 
-def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver):
+def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, refine: bool = False):
     """Cria uma função para executar uma step específica"""
-    
+
     def execute_step(last_output: str) -> str:
         logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
-                
+
         # Instancia o agente
         agent = build_ai_agent(
-            orchestration_step.model_name, 
-            temperature=orchestration_step.temperature, 
+            orchestration_step.model_name,
+            temperature=orchestration_step.temperature,
             context_memory=context_memory,
             tools=orchestration_step.tools
         )
 
-        
+
         if agent is None:
             error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
             logger.error(str(error))
@@ -180,7 +196,19 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
             repo_info["repo_path"]
         )
 
-        # Verifica se precisa de sumarização (mexer nessa parte depois)
+        # Se --refine ativo e prompt excede janela, refina modificações antes de reenviar
+        if refine and agent.need_summarization(prompt):
+            logger.info("Prompt excede janela de contexto. Aplicando refine nas modificações...")
+            per_file_budget = agent._get_model_window_context() // 4
+            refined_repo_info = refine_oversized_modifications(repo_info, agent, per_file_budget)
+            template_vars['repo_info'] = refined_repo_info
+            prompt = render_prompt(
+                orchestration_step.template_path,
+                orchestration_step.prompt_file,
+                template_vars,
+                repo_info["repo_path"]
+            )
+
         if agent.need_summarization(prompt):
             error = RuntimeError("Prompt still too large after summarization.")
             logger.error(str(error))
@@ -189,20 +217,20 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
         # Gera a resposta
         config = {"configurable": {"thread_id": f"step-{orchestration_step.step}"}}
         response = agent.generate_response_with_prompt(prompt, "", config=config)
-        
+
         return response
-    
+
     return execute_step
 
-def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver):
+def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver, refine: bool = False):
     """Encadeia as steps usando composição de funções"""
-    
+
     # Ordena as steps
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
-    
+
     # Cria as funções para cada step
     step_functions = [
-        create_step_chain(step, repo_info, context_memory) 
+        create_step_chain(step, repo_info, context_memory, refine=refine)
         for step in sorted_steps
     ]
     
@@ -222,7 +250,7 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
     
     return execute_chain
 
-def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
+def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bool = False):
     try:
         extractor = RepoInfoExtractor(
             repository_path=base_config.target_info.repo_path,
@@ -283,7 +311,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False):
     #  criação da orquestração utilizando chains atualmente:
 
     # CRIA UMA CHAIN (cadeia) de funções ----------------------
-    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory)
+    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, refine=refine)
     
     # EXECUTA a chain de uma vez
     final_result = chain("")

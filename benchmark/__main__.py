@@ -118,6 +118,12 @@ Exemplos:
     )
 
     parser.add_argument(
+        "--refine",
+        action="store_true",
+        help="Ativa refinamento de arquivos grandes via load_summarize_chain antes de enviar ao modelo",
+    )
+
+    parser.add_argument(
         "--config-worksheet",
         type=str,
         default=os.getenv("GOOGLE_SHEETS_CONFIG_WORKSHEET", "TestConfigs"),
@@ -179,7 +185,7 @@ Exemplos:
     print(f"Configs selecionadas: {format_indices_summary(indices)}")
     print(f"Total: {len(indices)} de {total_configs} disponíveis")
 
-    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet)
+    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet, refine=args.refine)
     results = runner.run_batch(indices)
 
     if not args.no_export:
