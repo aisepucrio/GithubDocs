@@ -191,12 +191,16 @@ class RepoInfoExtractor:
                     continue
 
                 key = f"{modified_file.new_path}_{idx}"
-                try:
-                    diff = modified_file.diff
-                    source_code_before = modified_file.source_code_before
-                except ValueError:
+                if 'binary' in identify.tags_from_filename(path_to_check):
                     diff = None
                     source_code_before = None
+                else:
+                    try:
+                        diff = modified_file.diff
+                        source_code_before = modified_file.source_code_before
+                    except ValueError:
+                        diff = None
+                        source_code_before = None
                 commit_info["modifications"][key] = {
                     "change_type": modified_file.change_type.name,
                     "added_lines": modified_file.added_lines,

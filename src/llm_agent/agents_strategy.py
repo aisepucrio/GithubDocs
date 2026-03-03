@@ -217,6 +217,12 @@ class MockAgent(AIAgent):
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
+    
+    def refine_content(self, text: str) -> str:
+        print("--- MOCK AGENT ---")
+        print("Refining content:", text)
+        print("--- END MOCK AGENT ---")
+        return "Refined content (mocked)"
 
     def _count_tokens(self, input: str) -> int:
         return len(input.split())
