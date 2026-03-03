@@ -113,31 +113,7 @@ Edit `test_configs.py` and add TOML config strings to the `TEST_CONFIGS` list an
 python -m benchmark "1" --local
 ```
 
-Each TOML string must follow the GithubDocs config format:
-
-```toml
-[target_information]
-repo_path = "external_repos/MyRepo"
-branch_name = "main"
-commit_list = ["abc123def456"]
-ignore_files = ["README.md", "CHANGELOG.md"]
-
-[agents]
-
-[[agents.output]]
-result_path = "output/"
-log_path = "logs/"
-result_file_name = "benchmark_test_1.md"
-
-[[agents.orchestration]]
-step = 1
-model_name = "gemini-2.5-flash"
-temperature = 0.2
-template_path = "prompt/"
-prompt_file = "changelog.jinja"
-prompt_variables = { name = "My Test", repo = "external_repos/MyRepo" }
-tools = []
-```
+Each TOML string must follow the GithubDocs config format found in conf/config_example.toml
 
 ## Output
 
