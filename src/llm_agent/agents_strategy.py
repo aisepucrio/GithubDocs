@@ -27,8 +27,6 @@ class LogLLMCallback(BaseCallbackHandler):
     def on_llm_start(self, serialized, prompts, **kwargs):
         print("🔥 LLM CHAMADO (callback)")
 
-
-
 class GeminiAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None, tools: list[str] = None):
         api_key  = api_key or os.environ.get("GEMINI_API_KEY") or ""

@@ -160,6 +160,7 @@ class GoogleSheetsExporter:
             worksheet.append_row(self.HEADERS)
 
         rows = []
+        prompt_notes = []  # (row_index, full_prompt) para adicionar como notas
         for r in results:
             # Lê o conteúdo do arquivo de output se existir
             output_content = ""
@@ -170,6 +171,7 @@ class GoogleSheetsExporter:
                 except Exception:
                     output_content = f"[Erro ao ler: {output_file}]"
 
+            full_prompt = r.get("prompt_content", "")
             row = [
                 r.get("config_index", ""),
                 r.get("commit_mixed", ""),
@@ -181,14 +183,32 @@ class GoogleSheetsExporter:
                 r.get("test_type", ""),
                 r.get("description", ""),
                 output_content,
-                r.get("prompt_content", "")[:49000],  # maximo do sheets e 50000 chars
+                "Ver nota" if full_prompt else "",
                 r.get("error_message", ""),
                 r.get("timestamp", ""),
             ]
             rows.append(row)
+            if full_prompt:
+                prompt_notes.append(full_prompt)
+            else:
+                prompt_notes.append(None)
 
         if rows:
+            # Descobre a próxima linha disponível antes de inserir
+            all_values = worksheet.get_all_values()
+            start_row = len(all_values) + 1  # 1-based, próxima linha vazia
+
             worksheet.append_rows(rows)
+
+            # Adiciona o prompt completo como nota na coluna K (Prompt, coluna 11)
+            prompt_col = "K"
+            for i, note_text in enumerate(prompt_notes):
+                if note_text:
+                    cell_ref = f"{prompt_col}{start_row + i}"
+                    try:
+                        worksheet.update_note(cell_ref, note_text)
+                    except Exception as e:
+                        print(f"Aviso: Não foi possível adicionar nota em {cell_ref}: {e}")
 
         spreadsheet_url = f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit"
         print(f"\nResultados exportados para: {spreadsheet_url}")
