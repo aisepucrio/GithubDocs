@@ -51,7 +51,7 @@ class GeminiAgent(AIAgent):
         chunk_size = self.context_window // 4
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
         docs = [Document(page_content=c) for c in splitter.split_text(text)]
-        chain = load_summarize_chain(self.chat_model, chain_type="refine",verbose=True)
+        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
         return chain.invoke(docs)["output_text"]
     
     def _count_tokens(self, input: str) -> int:
@@ -189,7 +189,7 @@ class OllamaAgent(AIAgent):
         chunk_size = self.context_window // 4
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
         docs = [Document(page_content=c) for c in splitter.split_text(text)]
-        chain = load_summarize_chain(self.chat_model, chain_type="refine",verbose=True)
+        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
         return chain.invoke(docs)["output_text"]
 
     def _count_tokens(self, input: str) -> int:
