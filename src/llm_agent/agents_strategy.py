@@ -1,4 +1,5 @@
 import os
+from langchain_core.documents import Document
 
 import tiktoken
 # import ollama 
@@ -14,7 +15,8 @@ from .agent_interface import AIAgent
 from .github_tools import get_github_issue_tools
 from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
-
+from langchain_classic.chains.summarize.chain import load_summarize_chain
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .tools import ALL_TOOLS
 
 def get_tools_from_names(names: list[str]):
@@ -24,8 +26,6 @@ def get_tools_from_names(names: list[str]):
 class LogLLMCallback(BaseCallbackHandler):
     def on_llm_start(self, serialized, prompts, **kwargs):
         print("🔥 LLM CHAMADO (callback)")
-
-
 
 class GeminiAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None, tools: list[str] = None):
@@ -46,6 +46,13 @@ class GeminiAgent(AIAgent):
         )
         self.output = response.content
         return self.output
+    
+    def refine_content(self, text: str) -> str:
+        chunk_size = self.context_window // 4
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
+        docs = [Document(page_content=c) for c in splitter.split_text(text)]
+        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
+        return chain.invoke(docs)["output_text"]
     
     def _count_tokens(self, input: str) -> int:
         return self.chat_model.get_num_tokens(self.base_prompt + "\n" + input)
@@ -177,6 +184,13 @@ class OllamaAgent(AIAgent):
         )
         self.output = response["messages"][-1].content
         return self.output
+    
+    def refine_content(self, text: str) -> str:
+        chunk_size = self.context_window // 4
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
+        docs = [Document(page_content=c) for c in splitter.split_text(text)]
+        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
+        return chain.invoke(docs)["output_text"]
 
     def _count_tokens(self, input: str) -> int:
          # Naive token counting logic
@@ -201,6 +215,12 @@ class MockAgent(AIAgent):
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
+    
+    def refine_content(self, text: str) -> str:
+        print("--- MOCK AGENT ---")
+        print("Refining content:", text)
+        print("--- END MOCK AGENT ---")
+        return "Refined content (mocked)"
 
     def _count_tokens(self, input: str) -> int:
         return len(input.split())

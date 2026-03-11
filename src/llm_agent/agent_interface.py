@@ -23,6 +23,10 @@ class AIAgent(ABC):
     @abstractmethod
     def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
         pass
+    
+    @abstractmethod
+    def refine_content(self, text: str) -> str:
+        pass
 
     @abstractmethod
     def _count_tokens(self, input: str) -> int:

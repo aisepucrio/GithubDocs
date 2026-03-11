@@ -51,6 +51,7 @@ class TestConfigRow:
     # Campos opcionais com defaults
     model_name: str = "gemini-2.5-flash-lite"
     temperature: float = 0.2
+    project_description: str = ""
 
     @classmethod
     def from_sheet_row(cls, row: dict) -> "TestConfigRow":
@@ -64,6 +65,7 @@ class TestConfigRow:
             repo_path=row.get("repo_path", "external_repos/EventFlow"),
             model_name=(row.get("model_name", "gemini-2.5-flash")) or "gemini-2.5-flash",
             temperature=float(row.get("temperature", 0.2) or 0.2),
+            project_description=row.get("project_description", ""),
         )
 
 
@@ -102,11 +104,16 @@ def build_config_toml(row: TestConfigRow, index: int) -> str:
         raise ValueError("Lista de commits vazia na configuração")
     prompt_file = TEST_TYPE_PROMPTS.get(row.test_type, "changelog.jinja")
 
-    # Sanitiza valores que vêm da planilha
     safe_desc = _sanitize_toml_string(row.description)
     safe_repo = _sanitize_toml_string(row.repo_path)
     safe_branch = _sanitize_toml_string(row.branch_name)
     safe_model = _sanitize_toml_string(row.model_name)
+    safe_project_description = _sanitize_toml_string(row.project_description)
+
+    prompt_variables = f'{{ name = "{safe_desc}", repo = "{safe_repo}"'
+    if row.test_type == TestType.README_CREATE and safe_project_description:
+        prompt_variables += f', repo_description = "{safe_project_description}"'
+    prompt_variables += ' }'
 
     conf = f'''[target_information]
     repo_path = "{safe_repo}"
@@ -127,7 +134,7 @@ def build_config_toml(row: TestConfigRow, index: int) -> str:
     temperature = {row.temperature}
     template_path = "prompt/"
     prompt_file = "{prompt_file}"
-    prompt_variables = {{ name = "{safe_desc}", repo = "{safe_repo}" }}
+    prompt_variables = {prompt_variables}
     tools = []
     '''
 
