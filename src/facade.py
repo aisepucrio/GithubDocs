@@ -98,7 +98,7 @@ def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_pa
     # without that, this function going to have a lot fo env.filters in the future.
     env.filters["read_file"] = lambda rel: load_file(repo_path, rel)
     template = env.get_template(prompt_file)
-
+    
     return template.render(variables)
 
 def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_budget: int) -> dict:
@@ -250,7 +250,7 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
     
     return execute_chain
 
-def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bool = False):
+def start(base_config: BaseAppConfig):
     try:
         extractor = RepoInfoExtractor(
             repository_path=base_config.target_info.repo_path,
@@ -284,7 +284,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
             issues_analysis = issue_tracker.analyze_commits(repo_info["commits"])
             logger.info(f"Encontradas {issues_analysis['total_issues_referenced']} issues únicas referenciadas")
             
-            if enable_issue_log:
+            if base_config.cli_params.enable_issue_log:
                 print_issues_to_terminal(issues_analysis, issue_tracker)
             else:
                 repo_info["issues_analysis"] = issues_analysis
@@ -311,7 +311,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
     #  criação da orquestração utilizando chains atualmente:
 
     # CRIA UMA CHAIN (cadeia) de funções ----------------------
-    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, refine=refine)
+    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, refine=base_config.cli_params.refine)
     
     # EXECUTA a chain de uma vez
     final_result = chain("")

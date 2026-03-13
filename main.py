@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from src.facade import start
 from src.load_configuration import load_config
+from src.load_configuration.conf_structures import CliParams
 from src.log import CustomLogger
 
 
@@ -36,8 +37,13 @@ def main():
         for step in config.orchestration_steps:
             logger.debug(f"Orchestration Step: {step}")
 
+    config.cli_params = CliParams(
+        enable_issue_log=args.issuelog or args.debug,
+        refine=args.refine
+    )
+
     logger.info("Starting documentation generation...")
-    start(config, enable_issue_log=args.issuelog or args.debug, refine=args.refine)
+    start(config)
 
 
 if __name__ == "__main__":

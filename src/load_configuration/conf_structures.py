@@ -222,7 +222,12 @@ class OrchestrationStep(BaseModel):
     def __str__(self):
         return f"OrchestrationStep(step={self.step}, model_name={self.model_name}, temperature={self.temperature}, prompt_path={self.prompt_file}, prompt_variables={self.prompt_variables}, prompt={self.prompt[:50]}...)"
     
+class CliParams(BaseModel):
+    refine: bool = False
+    enable_issue_log: bool = False
+
 class BaseAppConfig(BaseModel):
     target_info: TargetInfo
     output_info: OutputInfo
     orchestration_steps: list[OrchestrationStep]
+    cli_params: CliParams = CliParams()

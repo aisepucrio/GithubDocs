@@ -212,7 +212,8 @@ class BenchmarkRunner:
                 self._log(f"Aviso: Não foi possível capturar o prompt: {prompt_err}")
 
             # Executa o framework
-            start(config, refine=self.refine)
+            config.cli_params.refine = self.refine
+            start(config)
 
             # Lê o output gerado
             if os.path.exists(result.output_file):
