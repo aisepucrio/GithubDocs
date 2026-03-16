@@ -76,6 +76,14 @@ class RepoInfoExtractor:
         branches = [branch.name.replace('origin/', '', 1) if branch.name.startswith('origin/') else branch.name for branch in repo.remote().refs]
         return self.target_branch in branches
 
+    def validate_pydriller_branch(self, repo: Repository) -> bool:
+        try:
+            git_repo = self.validate_repository()[1]
+            branches = [branch.name.replace('origin/', '', 1) if branch.name.startswith('origin/') else branch.name for branch in git_repo.remote().refs]
+            return self.target_branch in branches
+        except Exception:
+            return False
+
     def validate_commit(self, commit_hash: str, repo: Repo) -> bool:
         commits = [commit.hexsha for commit in repo.iter_commits()]
         return commit_hash in commits
@@ -87,54 +95,81 @@ class RepoInfoExtractor:
         except Exception:
             return (False, None)
 
+    def validate_pydriller_repository(self) -> Tuple[bool, Repository]:
+        try:
+            repo = Repository(path_to_repo=self.repository_path, only_in_branch=self.target_branch)
+            return (True, repo)
+        except Exception:
+            return (False, None)
+
+    def stash_changes(self, repo: Repository) -> None:
+        try:
+            git_repo = Repo(self.repository_path)
+            if git_repo.is_dirty(untracked_files=True):
+                try:
+                    git_repo.git.stash('push', '--include-untracked')
+                except Exception:
+                    try:
+                        git_repo.git.stash('save', '--include-untracked')
+                    except Exception as e:
+                        raise RepoInfoExtractionError(f"Failed to stash local changes: {e}")
+        except RepoInfoExtractionError:
+            raise
+        except Exception as e:
+            raise RepoInfoExtractionError(f"Failed to access repository for stashing: {e}")
+
     def get_repository(self) -> Repository:
-        is_valid, repo = self.validate_repository()
+        is_valid, repo = self.validate_pydriller_repository()
 
         if not is_valid:
             raise InvalidRepositoryPathError()
 
-        is_valid = self.validate_branch(repo)
+        is_valid = self.validate_pydriller_branch(repo)
         if not is_valid:
             raise InvalidBranchError()
 
-        if repo.is_dirty(untracked_files=True):
-            try:
-                repo.git.stash('push', '--include-untracked')
-            except Exception:
-                try:
-                    repo.git.stash('save', '--include-untracked')
-                except Exception as e:
-                    raise RepoInfoExtractionError(f"Failed to stash local changes: {e}")
+        self.stash_changes(repo)
 
-        all_repo_commits = [commit.hexsha for commit in repo.iter_commits(self.target_branch)]
         commit_list = []
 
-        last_commit_index = 0xFFFFFFFF
         for commit_hash in self.commit_list or []:
             if ":" in commit_hash:
-                temp = commit_hash.split(":")
-                start_commit, end_commit = temp[0], temp[1]
-                index1 = all_repo_commits.index(start_commit)
-                index2 = all_repo_commits.index(end_commit)
-                if index1 == -1 or index2 == -1:
+                start_commit, end_commit = commit_hash.split(":")
+                try:
+                    range_commits = [
+                        c.hash for c in Repository(
+                            self.repository_path,
+                            from_commit=start_commit,
+                            to_commit=end_commit,
+                            only_in_branch=self.target_branch
+                        ).traverse_commits()
+                    ]
+                except Exception:
                     raise InvalidCommitError(commit_hash)
-                if index1 < index2:  # the order do not matter now
-                    index1, index2 = index2, index1
-                commit_list.extend(all_repo_commits[index2:index1 + 1])
-                if index1 < last_commit_index:
-                    last_commit_index = index1
+                if not range_commits:
+                    raise InvalidCommitError(commit_hash)
+                commit_list.extend(range_commits)
             else:
-                index1 = all_repo_commits.index(commit_hash) if commit_hash in all_repo_commits else -1
-                if index1 == -1:
+                found = list(Repository(
+                    self.repository_path,
+                    single=commit_hash,
+                    only_in_branch=self.target_branch
+                ).traverse_commits())
+                if not found:
                     raise InvalidCommitError(commit_hash)
                 commit_list.append(commit_hash)
-                if index1 < last_commit_index:
-                    last_commit_index = index1
 
-        if commit_list == []:
+        if not commit_list:
             raise InvalidCommitError()
+        ordered = [
+            c.hash for c in Repository(
+                self.repository_path,
+                only_commits=commit_list,
+                only_in_branch=self.target_branch
+            ).traverse_commits()
+        ]
+        self.last_commit_hash = ordered[-1]
 
-        self.last_commit_hash = all_repo_commits[last_commit_index]
         return Repository(self.repository_path,
                           only_commits=commit_list,
                           only_in_branch=self.target_branch)
@@ -156,11 +191,21 @@ class RepoInfoExtractor:
                     continue
 
                 key = f"{modified_file.new_path}_{idx}"
+                if 'binary' in identify.tags_from_filename(path_to_check):
+                    diff = None
+                    source_code_before = None
+                else:
+                    try:
+                        diff = modified_file.diff
+                        source_code_before = modified_file.source_code_before
+                    except ValueError:
+                        diff = None
+                        source_code_before = None
                 commit_info["modifications"][key] = {
                     "change_type": modified_file.change_type.name,
                     "added_lines": modified_file.added_lines,
-                    "diff": modified_file.diff,
-                    "source_code_before": modified_file.source_code_before
+                    "diff": diff,
+                    "source_code_before": source_code_before
                 }
             commit_result.append(commit_info)
         return {
