@@ -28,3 +28,12 @@
 [submodule "external_repos/ngx-admin-lte"]
 	path = external_repos/ngx-admin-lte
 	url = https://github.com/stone-payments/ngx-admin-lte
+[submodule "external_repos/requests"]
+	path = external_repos/requests
+	url = https://github.com/psf/requests.git
+[submodule "external_repos/flask"]
+	path = external_repos/flask
+	url = https://github.com/pallets/flask.git
+[submodule "external_repos/lm4smells-core"]
+	path = external_repos/lm4smells-core
+	url = https://github.com/aisepucrio/lm4smells-core.git

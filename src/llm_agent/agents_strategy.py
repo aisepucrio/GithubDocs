@@ -16,6 +16,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
 
 from .tools import ALL_TOOLS
+from .langfuse_integration import get_langfuse_callback
 
 def get_tools_from_names(names: list[str]):
     """Converte lista de nomes em lista de tools"""
@@ -35,14 +36,29 @@ class GeminiAgent(AIAgent):
         self.chat_model:BaseChatModel = init_chat_model("google_genai:" + model_name, api_key=api_key, temperature=temperature)
 
     def generate_response(self, input: str) -> str:
-        response = self.chat_model.invoke(self.base_prompt + "\n" + input,
+        callbacks = []
+        langfuse_cb = get_langfuse_callback()
+        if langfuse_cb:
+            callbacks.append(langfuse_cb)
+            
+        response = self.chat_model.invoke(
+            self.base_prompt + "\n" + input,
+            config={"callbacks": callbacks} if callbacks else None
         )
         self.output = response.content
         return self.output
     
     def generate_response_with_prompt(self,  prompt: str, input: str, config: dict = None) -> str:
+        config = config or {}
+        callbacks = config.get("callbacks", [])
+        langfuse_cb = get_langfuse_callback()
+        if langfuse_cb and langfuse_cb not in callbacks:
+            callbacks.append(langfuse_cb)
+        config["callbacks"] = callbacks
+
         response = self.chat_model.invoke(
              prompt + "\n" + input,
+             config=config if config["callbacks"] else None
         )
         self.output = response.content
         return self.output
@@ -132,11 +148,16 @@ class OllamaAgent(AIAgent):
         super().__init__(model_name, api_key, base_prompt, temperature, tools)
         # self.client = ollama.Client()
 
+        cb = [LogLLMCallback()]
+        langfuse_cb = get_langfuse_callback()
+        if langfuse_cb:
+            cb.append(langfuse_cb)
+
         self.chat_model: BaseChatModel = ChatOllama(
             model=model_name,
             base_url="http://localhost:11434",
             temperature=temperature,
-            callbacks=[LogLLMCallback()]
+            callbacks=cb
         )
 
         actual_tools = get_tools_from_names(self.tools) if self.tools else []
