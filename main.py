@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     parser.add_argument("--issuelog", action="store_true", help="Print GitHub issues analysis to terminal.")
     parser.add_argument("--refine", action="store_true", help="Ativa refinamento de arquivos grandes via load_summarize_chain antes de enviar ao modelo.")
+    parser.add_argument("--map-reduce", action="store_true", help="Ativa map-reduce: sumariza cada arquivo via batch e reduz com o prompt original.")
     args = parser.parse_args()
 
     logger = CustomLogger()
@@ -39,7 +40,8 @@ def main():
 
     config.cli_params = CliParams(
         enable_issue_log=args.issuelog or args.debug,
-        refine=args.refine
+        refine=args.refine,
+        map_reduce=args.map_reduce
     )
 
     logger.info("Starting documentation generation...")

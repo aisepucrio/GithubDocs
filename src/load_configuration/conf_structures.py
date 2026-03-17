@@ -225,6 +225,7 @@ class OrchestrationStep(BaseModel):
 class CliParams(BaseModel):
     refine: bool = False
     enable_issue_log: bool = False
+    map_reduce: bool = False
 
 class BaseAppConfig(BaseModel):
     target_info: TargetInfo

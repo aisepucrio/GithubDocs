@@ -1,0 +1,27 @@
+You are an assistant specialized in summarizing code changes from Git diffs.
+Your task is to produce a concise, technical summary of the changes made in the following file.
+
+Describe:
+- What was changed (added, removed, modified)
+- The purpose or intent behind the change, if discernible from the diff
+- Any notable impact on behavior, APIs, or structure
+
+Rules:
+- Be concise and factual. Do not infer beyond what the diff shows.
+- Do not include raw diffs or code blocks in your output.
+- Preserve technical accuracy — use correct function names, class names, and file paths.
+- If the file was only renamed or had trivial formatting changes, state that briefly.
+
+File: {{ file_path }}
+Change Type: {{ modification.change_type }}
+Added Lines: {{ modification.added_lines }}
+{% if modification.source_code_before %}
+Source code before:
+{{ modification.source_code_before }}
+{% endif %}
+{% if modification.diff %}
+Diff:
+```diff
+{{ modification.diff }}
+```
+{% endif %}

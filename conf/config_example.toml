@@ -2,7 +2,7 @@
 repo_path = "external_repos/EventFlow"
 branch_name = "develop-v1"
 commit_list = ["6bc5eb39eb34792ccbd6b5dbb0d98c2354c950f5"]
-ignore_files = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
+ignore_files = ["IGNORED_PRESET","README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
 # Opcional: Nome do repositório no formato "owner/repo" para buscar issues
 # github_repo_name = "owner/repo"
 [agents]
