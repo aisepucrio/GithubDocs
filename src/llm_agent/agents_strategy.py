@@ -17,6 +17,8 @@ from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_classic.chains.summarize.chain import load_summarize_chain
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .tools import ALL_TOOLS
 
 def get_tools_from_names(names: list[str]):
@@ -215,6 +217,12 @@ class MockAgent(AIAgent):
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
+    
+    def refine_content(self, text: str) -> str:
+        print("--- MOCK AGENT ---")
+        print("Refining content:", text)
+        print("--- END MOCK AGENT ---")
+        return "Refined content (mocked)"
     
     def refine_content(self, text: str) -> str:
         print("--- MOCK AGENT ---")

@@ -117,13 +117,22 @@ def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_bud
                     mod["source_code_before"] = agent.refine_content(mod["source_code_before"])
     return refined
 
-def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: OrchestrationStep, template_vars: dict) -> str:
-    """Aplica map-reduce: summariza cada arquivo via batch, depois reduz com o prompt original."""
+REDUCE_PROMPT_MAP = {
+    "changelog.jinja": "reduce_changelog.jinja",
+    "readme_update.jinja": "reduce_readme_update.jinja",
+    "readme.jinja": "reduce_readme.jinja",
+}
 
+def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: OrchestrationStep, template_vars: dict) -> str:
+    """Aplica map-reduce: summariza cada arquivo via batch, depois reduz com o prompt específico."""
 
     OPTIONALS_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "..", "prompt", "optionals")
     MAP_PROMPT_FILE = "map.jinja"
-    REDUCE_PROMPT_FILE = "reduce.jinja"
+
+    reduce_file = REDUCE_PROMPT_MAP.get(orchestration_step.prompt_file)
+    if not reduce_file:
+        logger.warning(f"Map-reduce: no reduce prompt mapped for '{orchestration_step.prompt_file}'. Using generic reduce.jinja.")
+        reduce_file = "reduce.jinja"
 
     all_files = []
     for commit in repo_info.get("commits", []):
@@ -131,7 +140,7 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
             all_files.append((file_path, modification))
 
     if not all_files:
-        logger.warning("Map-reduce: nenhuma modificação encontrada.")
+        logger.warning("Map-reduce: no modifications found.")
         return ""
 
     # Map phase: render a map prompt per file, then batch all at once
@@ -143,24 +152,17 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
         for file_path, modification in all_files
     ]
 
-    logger.info(f"Map-reduce: enviando {len(map_prompts)} arquivos em batch...")
+    logger.info(f"Map-reduce: sending {len(map_prompts)} files in batch...")
     map_responses = agent.chat_model.batch(map_prompts)
     map_summaries = [r.content for r in map_responses]
 
-    logger.info(f"Map-reduce: map phase concluída. {len(map_summaries)} resumos gerados.")
+    logger.info(f"Map-reduce: map phase done. {len(map_summaries)} summaries generated.")
 
-    # Reduce phase: render the original prompt (without repo_info diffs), then wrap with reduce.jinja
-    original_prompt = render_prompt(
-        orchestration_step.template_path,
-        orchestration_step.prompt_file,
-        template_vars,
-        repo_info["repo_path"]
-    )
-
-    reduce_template = env.get_template(REDUCE_PROMPT_FILE)
+    # Reduce phase: use the specific reduce prompt with repo_info (without diffs) + map summaries
+    reduce_template = env.get_template(reduce_file)
     reduce_prompt = reduce_template.render(
         map_summaries=map_summaries,
-        original_prompt=original_prompt
+        **template_vars
     )
 
     config = {"configurable": {"thread_id": f"step-{orchestration_step.step}-reduce"}}
@@ -213,8 +215,10 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
 def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None):
     """Cria uma função para executar uma step específica"""
 
+
     def execute_step(last_output: str) -> str:
         logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
+
 
         # Instancia o agente
         agent = build_ai_agent(
@@ -228,6 +232,7 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
             error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
             logger.error(str(error))
             raise error
+            
 
         # Prepara as variáveis do template
         template_vars = orchestration_step.prompt_variables.copy()
@@ -260,7 +265,7 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
             )
 
         if cli_params and cli_params.map_reduce:
-            logger.info("Map-Reduce mode ativo. Sumarizando cada arquivo via batch...")
+            logger.info("Map-Reduce mode active. Summarizing each file in batch...")
             effective_repo_info = template_vars.get('repo_info', repo_info)
             return map_reduce_step(effective_repo_info, agent, orchestration_step, template_vars)
 
@@ -272,15 +277,19 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
         config = {"configurable": {"thread_id": f"step-{orchestration_step.step}"}}
         response = agent.generate_response_with_prompt(prompt, "", config=config)
 
+
         return response
+
 
     return execute_step
 
 def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None):
     """Encadeia as steps usando composição de funções"""
 
+
     # Ordena as steps
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
+
 
     # Cria as funções para cada step
     step_functions = [
@@ -315,6 +324,7 @@ def start(base_config: BaseAppConfig):
         repo_info = extractor.extract_repo_info()
     except Exception as e:
         logger.error(f"Failed to extract repository information: {e}")
+        raise
         raise
 
     issue_tracker = None
@@ -379,3 +389,4 @@ def start(base_config: BaseAppConfig):
     except IOError as e:
         logger.error(f"Failed to write output file at {output_path}: {e}")
         raise
+    

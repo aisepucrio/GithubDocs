@@ -81,11 +81,13 @@ class BenchmarkRunner:
             metadata: Lista de metadados (description, commit_mixed) para cada config
             verbose: Se True, imprime logs detalhados
             refine: Se True, ativa refinamento de arquivos grandes via load_summarize_chain
+            refine: Se True, ativa refinamento de arquivos grandes via load_summarize_chain
         """
         self.configs = configs
         self.names = names
         self.metadata = metadata or [ConfigMetadata() for _ in configs]
         self.verbose = verbose
+        self.refine = refine
         self.refine = refine
         self.results: list[BenchmarkResult] = []
 

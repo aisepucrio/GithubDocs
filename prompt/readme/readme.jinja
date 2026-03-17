@@ -1,0 +1,52 @@
+Use only the information provided below to produce a complete, well-structured README in Markdown format.
+
+Use the following repository data:
+Repository Name: {{ repo_name }}
+Repository Description: {{ repo_description }}
+Repository Language: {{ repo_info.extensions }}
+License: {{ repo_info.license }}
+
+{% if repo_info.file_tree %}
+## File Tree:
+{{ repo_info.file_tree }}
+{% endif %}
+
+{% for f in ['package.json', 'pyproject.toml', 'Cargo.toml', 'requirements.txt', 'go.mod', 'Makefile', 'Dockerfile', 'docker-compose.yml', 'setup.py', 'setup.cfg'] %}
+{% set content = f | read_file %}
+{% if content %}
+## File: {{ f }}
+{{ content }}
+{% endif %}
+{% endfor %}
+
+Output structure:
+
+# Repository description
+Provide a concise overview of what the project is, what it does, and its main components or modules.
+
+# Installation
+Describe how to set up the project, including:
+- Cloning the repository
+- Installing dependencies
+- Running setup or environment scripts
+- Any additional configuration steps
+
+# Usage
+Explain how to run or use the project.
+Include relevant commands, build steps, or example usage if the data provides them.
+
+# Dependencies
+List key technologies, runtimes, or tools used (for example: Node.js, Python, pnpm, Bash).
+
+# Contributions
+Describe contribution processes or conventions (for example: Conventional Commits or contribution files).
+
+# License
+State the license type (for example: MIT, Apache 2.0) if it appears in the data.
+
+Output rules:
+- Base everything strictly on the repository data above.
+- Do not invent or infer missing information.
+- Do not include URLs, external references, or placeholders.
+- Skip any section for which there is no data.
+- The final output must be only the README.md content, formatted in Markdown, with no extra commentary.

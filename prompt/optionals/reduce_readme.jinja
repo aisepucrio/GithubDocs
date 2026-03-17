@@ -1,0 +1,49 @@
+Use only the information provided below to produce a complete, well-structured README in Markdown format.
+
+{% if repo_info.repo_name %}Repository Name: {{ repo_info.repo_name }}{% endif %}
+{% if repo_info.repo_description %}Repository Description: {{ repo_info.repo_description }}{% endif %}
+{% if repo_info.extensions %}Repository Language: {{ repo_info.extensions }}{% endif %}
+{% if repo_info.license %}License: {{ repo_info.license }}{% endif %}
+
+{% if repo_info.file_tree %}
+## File Tree:
+{{ repo_info.file_tree }}
+{% endif %}
+
+## Summarized code changes:
+{% for summary in map_summaries %}
+### File Change {{ loop.index }}
+{{ summary }}
+{% endfor %}
+
+Output structure:
+
+# Repository description
+Provide a concise overview of what the project is, what it does, and its main components or modules.
+
+# Installation
+Describe how to set up the project, including:
+- Cloning the repository
+- Installing dependencies
+- Running setup or environment scripts
+- Any additional configuration steps
+
+# Usage
+Explain how to run or use the project.
+Include relevant commands, build steps, or example usage if the data provides them.
+
+# Dependencies
+List key technologies, runtimes, or tools used (for example: Node.js, Python, pnpm, Bash).
+
+# Contributions
+Describe contribution processes or conventions (for example: Conventional Commits or contribution files).
+
+# License
+State the license type (for example: MIT, Apache 2.0) if it appears in the data.
+
+Output rules:
+- Base everything strictly on the data above.
+- Do not invent or infer missing information.
+- Do not include URLs, external references, or placeholders.
+- Skip any section for which there is no data.
+- The final output must be only the README.md content, formatted in Markdown, with no extra commentary.

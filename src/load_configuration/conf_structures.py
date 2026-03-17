@@ -216,7 +216,7 @@ class OrchestrationStep(BaseModel):
     @field_validator("template_path")
     def validate_template_path(cls, v):
         if not path_validator(v):
-            raise KeyError(f"\u274C Invalid template{v}path")
+            raise KeyError(f"\u274C Invalid template {v} path")
         return v
     
     def __str__(self):
