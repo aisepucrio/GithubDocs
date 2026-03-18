@@ -34,17 +34,43 @@ class GeminiAgent(AIAgent):
 
         self.chat_model:BaseChatModel = init_chat_model("google_genai:" + model_name, api_key=api_key, temperature=temperature)
 
+
+        actual_tools = get_tools_from_names(self.tools) if self.tools else []
+
+        self.agent = create_agent(
+            self.chat_model,
+            tools=actual_tools,
+            checkpointer=context_memory,
+        )
+
+        
     def generate_response(self, input: str) -> str:
         response = self.chat_model.invoke(self.base_prompt + "\n" + input,
         )
         self.output = response.content
         return self.output
     
-    def generate_response_with_prompt(self,  prompt: str, input: str, config: dict = None) -> str:
-        response = self.chat_model.invoke(
-             prompt + "\n" + input,
+    def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
+        full_prompt = prompt + "\n" + input
+
+        response = self.agent.invoke(
+            {"messages": [("user", full_prompt)]},
+            config=config
         )
-        self.output = response.content
+
+        print("response is:")
+        print(response)
+        print("-=-=-=-=-=-=-=-=-")
+        last_message = response["messages"][-1].content
+
+        if isinstance(last_message, list):
+            last_message = "".join(
+                part.get("text", "") for part in last_message if isinstance(part, dict)
+            )
+
+        self.output = last_message
+        print("O OUT PUT É:")
+        print( self.output )
         return self.output
     
     def refine_content(self, text: str) -> str:

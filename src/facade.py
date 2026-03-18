@@ -11,6 +11,7 @@ from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
 from langgraph.checkpoint.memory import InMemorySaver
 from .llm_agent.tools import ALL_TOOLS
+from .llm_agent.repo_context import set_ignored_files
 
 
 
@@ -259,6 +260,10 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
             ignored_files=base_config.target_info.ignore_files
         )
         repo_info = extractor.extract_repo_info()
+
+        # injeta ignore_files globalmente para tools
+        set_ignored_files(base_config.target_info.ignore_files)
+        
     except Exception as e:
         logger.error(f"Failed to extract repository information: {e}")
         raise
