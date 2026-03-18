@@ -238,3 +238,6 @@ __marimo__/
 
 #Outputs
 repoinfo_outputs/
+
+
+.prompt/test.jinja

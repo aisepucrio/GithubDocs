@@ -1,5 +1,8 @@
 from langchain.tools import tool
 from git import Repo
+import os
+from src.llm_agent.repo_context import get_ignored_files
+
 '''
 @tool("git_file_tree_at_commit",description="Get the file tree of the repository at a specific commit hash. Input is a commit hash string, output is a newline-separated list of file paths.")
 def get_file_tree_at_commit(self, commit_hash: str) -> str:                                                                                                                  
@@ -97,9 +100,75 @@ def divide(a: float, b: float) -> float:
     return a / b
 
 
+@tool
+def get_file_tree(path: str) -> str:
+        """Return tree of repository"""
+        repo = Repo(path)
+        file_tree = []
+        excluded_defaults = {'.git', '__pycache__', 'node_modules', '.venv', 'venv'}
+
+        ignored_files = get_ignored_files()
+        excluded = excluded_defaults.union(ignored_files)
+
+        for item in repo.tree().traverse():
+            if any(excluded_dir in item.path.split('/') for excluded_dir in excluded):
+                continue
+            file_tree.append(item.path)
+
+        print(file_tree)
+        return "\n".join(sorted(file_tree))
+
+@tool
+def read_full_file(file_path: str) -> str:
+    """
+    Returns the entire content of a file as a string.
+    """
+    if not os.path.exists(file_path):
+        return f"Error: File {file_path} does not exist."
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+        print(content)
+        return content
+
+# @tool
+# def read_file():
+#     pass
+
+@tool
+def save_readme(content: str,  file_name: str) -> str:
+    """
+    Saves the provided content as a .md file inside the 'output' folder.
+    """
+    # Diretório fixo de saída
+    # TODO
+    # MODIFICAR PARA PEGAR O result_path DA CONFIG
+    output_dir = "output"
+
+    # Garante que a pasta existe
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Garante extensão .md
+    if not file_name.endswith(".md"):
+        file_name += ".md"
+
+    file_path = os.path.join(output_dir, file_name)
+
+    # Salva o arquivo
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return f"File saved at: {file_path}"
+
+
+
+
 ALL_TOOLS = {
     "soma": soma,
     "subtrai": subtrai,
     "multiplica": multiplica,
     "divide": divide,
+    "get_file_tree": get_file_tree,
+    "read_full_file": read_full_file,
+    "save_readme": save_readme
 }
