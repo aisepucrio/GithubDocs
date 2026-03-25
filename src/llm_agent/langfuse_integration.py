@@ -1,4 +1,5 @@
 import os
+import logging
 from langfuse.langchain import CallbackHandler
 
 def get_langfuse_callback():
@@ -16,8 +17,10 @@ def get_langfuse_callback():
 
             handler = CallbackHandler()
             return handler
-        except Exception as e:
-            print(f"Failed to initialize Langfuse callback: {e}")
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Failed to initialize Langfuse callback"
+            )
             return None
     
     return None
