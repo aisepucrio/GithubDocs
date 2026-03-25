@@ -28,3 +28,19 @@
 [submodule "external_repos/ngx-admin-lte"]
 	path = external_repos/ngx-admin-lte
 	url = https://github.com/stone-payments/ngx-admin-lte
+[submodule "external_repos/requests"]
+	path = external_repos/requests
+	url = https://github.com/psf/requests.git
+[submodule "external_repos/flask"]
+	path = external_repos/flask
+	url = https://github.com/pallets/flask.git
+# The lm4smells-core repository is intentionally vendored as a git submodule.
+# It provides core analysis functionality that needs to be version-pinned and
+# co-evolve with this repository for reproducible experiments and CI runs.
+# Update policy:
+# - Keep this submodule pinned to a specific, tested commit or tag.
+# - When updating, explicitly bump the submodule reference, run the full test
+#   and analysis pipeline, and review the upstream changelog for breaking changes.
+[submodule "external_repos/lm4smells-core"]
+	path = external_repos/lm4smells-core
+	url = https://github.com/aisepucrio/lm4smells-core.git

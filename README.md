@@ -93,6 +93,19 @@ mkdir output logs
 
 The framework uses environment variables for sensitive configuration:
 
+#### LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY (Optional)
+Optional keys to enable [Langfuse](https://langfuse.com/) tracing for the LLM calls. If these are set, the application will automatically send telemetry and traces of the agent executions (prompts sent, tokens consumed, etc.) to your Langfuse dashboard.
+
+**How to configure:**
+
+Create a `.env` file in the project root:
+```bash
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+# Optionally, if using a self-hosted instance:
+LANGFUSE_HOST=http://localhost:3000
+```
+
 #### GITHUB_TOKEN (Optional)
 Optional token for **GitHub Issues integration**. The framework can work without it, but with reduced API rate limits (60 requests/hour vs 5000 with authentication).
 

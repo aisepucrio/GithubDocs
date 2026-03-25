@@ -26,6 +26,7 @@ dependencies = [
     "google-auth>=2.48.0",
     "langchain-ollama>=1.0.1",
     "langchain-community>=0.4.1",
+    "langfuse>=4.0.0",
     "langchain-text-splitters>=1.1.0",
 ]
 
