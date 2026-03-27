@@ -98,7 +98,7 @@ def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_pa
     # without that, this function going to have a lot fo env.filters in the future.
     env.filters["read_file"] = lambda rel: load_file(repo_path, rel)
     template = env.get_template(prompt_file)
-
+    
     return template.render(variables)
 
 def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_budget: int) -> dict:
@@ -116,6 +116,58 @@ def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_bud
                 if mod.get("source_code_before"):
                     mod["source_code_before"] = agent.refine_content(mod["source_code_before"])
     return refined
+
+REDUCE_PROMPT_MAP = {
+    "changelog.jinja": "reduce_changelog.jinja",
+    "readme_update.jinja": "reduce_readme_update.jinja",
+    "readme.jinja": "reduce_readme.jinja",
+}
+
+def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: OrchestrationStep, template_vars: dict) -> str:
+    """Aplica map-reduce: summariza cada arquivo via batch, depois reduz com o prompt específico."""
+
+    OPTIONALS_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "..", "prompt", "optionals")
+    MAP_PROMPT_FILE = "map.jinja"
+
+    reduce_file = REDUCE_PROMPT_MAP.get(orchestration_step.prompt_file)
+    if not reduce_file:
+        logger.warning(f"Map-reduce: no reduce prompt mapped for '{orchestration_step.prompt_file}'. Using generic reduce.jinja.")
+        reduce_file = "reduce.jinja"
+
+    all_files = []
+    for commit in repo_info.get("commits", []):
+        for file_path, modification in commit.get("modifications", {}).items():
+            all_files.append((file_path, modification))
+
+    if not all_files:
+        logger.warning("Map-reduce: no modifications found.")
+        return ""
+
+    # Map phase: render a map prompt per file, then batch all at once
+    env = Environment(loader=FileSystemLoader(OPTIONALS_TEMPLATE_PATH))
+    map_template = env.get_template(MAP_PROMPT_FILE)
+
+    map_prompts = [
+        map_template.render(file_path=file_path, modification=modification)
+        for file_path, modification in all_files
+    ]
+
+    logger.info(f"Map-reduce: sending {len(map_prompts)} files in batch...")
+    map_responses = agent.chat_model.batch(map_prompts)
+    map_summaries = [r.content for r in map_responses]
+
+    logger.info(f"Map-reduce: map phase done. {len(map_summaries)} summaries generated.")
+
+    # Reduce phase: use the specific reduce prompt with repo_info (without diffs) + map summaries
+    reduce_template = env.get_template(reduce_file)
+    reduce_prompt = reduce_template.render(
+        map_summaries=map_summaries,
+        **template_vars
+    )
+
+    config = {"configurable": {"thread_id": f"step-{orchestration_step.step}-reduce"}}
+    return agent.generate_response_with_prompt(reduce_prompt, "", config=config)
+
 
 def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None,tools: list[str] = None) -> AIAgent | None:
     agent_class = None
@@ -160,11 +212,13 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     response = agent.generate_response_with_prompt(prompt, "", config=config)
     return response
 
-def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, refine: bool = False):
+def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None):
     """Cria uma função para executar uma step específica"""
+
 
     def execute_step(last_output: str) -> str:
         logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
+
 
         # Instancia o agente
         agent = build_ai_agent(
@@ -174,15 +228,16 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
             tools=orchestration_step.tools
         )
 
-
         if agent is None:
             error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
             logger.error(str(error))
             raise error
+            
 
         # Prepara as variáveis do template
         template_vars = orchestration_step.prompt_variables.copy()
         template_vars['repo_info'] = repo_info
+        #TODO acredito que com a implementação do langchain esse last_output é obsoleto...
         if last_output:
             template_vars['last_step_output'] = last_output
 
@@ -197,7 +252,7 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
         )
 
         # Se --refine ativo e prompt excede janela, refina modificações antes de reenviar
-        if refine and agent.need_summarization(prompt):
+        if cli_params and cli_params.refine and agent.need_summarization(prompt):
             logger.info("Prompt excede janela de contexto. Aplicando refine nas modificações...")
             per_file_budget = agent._get_model_window_context() // 4
             refined_repo_info = refine_oversized_modifications(repo_info, agent, per_file_budget)
@@ -209,28 +264,36 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
                 repo_info["repo_path"]
             )
 
+        if cli_params and cli_params.map_reduce:
+            logger.info("Map-Reduce mode active. Summarizing each file in batch...")
+            effective_repo_info = template_vars.get('repo_info', repo_info)
+            return map_reduce_step(effective_repo_info, agent, orchestration_step, template_vars)
+
         if agent.need_summarization(prompt):
-            error = RuntimeError("Prompt still too large after summarization.")
+            error = RuntimeError("Prompt too large for model context window. try enabling --refine or --map_reduce, or reduce the number of commits/files.")
             logger.error(str(error))
             raise error
 
-        # Gera a resposta
         config = {"configurable": {"thread_id": f"step-{orchestration_step.step}"}}
         response = agent.generate_response_with_prompt(prompt, "", config=config)
 
+
         return response
+
 
     return execute_step
 
-def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver, refine: bool = False):
+def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None):
     """Encadeia as steps usando composição de funções"""
+
 
     # Ordena as steps
     sorted_steps = sorted(orchestration_steps, key=lambda x: x.step)
 
+
     # Cria as funções para cada step
     step_functions = [
-        create_step_chain(step, repo_info, context_memory, refine=refine)
+        create_step_chain(step, repo_info, context_memory, cli_params=cli_params)
         for step in sorted_steps
     ]
     
@@ -250,7 +313,7 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
     
     return execute_chain
 
-def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bool = False):
+def start(base_config: BaseAppConfig):
     try:
         extractor = RepoInfoExtractor(
             repository_path=base_config.target_info.repo_path,
@@ -261,6 +324,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
         repo_info = extractor.extract_repo_info()
     except Exception as e:
         logger.error(f"Failed to extract repository information: {e}")
+        raise
         raise
 
     issue_tracker = None
@@ -284,7 +348,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
             issues_analysis = issue_tracker.analyze_commits(repo_info["commits"])
             logger.info(f"Encontradas {issues_analysis['total_issues_referenced']} issues únicas referenciadas")
             
-            if enable_issue_log:
+            if base_config.cli_params.enable_issue_log:
                 print_issues_to_terminal(issues_analysis, issue_tracker)
             else:
                 repo_info["issues_analysis"] = issues_analysis
@@ -311,7 +375,7 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
     #  criação da orquestração utilizando chains atualmente:
 
     # CRIA UMA CHAIN (cadeia) de funções ----------------------
-    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, refine=refine)
+    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, cli_params=base_config.cli_params)
     
     # EXECUTA a chain de uma vez
     final_result = chain("")
@@ -325,3 +389,4 @@ def start(base_config: BaseAppConfig, enable_issue_log: bool = False, refine: bo
     except IOError as e:
         logger.error(f"Failed to write output file at {output_path}: {e}")
         raise
+    

@@ -17,6 +17,8 @@ from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_classic.chains.summarize.chain import load_summarize_chain
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .tools import ALL_TOOLS
 from .langfuse_integration import get_langfuse_callback
 
@@ -69,7 +71,7 @@ class GeminiAgent(AIAgent):
         chunk_size = self.context_window // 4
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
         docs = [Document(page_content=c) for c in splitter.split_text(text)]
-        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
+        chain = load_summarize_chain(self.chat_model, chain_type="refine",verbose=True)
         return chain.invoke(docs)["output_text"]
 
     def _count_tokens(self, input: str) -> int:
@@ -211,7 +213,7 @@ class OllamaAgent(AIAgent):
         chunk_size = self.context_window // 4
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
         docs = [Document(page_content=c) for c in splitter.split_text(text)]
-        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
+        chain = load_summarize_chain(self.chat_model, chain_type="refine",verbose=True)
         return chain.invoke(docs)["output_text"]
 
     def _count_tokens(self, input: str) -> int:
@@ -237,6 +239,12 @@ class MockAgent(AIAgent):
         print("Input:", input)
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
+    
+    def refine_content(self, text: str) -> str:
+        print("--- MOCK AGENT ---")
+        print("Refining content:", text)
+        print("--- END MOCK AGENT ---")
+        return "Refined content (mocked)"
     
     def refine_content(self, text: str) -> str:
         print("--- MOCK AGENT ---")

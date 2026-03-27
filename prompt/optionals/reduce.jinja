@@ -1,0 +1,13 @@
+The following are concise summaries of individual file changes extracted from a set of commits.
+Use these summaries as the basis for your output — treat them as if they were the raw diffs.
+
+{% for summary in map_summaries %}
+### File Change {{ loop.index }}
+{{ summary }}
+{% endfor %}
+
+---
+
+Now, follow the instructions below to produce the final output based on the summaries above:
+
+{{ original_prompt }}

@@ -216,13 +216,19 @@ class OrchestrationStep(BaseModel):
     @field_validator("template_path")
     def validate_template_path(cls, v):
         if not path_validator(v):
-            raise KeyError(f"\u274C Invalid template{v}path")
+            raise KeyError(f"\u274C Invalid template {v} path")
         return v
     
     def __str__(self):
         return f"OrchestrationStep(step={self.step}, model_name={self.model_name}, temperature={self.temperature}, prompt_path={self.prompt_file}, prompt_variables={self.prompt_variables}, prompt={self.prompt[:50]}...)"
     
+class CliParams(BaseModel):
+    refine: bool = False
+    enable_issue_log: bool = False
+    map_reduce: bool = False
+
 class BaseAppConfig(BaseModel):
     target_info: TargetInfo
     output_info: OutputInfo
     orchestration_steps: list[OrchestrationStep]
+    cli_params: CliParams = CliParams()
