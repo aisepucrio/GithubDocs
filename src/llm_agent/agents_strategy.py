@@ -19,21 +19,16 @@ from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from .tools import ALL_TOOLS
 from .langfuse_integration import get_langfuse_callback
-
-def get_tools_from_names(names: list[str]):
-    """Converte lista de nomes em lista de tools"""
-    return [ALL_TOOLS[name] for name in names if name in ALL_TOOLS]
 
 class LogLLMCallback(BaseCallbackHandler):
     def on_llm_start(self, serialized, prompts, **kwargs):
         print("🔥 LLM CHAMADO (callback)")
 
 class GeminiAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None, tools: list[str] = None):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         api_key  = api_key or os.environ.get("GEMINI_API_KEY") or ""
-        super().__init__(model_name, api_key, base_prompt, temperature, tools)
+        super().__init__(model_name, api_key, base_prompt, temperature)
 
         self.chat_model:BaseChatModel = init_chat_model("google_genai:" + model_name, api_key=api_key, temperature=temperature)
         # Memoize Langfuse callback handler per agent instance to avoid repeated initialization
@@ -154,8 +149,8 @@ class GPTAgent(AIAgent):
 #  ollama aqui -----V
 
 class OllamaAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None, tools: list[str] = None):
-        super().__init__(model_name, api_key, base_prompt, temperature, tools)
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
+        super().__init__(model_name, api_key, base_prompt, temperature)
         # self.client = ollama.Client()
 
         cb = [LogLLMCallback()]
@@ -170,12 +165,9 @@ class OllamaAgent(AIAgent):
             callbacks=cb
         )
 
-        actual_tools = get_tools_from_names(self.tools) if self.tools else []
-        print("actual tools: ", actual_tools)
-
         self.agent = create_agent(
             self.chat_model,
-            tools=actual_tools,  
+            tools=[],
             middleware=[
                 SummarizationMiddleware(
                     model=f"ollama:{model_name}",
@@ -222,7 +214,7 @@ class OllamaAgent(AIAgent):
 
 
 class MockAgent(AIAgent):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None,  tools: list = None):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         super().__init__(model_name, api_key, base_prompt, temperature)
 
     def generate_response(self, input: str) -> str:

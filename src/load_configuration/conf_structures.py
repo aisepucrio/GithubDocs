@@ -205,7 +205,6 @@ class OrchestrationStep(BaseModel):
     template_path: str = ""
     prompt_variables: dict[str, str]
     prompt: str = ""
-    tools: list[str] = []
 
     @field_validator("temperature")
     def validate_temperature(cls, v):
@@ -226,6 +225,7 @@ class CliParams(BaseModel):
     refine: bool = False
     enable_issue_log: bool = False
     map_reduce: bool = False
+    tool_calling: bool = False
 
 class BaseAppConfig(BaseModel):
     target_info: TargetInfo

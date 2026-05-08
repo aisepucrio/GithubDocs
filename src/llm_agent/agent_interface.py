@@ -3,14 +3,13 @@ from .context_window_size import LLM_CONTEXT_WINDOWS
 from typing import List, Dict
 
 class AIAgent(ABC):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float, tools: list[str] = None):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float):
         self.model_name = model_name
         self.api_key = api_key
         self.base_prompt = base_prompt
         self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
         self.output = ""
         self.temperature = temperature
-        self.tools = tools or []
         #variables for the interative one
         self.mode = 0  # 0: non-interactive, 1: interactive
         self.chat_history: List[Dict[str, str]] = []
