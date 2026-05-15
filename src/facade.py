@@ -224,53 +224,6 @@ class _ToolCallLogger(BaseCallbackHandler):
         logger.warning(f"❌ [tool] error: {error}")
 
 
-def _message_content_to_str(content) -> str:
-    """Normaliza AIMessage.content para str.
-
-    Provedores como Gemini podem devolver content como list[dict] (content blocks)
-    em vez de str pura — sobretudo quando há tool calls envolvidas. Concatenamos os
-    blocos de texto e descartamos blocos não-textuais (thinking, tool_use, etc).
-    """
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for block in content:
-            if isinstance(block, str):
-                parts.append(block)
-            elif isinstance(block, dict) and block.get("type") == "text":
-                parts.append(block.get("text", ""))
-        return "".join(parts)
-    return str(content) if content is not None else ""
-
-
-def _build_tool_calling_chat_model(model_name: str, temperature: float):
-    """Creates a chat_model for tool-calling mode without passing through the AIAgent hierarchy.
-    Thats needed """
-    from langchain.chat_models import init_chat_model
-    from langchain_ollama import ChatOllama
-
-    if "gemini" in model_name:
-        return init_chat_model(
-            "google_genai:" + model_name,
-            api_key=os.environ.get("GEMINI_API_KEY", ""),
-            temperature=temperature,
-        )
-    if "gpt" in model_name or model_name.startswith("o"):
-        return init_chat_model(
-            "openai:" + model_name,
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-            temperature=temperature,
-        )
-    if model_name in LLM_CONTEXT_WINDOWS:
-        return ChatOllama(
-            model=model_name,
-            base_url="http://localhost:11434",
-            temperature=temperature,
-        )
-    raise ValueError(f"--tool-calling: modelo '{model_name}' nao suportado.")
-
-
 def execute_tool_calling_step(
     extractor: "RepoInfoExtractor",
     orchestration_step: OrchestrationStep,
@@ -281,19 +234,18 @@ def execute_tool_calling_step(
 
     O LLM puxa dados do repo sob demanda em vez de receber tudo no prompt.
     """
-    from langchain.agents import create_agent
-
-    chat_model = _build_tool_calling_chat_model(
+    agent = build_ai_agent(
         orchestration_step.model_name,
-        orchestration_step.temperature,
+        temperature=orchestration_step.temperature,
+        context_memory=context_memory,
     )
+    if agent is None:
+        raise ValueError(f"--tool-calling: modelo '{orchestration_step.model_name}' nao suportado.")
 
     tools = list(extractor.as_tools())
     issue_tools = get_github_issue_tools()
     if issue_tools:
         tools.extend(issue_tools)
-
-    agent_executor = create_agent(chat_model, tools=tools, checkpointer=context_memory)
 
     prompt_file = _resolve_tool_calling_prompt(orchestration_step.prompt_file)
     template_vars = {"prompt_variables": orchestration_step.prompt_variables}
@@ -316,8 +268,7 @@ def execute_tool_calling_step(
         "configurable": {"thread_id": f"step-{orchestration_step.step}"},
         "callbacks": [_ToolCallLogger()],
     }
-    response = agent_executor.invoke({"messages": [("user", prompt)]}, config=config)
-    return _message_content_to_str(response["messages"][-1].content)
+    return agent.invoke_with_tools(prompt, tools, config=config)
 
 
 def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None) -> AIAgent | None:
