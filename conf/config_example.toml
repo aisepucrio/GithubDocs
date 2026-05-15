@@ -10,11 +10,11 @@ ignore_files = ["IGNORED_PRESET","README.md", "CHANGELOG.md", "CONTRIBUTING.md",
 [[agents.output]]
 result_path = "output/"
 log_path = "logs/"
-result_file_name = "output1.md"
+result_file_name = "output2.md"
 
 [[agents.orchestration]]
 step = 1
-model_name = "gemini-2.5-flash"
+model_name = "gemma4:31b"
 temperature = 0.2
 template_path = "prompt/readme-update/"
 prompt_file = "readme_update.jinja"

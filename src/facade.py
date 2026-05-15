@@ -265,7 +265,7 @@ def _build_tool_calling_chat_model(model_name: str, temperature: float):
     if model_name in LLM_CONTEXT_WINDOWS:
         return ChatOllama(
             model=model_name,
-            base_url="http://localhost:11434",
+            base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             temperature=temperature,
         )
     raise ValueError(f"--tool-calling: modelo '{model_name}' nao suportado.")

@@ -160,7 +160,7 @@ class OllamaAgent(AIAgent):
 
         self.chat_model: BaseChatModel = ChatOllama(
             model=model_name,
-            base_url="http://localhost:11434",
+            base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             temperature=temperature,
             callbacks=cb
         )
