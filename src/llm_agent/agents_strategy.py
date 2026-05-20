@@ -19,20 +19,13 @@ from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from .langfuse_integration import get_langfuse_callback
-
-class LogLLMCallback(BaseCallbackHandler):
-    def on_llm_start(self, serialized, prompts, **kwargs):
-        print("🔥 LLM CHAMADO (callback)")
 
 class GeminiAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         api_key  = api_key or os.environ.get("GEMINI_API_KEY") or ""
-        super().__init__(model_name, api_key, base_prompt, temperature)
+        super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
 
         self.chat_model:BaseChatModel = init_chat_model("google_genai:" + model_name, api_key=api_key, temperature=temperature)
-        # Memoize Langfuse callback handler per agent instance to avoid repeated initialization
-        self._langfuse_callback = get_langfuse_callback()
 
     def generate_response(self, input: str) -> str:
         callbacks = []
@@ -74,14 +67,16 @@ class GeminiAgent(AIAgent):
 class GPTAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         api_key = api_key or os.environ.get("OPENAI_API_KEY") or ""
-        super().__init__(model_name, api_key, base_prompt, temperature)
+        super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
         self.chat_model: BaseChatModel = init_chat_model("openai:" + model_name, api_key=api_key)
-        
-        try:
-            self.chat_model = self.chat_model.bind_tools(get_github_issue_tools())
-        except Exception:
-            # fallback: modelo nao suporta tools
-            pass
+
+        # bind_tools eager fixa as github_tools no chat_model e impede invoke_with_tools()
+        # de injetar tools dinamicas. Reabilitar quando a integracao de issues for refeita.
+        # try:
+        #     self.chat_model = self.chat_model.bind_tools(get_github_issue_tools())
+        # except Exception:
+        #     # fallback: modelo nao suporta tools
+        #     pass
 
     def generate_response(self, input: str) -> str:
         full_input = self.base_prompt + "\n" + input
@@ -150,13 +145,12 @@ class GPTAgent(AIAgent):
 
 class OllamaAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
-        super().__init__(model_name, api_key, base_prompt, temperature)
+        super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
         # self.client = ollama.Client()
 
-        cb = [LogLLMCallback()]
-        langfuse_cb = get_langfuse_callback()
-        if langfuse_cb:
-            cb.append(langfuse_cb)
+        # Reusa a instancia unica de _langfuse_callback (definida na base AIAgent).
+        # invoke_with_tools tambem a injeta no config; sendo o mesmo objeto, o LangChain deduplica.
+        cb = [self._langfuse_callback] if self._langfuse_callback else []
 
         self.chat_model: BaseChatModel = ChatOllama(
             model=model_name,
@@ -165,25 +159,29 @@ class OllamaAgent(AIAgent):
             callbacks=cb
         )
 
-        self.agent = create_agent(
-            self.chat_model,
-            tools=[],
-            middleware=[
-                SummarizationMiddleware(
-                    model=f"ollama:{model_name}",
-                    trigger=("tokens", 4000),
-                    keep=("messages", 20),
-                )
-            ],
-            checkpointer=context_memory,
-        )
+        # Construido lazy: invoke_with_tools (base) cria seu proprio executor sem essa middleware.
+        self._default_agent = None
+
+    def _get_default_agent(self):
+        if self._default_agent is None:
+            self._default_agent = create_agent(
+                self.chat_model,
+                tools=[],
+                middleware=[
+                    SummarizationMiddleware(
+                        model=f"ollama:{self.model_name}",
+                        trigger=("tokens", 4000),
+                        keep=("messages", 20),
+                    )
+                ],
+                checkpointer=self.context_memory,
+            )
+        return self._default_agent
 
     def generate_response_with_prompt(self, prompt, input, config: dict | None = None):
-        # print(" COM PROMPT")
-        # print("está sendo chamada")
-        print("🔥 using ollama 🔥") 
+
         full_prompt = prompt + "\n" + input
-        response =self.agent.invoke(
+        response = self._get_default_agent().invoke(
             {"messages": [("user", full_prompt)]},
             config=config
 
@@ -192,10 +190,10 @@ class OllamaAgent(AIAgent):
         return self.output
 
     # funcao aparentemente nao usada
-    #  TODO 
+    #  TODO
     def generate_response(self, prompt: str, input: str) -> str:
         full_prompt = self.base_prompt + "\n" + input
-        response = self.agent.invoke(
+        response = self._get_default_agent().invoke(
             {"messages": full_prompt}
         )
         self.output = response["messages"][-1].content
@@ -215,7 +213,7 @@ class OllamaAgent(AIAgent):
 
 class MockAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
-        super().__init__(model_name, api_key, base_prompt, temperature)
+        super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
 
     def generate_response(self, input: str) -> str:
         print("--- MOCK AGENT ---")
@@ -237,12 +235,19 @@ class MockAgent(AIAgent):
         print("Refining content:", text)
         print("--- END MOCK AGENT ---")
         return "Refined content (mocked)"
-    
+
     def refine_content(self, text: str) -> str:
         print("--- MOCK AGENT ---")
         print("Refining content:", text)
         print("--- END MOCK AGENT ---")
         return "Refined content (mocked)"
+
+    def invoke_with_tools(self, prompt: str, tools: list, config: dict = None) -> str:
+        print("--- MOCK AGENT TOOL CALLING ---")
+        print("Prompt:", prompt[:200])
+        print("Tools:", [getattr(t, "name", repr(t)) for t in tools])
+        print("--- END MOCK AGENT ---")
+        return "Mocked tool-calling response"
 
     def _count_tokens(self, input: str) -> int:
         return len(input.split())

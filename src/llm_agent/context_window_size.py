@@ -10,8 +10,9 @@ LLM_CONTEXT_WINDOWS = {
     "gpt-5-nano": 400_000,
     "gpt-5-nano-2025-08-07": 400_000,
     "mistral-nemo:latest": 128_000,
-    "nemotron-cascade-2:30b": 128_000,
-    "gemma4:31b": 128_000,
+    "nemotron-cascade-2:30b": 256_000,
+    "gemma4:31b": 256_000,
     "llama3.1:latest": 8192,
+    "qwen3-coder:30b": 262_144,
     "mock": 10000000000000
 }
