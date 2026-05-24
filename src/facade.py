@@ -315,8 +315,7 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
 
 def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None, extractor: "RepoInfoExtractor" = None):
     """Cria uma função para executar uma step específica"""
-
-
+    
     def execute_step(last_output: str) -> str:
         logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
 

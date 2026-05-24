@@ -20,10 +20,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .langfuse_integration import get_langfuse_callback
+from langchain_core.messages import HumanMessage, ToolMessage
 
-class LogLLMCallback(BaseCallbackHandler):
-    def on_llm_start(self, serialized, prompts, **kwargs):
-        print("🔥 LLM CHAMADO (callback)")
+
+
 
 class GeminiAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
@@ -118,7 +118,6 @@ class GPTAgent(AIAgent):
         return self.output
     
     def _handle_tool_calls_gpt(self, response, original_input: str) -> str:
-        from langchain_core.messages import HumanMessage, ToolMessage
         
         messages = [
             HumanMessage(content=original_input),
@@ -155,7 +154,7 @@ class OllamaAgent(AIAgent):
         super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
         # self.client = ollama.Client()
 
-        cb = [LogLLMCallback()]
+        cb = []
         langfuse_cb = get_langfuse_callback()
         if langfuse_cb:
             cb.append(langfuse_cb)
@@ -187,9 +186,7 @@ class OllamaAgent(AIAgent):
         return self._default_agent
 
     def generate_response_with_prompt(self, prompt, input, config: dict | None = None):
-        # print(" COM PROMPT")
-        # print("está sendo chamada")
-        print("🔥 using ollama 🔥")
+
         full_prompt = prompt + "\n" + input
         response = self._get_default_agent().invoke(
             {"messages": [("user", full_prompt)]},
