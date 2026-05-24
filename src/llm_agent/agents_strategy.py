@@ -2,8 +2,6 @@ import os
 from langchain_core.documents import Document
 
 import tiktoken
-# import ollama 
-
 from openai import OpenAI
 
 from langgraph.checkpoint.memory import InMemorySaver
@@ -12,17 +10,36 @@ from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models.chat_models import BaseChatModel
 from .agent_interface import AIAgent
-from .github_tools import get_github_issue_tools
 from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from .langfuse_integration import get_langfuse_callback
-from langchain_core.messages import HumanMessage, ToolMessage
 
 
+def content_to_text(content) -> str:
+    """Normaliza response.content (str | list[str|dict]) para str.
+
+    Modelos como Gemini podem devolver content como lista de blocos
+    (ex.: thinking + texto). Concatenamos apenas as partes textuais.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                if block.get("type") == "text" and "text" in block:
+                    parts.append(block["text"])
+                elif "text" in block:
+                    parts.append(block["text"])
+        return "".join(parts)
+    return str(content)
 
 
 class GeminiAgent(AIAgent):
@@ -31,8 +48,6 @@ class GeminiAgent(AIAgent):
         super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
 
         self.chat_model:BaseChatModel = init_chat_model("google_genai:" + model_name, api_key=api_key, temperature=temperature)
-        # Memoize Langfuse callback handler per agent instance to avoid repeated initialization
-        self._langfuse_callback = get_langfuse_callback()
 
     def generate_response(self, input: str) -> str:
         callbacks = []
@@ -44,7 +59,7 @@ class GeminiAgent(AIAgent):
             self.base_prompt + "\n" + input,
             config={"callbacks": callbacks} if callbacks else None
         )
-        self.output = response.content
+        self.output = content_to_text(response.content)
         return self.output
 
     def generate_response_with_prompt(self,  prompt: str, input: str, config: dict = None) -> str:
@@ -59,7 +74,7 @@ class GeminiAgent(AIAgent):
              prompt + "\n" + input,
              config=config if config["callbacks"] else None
         )
-        self.output = response.content
+        self.output = content_to_text(response.content)
         return self.output
 
     def refine_content(self, text: str) -> str:
@@ -77,14 +92,6 @@ class GPTAgent(AIAgent):
         super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
         self.chat_model: BaseChatModel = init_chat_model("openai:" + model_name, api_key=api_key)
 
-        # bind_tools eager fixa as github_tools no chat_model e impede invoke_with_tools()
-        # de injetar tools dinamicas. Reabilitar quando a integracao de issues for refeita.
-        # try:
-        #     self.chat_model = self.chat_model.bind_tools(get_github_issue_tools())
-        # except Exception:
-        #     # fallback: modelo nao suporta tools
-        #     pass
-
     def generate_response(self, input: str) -> str:
         full_input = self.base_prompt + "\n" + input
         parameters = {
@@ -94,11 +101,8 @@ class GPTAgent(AIAgent):
         if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
             parameters["temperature"] = self.temperature
         response = self.chat_model.invoke(**parameters)
-        
-        if hasattr(response, 'tool_calls') and response.tool_calls:
-            return self._handle_tool_calls_gpt(response, full_input)
-        
-        self.output = response.content
+
+        self.output = content_to_text(response.content)
         return self.output
 
     def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
@@ -110,36 +114,8 @@ class GPTAgent(AIAgent):
         if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
             parameters["temperature"] = self.temperature
         response = self.chat_model.invoke(**parameters)
-        
-        if hasattr(response, 'tool_calls') and response.tool_calls:
-            return self._handle_tool_calls_gpt(response, full_input)
-        
-        self.output = response.content
-        return self.output
-    
-    def _handle_tool_calls_gpt(self, response, original_input: str) -> str:
-        
-        messages = [
-            HumanMessage(content=original_input),
-            response
-        ]
-        
-        for tool_call in response.tool_calls:
-            tool_name = tool_call['name']
-            tool_args = tool_call['args']
-            
-            tools = {t.name: t for t in get_github_issue_tools()}
-            if tool_name in tools:
-                tool_result = tools[tool_name].invoke(tool_args)
-                messages.append(
-                    ToolMessage(
-                        content=str(tool_result),
-                        tool_call_id=tool_call['id']
-                    )
-                )
 
-        final_response = self.chat_model.invoke(messages)
-        self.output = final_response.content
+        self.output = content_to_text(response.content)
         return self.output
 
     def _count_tokens(self, input: str) -> int:
@@ -154,14 +130,13 @@ class OllamaAgent(AIAgent):
         super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
         # self.client = ollama.Client()
 
-        cb = []
-        langfuse_cb = get_langfuse_callback()
-        if langfuse_cb:
-            cb.append(langfuse_cb)
+        # Reusa a instancia unica de _langfuse_callback (definida na base AIAgent).
+        # invoke_with_tools tambem a injeta no config; sendo o mesmo objeto, o LangChain deduplica.
+        cb = [self._langfuse_callback] if self._langfuse_callback else []
 
         self.chat_model: BaseChatModel = ChatOllama(
             model=model_name,
-            base_url="http://localhost:11434",
+            base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             temperature=temperature,
             callbacks=cb
         )
@@ -193,7 +168,7 @@ class OllamaAgent(AIAgent):
             config=config
 
         )
-        self.output  = response["messages"][-1].content
+        self.output = content_to_text(response["messages"][-1].content)
         return self.output
 
     # funcao aparentemente nao usada
@@ -203,9 +178,9 @@ class OllamaAgent(AIAgent):
         response = self._get_default_agent().invoke(
             {"messages": full_prompt}
         )
-        self.output = response["messages"][-1].content
+        self.output = content_to_text(response["messages"][-1].content)
         return self.output
-    
+
     def refine_content(self, text: str) -> str:
         chunk_size = self.context_window // 4
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)

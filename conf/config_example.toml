@@ -1,20 +1,18 @@
 [target_information]
 repo_path = "external_repos/EventFlow"
 branch_name = "develop-v1"
-commit_list = ["6bc5eb39eb34792ccbd6b5dbb0d98c2354c950f5"]
-ignore_files = ["IGNORED_PRESET","README.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
-# Opcional: Nome do repositório no formato "owner/repo" para buscar issues
-# github_repo_name = "owner/repo"
+commit_list = ["6c9fc15a44f02742a2bd36db0613ff304c77c77d"]
+ignore_files = ["IGNORED_PRESET", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
 [agents]
 
 [[agents.output]]
 result_path = "output/"
 log_path = "logs/"
-result_file_name = "output1.md"
+result_file_name = "output2.md"
 
 [[agents.orchestration]]
 step = 1
-model_name = "gemini-2.5-flash"
+model_name = "mistral-nemo:latest"
 temperature = 0.2
 template_path = "prompt/readme-update/"
 prompt_file = "readme_update.jinja"

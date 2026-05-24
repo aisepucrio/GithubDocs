@@ -161,14 +161,13 @@ class TargetInfo(BaseModel):
     branch_name: str
     commit_list: Optional[list[str]] = None
     ignore_files: Optional[list[str]] = None
-    github_repo_name: Optional[str] = None
-    
+
     @field_validator("repo_path")
     def validate_repo_path(cls, v):
         if not path_validator(v):
             raise KeyError(f"\u274C Invalid repository {v} path")
         return v
-    
+
     def __init__(self, **kwargs):
       ignore = kwargs.get("ignore_files")
       if isinstance(ignore, list) and "IGNORED_PRESET" in ignore:
@@ -179,7 +178,7 @@ class TargetInfo(BaseModel):
       super().__init__(**kwargs)
 
     def __str__(self):
-        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, commit_list={self.commit_list}, ignore_files={self.ignore_files}, github_repo_name={self.github_repo_name})"
+        return f"Target_info(repo_path={self.repo_path}, branch_name={self.branch_name}, commit_list={self.commit_list}, ignore_files={self.ignore_files})"
 
 
 class OutputInfo(BaseModel):
@@ -223,7 +222,6 @@ class OrchestrationStep(BaseModel):
     
 class CliParams(BaseModel):
     refine: bool = False
-    enable_issue_log: bool = False
     map_reduce: bool = False
     tool_calling: bool = False
 

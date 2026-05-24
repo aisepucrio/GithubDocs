@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from .context_window_size import LLM_CONTEXT_WINDOWS
+from .langfuse_integration import get_langfuse_callback
 from typing import List, Dict
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -28,6 +29,9 @@ class AIAgent(ABC):
         self.output = ""
         self.temperature = temperature
         self.context_memory = context_memory
+        # Memoize Langfuse callback handler per agent instance to avoid repeated initialization.
+        # Single shared instance: LangChain dedups it across local + inheritable callbacks.
+        self._langfuse_callback = get_langfuse_callback()
         #variables for the interative one
         self.mode = 0  # 0: non-interactive, 1: interactive
         self.chat_history: List[Dict[str, str]] = []
@@ -52,6 +56,15 @@ class AIAgent(ABC):
     def invoke_with_tools(self, prompt: str, tools: list, config: dict = None) -> str:
         """Executa um turno ReAct: agent_executor sobre self.chat_model com as tools. MockAgent sobrescreve."""
         from langchain.agents import create_agent
+
+        # Injeta o callback do Langfuse nos callbacks do invoke (inheritable), para que o
+        # trace cubra toda a arvore do agente (grafo -> LLM -> tools), nao so a chamada do modelo.
+        config = config or {}
+        callbacks = config.get("callbacks", [])
+        if self._langfuse_callback and self._langfuse_callback not in callbacks:
+            callbacks.append(self._langfuse_callback)
+        config["callbacks"] = callbacks
+
         executor = create_agent(self.chat_model, tools=tools, checkpointer=self.context_memory)
         response = executor.invoke({"messages": [("user", prompt)]}, config=config)
         return _message_content_to_str(response["messages"][-1].content)

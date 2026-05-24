@@ -37,7 +37,6 @@ def _build_cli_params_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--mock", action="store_true")
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--issuelog", action="store_true")
     parser.add_argument("--refine", action="store_true")
     parser.add_argument("--map-reduce", action="store_true")
     parser.add_argument("--tool-calling", action="store_true")
@@ -60,7 +59,6 @@ def parse_parameters_string(parameters: str) -> tuple[CliParams, bool]:
         print(f"Aviso: parâmetros desconhecidos ignorados: {unknown}", file=sys.stderr)
 
     cli_params = CliParams(
-        enable_issue_log=args.issuelog or args.debug,
         refine=args.refine,
         map_reduce=args.map_reduce,
         tool_calling=args.tool_calling,

@@ -3,13 +3,12 @@ import os
 from .llm_agent import *
 from .load_configuration import *
 from .repo_info_extraction import *
-from .github_integration import IssueTracker
 from jinja2 import Environment, FileSystemLoader, meta
 from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
+from .llm_agent.agents_strategy import content_to_text
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
-from .llm_agent.github_tools import get_github_issue_tools
 from langgraph.checkpoint.memory import InMemorySaver
 
 
@@ -28,70 +27,7 @@ def load_file(repo_path: str, relative_path: str) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
-def print_issues_to_terminal(issues_analysis: dict, issue_tracker: IssueTracker):
-    print("\n" + "="*80)
-    print("📋 ANÁLISE DE ISSUES DO GITHUB")
-    print("="*80)
-    
-    total = issues_analysis.get('total_issues_referenced', 0)
-    if total == 0:
-        print("\n⚠️  Nenhuma issue foi referenciada nos commits analisados.")
-        print("="*80 + "\n")
-        return
-    
-    print(f"\nTotal de issues encontradas: {total}\n")
-    
-    issues = issues_analysis.get('issues', {})
-    commits_by_issue = issues_analysis.get('commits_by_issue', {})
-    
-    for issue_num, issue_data in sorted(issues.items()):
-        # Cabeçalho da issue
-        status_icon = "✅" if issue_data['state'] == 'closed' else "🔴"
-        print(f"{status_icon} Issue #{issue_num}: {issue_data['title']}")
-        print("-" * 80)
-        
-        # Informações básicas
-        print(f"   Status: {issue_data['state'].upper()}")
-        print(f"   Autor: {issue_data['author']}")
-        print(f"   Criada em: {issue_data['created_at'][:10]}")
-        
-        if issue_data.get('closed_at'):
-            print(f"   Fechada em: {issue_data['closed_at'][:10]}")
-        
-        if issue_data.get('labels'):
-            labels_str = ', '.join(issue_data['labels'])
-            print(f"   Labels: {labels_str}")
-        
-        if issue_data.get('closing_commit'):
-            print(f"   Commit que fechou: {issue_data['closing_commit'][:7]}")
-        
-        # Descrição
-        if issue_data.get('body'):
-            body = issue_data['body']
-            if len(body) > 200:
-                body = body[:200] + "..."
-            print(f"\n   Descrição:")
-            # Indenta cada linha da descrição
-            for line in body.split('\n'):
-                if line.strip():
-                    print(f"      {line[:76]}")
-        
-        # Commits relacionados
-        related_commits = commits_by_issue.get(issue_num, [])
-        if related_commits:
-            print(f"\n   Commits relacionados ({len(related_commits)}):")
-            for commit in related_commits:
-                commit_hash = commit['hash'][:7]
-                commit_msg = commit['message'].split('\n')[0][:60]
-                print(f"      • {commit_hash} - {commit_msg}")
-        
-        print("\n")
-    
-    print("="*80)
-    print(f"📊 Resumo: {total} issue(s) analisada(s)")
-    print("="*80 + "\n")
-
-def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_path: str, issue_tracker: IssueTracker = None) -> str:
+def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_path: str) -> str:
     LoggingUndefined = make_logging_undefined(logger=logger,base=Undefined)
     env = Environment(loader=FileSystemLoader(template_path), undefined=LoggingUndefined)
     # TODO: Its interesting to simplify this with all posibilities in one function only.
@@ -154,7 +90,7 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
 
     logger.info(f"Map-reduce: sending {len(map_prompts)} files in batch...")
     map_responses = agent.chat_model.batch(map_prompts)
-    map_summaries = [r.content for r in map_responses]
+    map_summaries = [content_to_text(r.content) for r in map_responses]
 
     logger.info(f"Map-reduce: map phase done. {len(map_summaries)} summaries generated.")
 
@@ -243,9 +179,6 @@ def execute_tool_calling_step(
         raise ValueError(f"--tool-calling: modelo '{orchestration_step.model_name}' nao suportado.")
 
     tools = list(extractor.as_tools())
-    issue_tools = get_github_issue_tools()
-    if issue_tools:
-        tools.extend(issue_tools)
 
     prompt_file = _resolve_tool_calling_prompt(orchestration_step.prompt_file)
     template_vars = {"prompt_variables": orchestration_step.prompt_variables}
@@ -261,7 +194,7 @@ def execute_tool_calling_step(
 
     logger.info(
         f"--tool-calling step {orchestration_step.step}: model={orchestration_step.model_name}, "
-        f"tools={len(tools)} (extractor={len(extractor.as_tools())} + issue={len(issue_tools)})"
+        f"tools={len(tools)}"
     )
 
     config = {
@@ -282,7 +215,7 @@ def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", te
         return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory)
     return None
 
-def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, issue_tracker: IssueTracker = None, context_memory:InMemorySaver = None, config: dict = None):
+def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, context_memory:InMemorySaver = None, config: dict = None):
     agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature, context_memory=context_memory)
     if agent is None:
         error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
@@ -302,7 +235,6 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
         orchestration_step.prompt_file,
         template_vars,
         repo_info["repo_path"],
-        issue_tracker
     )
 
     if agent.need_summarization(prompt):
@@ -430,62 +362,9 @@ def start(base_config: BaseAppConfig):
         logger.error(f"Failed to extract repository information: {e}")
         raise
 
-    issue_tracker = None
-
-    github_token = os.getenv('GITHUB_TOKEN')
-    if github_token and hasattr(base_config.target_info, 'github_repo_name') and base_config.target_info.github_repo_name:
-        try:
-            repo_name = base_config.target_info.github_repo_name
-            issue_tracker = IssueTracker(repo_name, github_token)
-
-            if tool_calling_mode:
-                summaries = extractor._list_commits_objs()
-                commit_messages = [s.message for s in summaries]
-                commits_for_analysis = [{"hash": s.hash, "message": s.message} for s in summaries]
-            else:
-                commit_messages = [commit.get("message", "") for commit in repo_info["commits"]]
-                commits_for_analysis = repo_info["commits"]
-
-            from src.llm_agent.github_tools import set_issue_tracker
-            set_issue_tracker(issue_tracker, commit_messages)
-
-            logger.info(f"✅ GitHub Issues Tools habilitadas para o modelo LLM")
-            logger.info(f"   O modelo poderá buscar informações sobre issues autonomamente")
-
-            # Em modo --tool-calling, só rodamos a análise eager se o usuário pediu --issuelog
-            # (LLM puxa info de issues sob demanda via tools).
-            if tool_calling_mode and not base_config.cli_params.enable_issue_log:
-                logger.info("--tool-calling: pulando analyze_commits eager. Issues acessíveis via tools.")
-            else:
-                logger.info("Analisando issues mencionadas nos commits...")
-                issues_analysis = issue_tracker.analyze_commits(commits_for_analysis)
-                logger.info(f"Encontradas {issues_analysis['total_issues_referenced']} issues únicas referenciadas")
-
-                if base_config.cli_params.enable_issue_log:
-                    print_issues_to_terminal(issues_analysis, issue_tracker)
-                elif not tool_calling_mode:
-                    repo_info["issues_analysis"] = issues_analysis
-        except Exception as e:
-            logger.warning(f"Não foi possível inicializar rastreador de issues: {e}")
-            logger.warning("Continuando sem análise de issues...")
-
-    final_result = ""
-    last_step_output = None
     base_config.orchestration_steps.sort(key=lambda x: x.step)
 
     context_memory = InMemorySaver()
-
-    # criação da orquestração anterior
-    # for step in base_config.orchestration_steps:
-    #     logger.info(f"Executing step {step.step}: {step.model_name}")
-    #     final_result = build_orchestration_step(step, repo_info, last_step_output, issue_tracker, context_memory, RUNNABLE_CONFIG)
-    #     last_step_output = final_result
-        
-    #     if final_result is None or final_result.strip() == "":
-    #         logger.info("Final result vazio. Interrompendo o loop.")
-    #         break
-
-    #  criação da orquestração utilizando chains atualmente:
 
     # CRIA UMA CHAIN (cadeia) de funções ----------------------
     chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, cli_params=base_config.cli_params, extractor=extractor)
