@@ -42,7 +42,7 @@ def _configure_run_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def _configure_eval_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("csv_path", help="Caminho para o CSV de entrada")
+    parser.add_argument("csv_path", help="Path to the input CSV file.")
     parser.add_argument(
         "--dataset-name",
         default="gh-docs-eval",
