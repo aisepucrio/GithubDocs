@@ -46,7 +46,7 @@ def _configure_eval_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--dataset-name",
         default="gh-docs-eval",
-        help="Nome do dataset no Langfuse (default: gh-docs-eval)",
+        help="Langfuse dataset name (default: gh-docs-eval)",
     )
     parser.add_argument(
         "--experiment-name",
