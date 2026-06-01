@@ -119,9 +119,9 @@ def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_bud
     return refined
 
 REDUCE_PROMPT_MAP = {
-    "changelog.jinja": "reduce_changelog.jinja",
-    "readme_update.jinja": "reduce_readme_update.jinja",
-    "readme.jinja": "reduce_readme.jinja",
+    "changelog/changelog.jinja": "reduce_changelog.jinja",
+    "readme-update/readme_update.jinja": "reduce_readme_update.jinja",
+    "readme/readme.jinja": "reduce_readme.jinja",
 }
 
 def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: OrchestrationStep, template_vars: dict) -> str:
