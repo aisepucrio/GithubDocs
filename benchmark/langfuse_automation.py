@@ -1,5 +1,5 @@
 """
-Job unico para sincronizar dataset, executar experimento e exportar resultados.
+Single job to sync the dataset, run the experiment, and export results.
 """
 
 from __future__ import annotations
