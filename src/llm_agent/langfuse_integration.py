@@ -100,10 +100,7 @@ def build_run_tags(model_names: list[str], extra: list[str] | None = None) -> li
 
 
 def get_langfuse_client():
-    """
-    Retorna um cliente Langfuse singleton se as variáveis de ambiente estiverem
-    configuradas. Caso contrário, retorna None.
-    """
+    """Return a singleton Langfuse client when credentials are configured; otherwise None."""
     global _langfuse_client
     if _langfuse_client is not None:
         return _langfuse_client
