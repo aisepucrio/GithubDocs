@@ -71,9 +71,9 @@ class TestConfigRow:
 
 # Mapeamento de tipo de teste para prompt file
 TEST_TYPE_PROMPTS = {
-    TestType.README_CREATE: "readme.jinja",
-    TestType.README_UPDATE: "readme_update.jinja",
-    TestType.CHANGELOG: "changelog.jinja",
+    TestType.README_CREATE: "readme/readme.jinja",
+    TestType.README_UPDATE: "readme-update/readme_update.jinja",
+    TestType.CHANGELOG: "changelog/changelog.jinja",
 }
 
 def _sanitize_toml_string(value: str) -> str:
