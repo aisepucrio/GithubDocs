@@ -17,12 +17,12 @@ MAX_PROPAGATED_METADATA_LENGTH = 200
 
 
 def set_current_trace_id(trace_id: str) -> None:
-    """Define o trace_id ativo para que o CallbackHandler use como trace pai."""
+    """Set the active trace_id so CallbackHandler attaches spans to the parent trace."""
     _current_trace_id.set(trace_id)
 
 
 def clear_current_trace_id() -> None:
-    """Limpa o trace_id ativo após a conclusão de um benchmark."""
+    """Clear the active trace_id after a benchmark/run completes."""
     _current_trace_id.set(None)
 
 
