@@ -352,7 +352,9 @@ def start(base_config: BaseAppConfig):
             
             logger.info("Analisando issues mencionadas nos commits...")
             issues_analysis = issue_tracker.analyze_commits(repo_info["commits"])
-            logger.info(f"Encontradas {issues_analysis['total_issues_referenced']} issues únicas referenciadas")
+            logger.info(
+                f"Found {issues_analysis['total_issues_referenced']} unique referenced issues"
+            )
             
             if base_config.cli_params.enable_issue_log:
                 print_issues_to_terminal(issues_analysis, issue_tracker)
