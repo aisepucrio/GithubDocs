@@ -126,7 +126,7 @@ Exemplos:
     parser.add_argument(
         "--no-langfuse",
         action="store_true",
-        help="Desativa exportação para o Langfuse mesmo que as variáveis de ambiente estejam configuradas",
+        help="Disable Langfuse export even if environment variables are configured",
     )
 
     parser.add_argument(
