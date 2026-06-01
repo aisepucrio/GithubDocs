@@ -197,7 +197,7 @@ class OllamaAgent(AIAgent):
 
 class MockAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None, tools: list = None, base_url: str = ""):
-        super().__init__(model_name, api_key, base_prompt, temperature)
+        super().__init__(model_name, api_key, base_prompt, temperature, tools)
 
     def generate_response(self, input: str) -> str:
         print("--- MOCK AGENT ---")
