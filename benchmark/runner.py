@@ -4,6 +4,7 @@ Runner de benchmark - executa os testes e coleta métricas.
 
 import time
 import traceback
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -219,6 +220,7 @@ class BenchmarkRunner:
                 self._log(f"Aviso: Não foi possível capturar o prompt: {prompt_err}")
 
             # Inicia trace Langfuse antes de executar (vincula spans LLM ao trace pai)
+            langfuse_attributes_context = nullcontext()
             if self.langfuse_exporter and self._run_name:
                 trace_metadata = {
                     "config_index": config_index + 1,
@@ -234,9 +236,14 @@ class BenchmarkRunner:
                     result.prompt_content,
                     trace_metadata,
                 )
+                langfuse_attributes_context = (
+                    self.langfuse_exporter.trace_attributes_context(config_index)
+                )
 
             # Executa o framework
-            start(config, refine=self.refine)
+            config.cli_params.refine = self.refine
+            with langfuse_attributes_context:
+                start(config)
 
             # Lê o output gerado
             if os.path.exists(result.output_file):

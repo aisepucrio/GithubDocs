@@ -1,5 +1,5 @@
 """
-Exportador de resultados de benchmark para o Langfuse.
+Exportador de resultados de benchmark para o Langfuse (SDK v4).
 
 Cria um Dataset no Langfuse espelhando a estrutura da planilha Google Sheets,
 com suporte a anotação manual (Scores) e LLM-as-a-judge via Evaluators na UI.
@@ -7,10 +7,11 @@ com suporte a anotação manual (Scores) e LLM-as-a-judge via Evaluators na UI.
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import logging
 import os
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from .runner import BenchmarkResult
@@ -19,11 +20,20 @@ logger = logging.getLogger(__name__)
 
 DATASET_NAME = "GithubDocs Benchmarks"
 
+# ID da annotation queue criada na UI do Langfuse ("Testes GH-Docs").
+# Deixe None para desabilitar o envio automático para a queue.
+ANNOTATION_QUEUE_ID: Optional[str] = os.environ.get("LANGFUSE_ANNOTATION_QUEUE_ID") or None
+
 SCORE_CONFIGS = [
-    {"name": "clareza", "data_type": "NUMERIC"},
-    {"name": "completude", "data_type": "NUMERIC"},
-    {"name": "concisão", "data_type": "NUMERIC"},
-    {"name": "corretude", "data_type": "NUMERIC"},
+    # Anotação manual (preenchidos na UI do Langfuse)
+    {"name": "clareza",    "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
+    {"name": "completude", "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
+    {"name": "concisão",   "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
+    {"name": "corretude",  "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
+    {"name": "observação", "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
+    # Auto-populados programaticamente por finish_trace()
+    {"name": "sucesso",    "data_type": "BOOLEAN"},
+    {"name": "tempo",      "data_type": "NUMERIC", "min_value": 0.0},
 ]
 
 
@@ -40,10 +50,8 @@ class LangfuseExporter:
 
     Cada execução do benchmark cria um Dataset Run no Langfuse com um item por
     teste, reproduzindo a visão tabular da planilha Google Sheets.
-    Scores (clareza, completude, concisão, corretude) podem ser preenchidos
-    manualmente na UI do Langfuse ou via LLM-as-a-judge (Evaluators).
-
-    O campo 'observação' é armazenado no campo `comment` de qualquer score.
+    Scores (clareza, completude, concisão, corretude, observação) podem ser
+    preenchidos manualmente na UI do Langfuse ou via LLM-as-a-judge (Evaluators).
     """
 
     def __init__(self, dataset_name: str = DATASET_NAME):
@@ -51,8 +59,8 @@ class LangfuseExporter:
 
         self.client = Langfuse()
         self.dataset_name = dataset_name
-        # Maps config_index → active trace StatefulTraceClient
-        self._active_traces: dict[int, object] = {}
+        # Maps config_index → {"trace_id": str, "span": LangfuseSpan}
+        self._active_traces: dict[int, dict[str, Any]] = {}
         self._ensure_dataset()
         self._ensure_score_configs()
 
@@ -74,13 +82,18 @@ class LangfuseExporter:
                 logger.exception("Falha ao criar dataset '%s'.", self.dataset_name)
 
     def _ensure_score_configs(self) -> None:
-        """Cria os score configs (clareza, completude, concisão, corretude) se necessário."""
+        """Cria os score configs se necessário (manual + auto-populados)."""
         for cfg in SCORE_CONFIGS:
             try:
-                self.client.create_score_config(
-                    name=cfg["name"],
-                    data_type=cfg["data_type"],
-                )
+                kwargs: dict = {
+                    "name": cfg["name"],
+                    "data_type": cfg["data_type"],
+                }
+                if cfg.get("min_value") is not None:
+                    kwargs["min_value"] = cfg["min_value"]
+                if cfg.get("max_value") is not None:
+                    kwargs["max_value"] = cfg["max_value"]
+                self.client.api.score_configs.create(**kwargs)
             except Exception:
                 # Já existe ou não suportado — ignora silenciosamente
                 pass
@@ -110,6 +123,12 @@ class LangfuseExporter:
             )
             return None
 
+    def trace_attributes_context(self, config_index: int):
+        active = self._active_traces.get(config_index)
+        if not active:
+            return nullcontext()
+        return active.get("attributes_context") or nullcontext()
+
     def start_trace(
         self,
         config_index: int,
@@ -117,27 +136,63 @@ class LangfuseExporter:
         metadata: dict,
     ) -> Optional[str]:
         """
-        Cria um trace Langfuse para o benchmark e armazena o trace_id
-        em langfuse_integration para que o CallbackHandler do LangChain
+        Cria um trace Langfuse (via span raiz) para o benchmark e armazena o
+        trace_id em langfuse_integration para que o CallbackHandler do LangChain
         use-o como trace pai.
 
         Retorna o trace_id ou None se o Langfuse não estiver configurado.
         """
+        from langfuse import Langfuse
+
         from src.llm_agent.langfuse_integration import set_current_trace_id
 
         test_type = metadata.get("test_type", "unknown")
         model_name = metadata.get("model_name", "unknown")
+        description = metadata.get("description") or f"{test_type}-{model_name}"
 
         try:
-            trace = self.client.trace(
-                name=f"{test_type}-{model_name}",
-                input={"prompt": prompt or ""},
-                metadata=metadata,
-                tags=[t for t in [test_type, model_name] if t and t != "unknown"],
+            from src.llm_agent.langfuse_integration import (
+                build_run_tags,
+                safe_langfuse_metadata,
             )
-            self._active_traces[config_index] = trace
-            set_current_trace_id(trace.id)
-            return trace.id
+
+            trace_id = Langfuse.create_trace_id()
+            trace_context = {"trace_id": trace_id}
+            safe_metadata = safe_langfuse_metadata(metadata)
+
+            span = self.client.start_observation(
+                trace_context=trace_context,
+                name=description,
+                as_type="chain",
+                input={"prompt": prompt or ""},
+                metadata=safe_metadata,
+            )
+
+            tags = build_run_tags(
+                [model_name] if model_name and model_name != "unknown" else [],
+                extra=[test_type] if test_type and test_type != "unknown" else [],
+            )
+            try:
+                from langfuse import propagate_attributes
+
+                self._active_traces[config_index] = {
+                    "trace_id": trace_id,
+                    "span": span,
+                    "attributes_context": propagate_attributes(
+                        trace_name=description,
+                        metadata=safe_metadata,
+                        tags=tags,
+                    ),
+                }
+            except Exception:
+                self._active_traces[config_index] = {
+                    "trace_id": trace_id,
+                    "span": span,
+                    "attributes_context": None,
+                }
+
+            set_current_trace_id(trace_id)
+            return trace_id
         except Exception:
             logger.exception(
                 "Falha ao criar trace Langfuse para config_index=%d.", config_index
@@ -153,9 +208,12 @@ class LangfuseExporter:
 
         clear_current_trace_id()
 
-        trace = self._active_traces.pop(result.config_index, None)
-        if trace is None:
+        active = self._active_traces.pop(result.config_index, None)
+        if active is None:
             return
+
+        trace_id: str = active["trace_id"]
+        span = active["span"]
 
         output: dict = {}
         if result.output_content:
@@ -178,12 +236,44 @@ class LangfuseExporter:
         }
 
         try:
-            trace.update(
+            span.update(
                 output=output if output else None,
                 metadata=final_metadata,
             )
+            span.end()
         except Exception:
-            logger.exception("Falha ao atualizar trace Langfuse.")
+            logger.exception("Falha ao atualizar span Langfuse.")
+
+        try:
+            self.client.create_score(
+                trace_id=trace_id,
+                name="sucesso",
+                value=1.0 if result.success else 0.0,
+                data_type="BOOLEAN",
+            )
+        except Exception:
+            logger.exception("Falha ao criar score 'sucesso'.")
+
+        try:
+            self.client.create_score(
+                trace_id=trace_id,
+                name="tempo",
+                value=round(result.execution_time_seconds, 2),
+                data_type="NUMERIC",
+            )
+        except Exception:
+            logger.exception("Falha ao criar score 'tempo'.")
+
+        if ANNOTATION_QUEUE_ID:
+            try:
+                from langfuse.api.annotation_queues.types import AnnotationQueueObjectType
+                self.client.api.annotation_queues.create_queue_item(
+                    queue_id=ANNOTATION_QUEUE_ID,
+                    object_id=trace_id,
+                    object_type=AnnotationQueueObjectType.TRACE,
+                )
+            except Exception:
+                logger.exception("Falha ao adicionar trace à annotation queue.")
 
         item_metadata = {
             "description": result.description,
@@ -201,10 +291,11 @@ class LangfuseExporter:
 
         if dataset_item is not None:
             try:
-                dataset_item.link(
-                    trace,
+                self.client.api.dataset_run_items.create(
                     run_name=run_name,
-                    run_metadata={
+                    dataset_item_id=dataset_item.id,
+                    trace_id=trace_id,
+                    metadata={
                         "success": result.success,
                         "execution_time_seconds": round(result.execution_time_seconds, 2),
                         "model_name": result.model_name or "",
