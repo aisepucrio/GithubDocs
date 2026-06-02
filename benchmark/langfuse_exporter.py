@@ -7,11 +7,18 @@ com suporte a anotação manual (Scores) e LLM-as-a-judge via Evaluators na UI.
 
 from __future__ import annotations
 
-from contextlib import nullcontext
 import logging
 import os
+from contextlib import nullcontext
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
+
+from .langfuse_annotation import (
+    ALL_GITHUBDOCS_SCORE_CONFIGS,
+    enqueue_traces_for_annotation,
+    ensure_score_configs,
+)
+from .langfuse_utils import load_project_env
 
 if TYPE_CHECKING:
     from .runner import BenchmarkResult
@@ -20,21 +27,7 @@ logger = logging.getLogger(__name__)
 
 DATASET_NAME = "GithubDocs Benchmarks"
 
-# ID da annotation queue criada na UI do Langfuse ("Testes GH-Docs").
-# Deixe None para desabilitar o envio automático para a queue.
-ANNOTATION_QUEUE_ID: Optional[str] = os.environ.get("LANGFUSE_ANNOTATION_QUEUE_ID") or None
-
-SCORE_CONFIGS = [
-    # Anotação manual (preenchidos na UI do Langfuse)
-    {"name": "clareza",    "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
-    {"name": "completude", "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
-    {"name": "concisão",   "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
-    {"name": "corretude",  "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
-    {"name": "observação", "data_type": "NUMERIC", "min_value": 0.0, "max_value": 5.0},
-    # Auto-populados programaticamente por finish_trace()
-    {"name": "sucesso",    "data_type": "BOOLEAN"},
-    {"name": "tempo",      "data_type": "NUMERIC", "min_value": 0.0},
-]
+SCORE_CONFIGS = ALL_GITHUBDOCS_SCORE_CONFIGS
 
 
 def _is_langfuse_configured() -> bool:
@@ -83,20 +76,10 @@ class LangfuseExporter:
 
     def _ensure_score_configs(self) -> None:
         """Cria os score configs se necessário (manual + auto-populados)."""
-        for cfg in SCORE_CONFIGS:
-            try:
-                kwargs: dict = {
-                    "name": cfg["name"],
-                    "data_type": cfg["data_type"],
-                }
-                if cfg.get("min_value") is not None:
-                    kwargs["min_value"] = cfg["min_value"]
-                if cfg.get("max_value") is not None:
-                    kwargs["max_value"] = cfg["max_value"]
-                self.client.api.score_configs.create(**kwargs)
-            except Exception:
-                # Já existe ou não suportado — ignora silenciosamente
-                pass
+        try:
+            ensure_score_configs(self.client, SCORE_CONFIGS)
+        except Exception:
+            logger.exception("Failed to ensure Langfuse score configs.")
 
     def get_run_name(self) -> str:
         """Gera um nome único para o dataset run baseado no timestamp atual."""
@@ -264,16 +247,7 @@ class LangfuseExporter:
         except Exception:
             logger.exception("Falha ao criar score 'tempo'.")
 
-        if ANNOTATION_QUEUE_ID:
-            try:
-                from langfuse.api.annotation_queues.types import AnnotationQueueObjectType
-                self.client.api.annotation_queues.create_queue_item(
-                    queue_id=ANNOTATION_QUEUE_ID,
-                    object_id=trace_id,
-                    object_type=AnnotationQueueObjectType.TRACE,
-                )
-            except Exception:
-                logger.exception("Falha ao adicionar trace à annotation queue.")
+        enqueue_traces_for_annotation(self.client, [trace_id])
 
         item_metadata = {
             "description": result.description,
@@ -297,7 +271,10 @@ class LangfuseExporter:
                     trace_id=trace_id,
                     metadata={
                         "success": result.success,
-                        "execution_time_seconds": round(result.execution_time_seconds, 2),
+                        "execution_time_seconds": round(
+                            result.execution_time_seconds,
+                            2,
+                        ),
                         "model_name": result.model_name or "",
                         "timestamp": result.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     },
@@ -313,11 +290,14 @@ class LangfuseExporter:
             logger.exception("Falha ao fazer flush do cliente Langfuse.")
 
 
-def create_langfuse_exporter(dataset_name: str = DATASET_NAME) -> Optional[LangfuseExporter]:
+def create_langfuse_exporter(
+    dataset_name: str = DATASET_NAME,
+) -> Optional[LangfuseExporter]:
     """
     Fábrica que retorna um LangfuseExporter se as chaves de ambiente estiverem
     configuradas, ou None caso contrário.
     """
+    load_project_env()
     if not _is_langfuse_configured():
         return None
     try:

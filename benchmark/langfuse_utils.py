@@ -60,6 +60,8 @@ LANGFUSE_LOG_DIR = PROJECT_ROOT / "logs" / "langfuse_eval"
 def load_project_env() -> None:
     """Carrega o .env do projeto e garante os diretorios de saida."""
     load_dotenv(PROJECT_ROOT / ".env", override=False)
+    if "LANGFUSE_BASE_URL" in os.environ and "LANGFUSE_HOST" not in os.environ:
+        os.environ["LANGFUSE_HOST"] = os.environ["LANGFUSE_BASE_URL"]
     LANGFUSE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     LANGFUSE_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
