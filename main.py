@@ -1,9 +1,9 @@
 import argparse
-from contextlib import nullcontext
 import logging
 import os
 import sys
 import time
+from contextlib import nullcontext
 
 from dotenv import load_dotenv
 
@@ -37,16 +37,19 @@ def _configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--map-reduce",
         action="store_true",
-        help="Ativa map-reduce: sumariza cada arquivo via batch e reduz com o prompt original.",
+        help=(
+            "Ativa map-reduce: sumariza cada arquivo via batch e reduz com o "
+            "prompt original."
+        ),
     )
 
 
 def _configure_eval_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("csv_path", help="Path to the input CSV file.")
+    parser.add_argument("csv_path", help="Caminho para o CSV de entrada")
     parser.add_argument(
         "--dataset-name",
         default="gh-docs-eval",
-        help="Langfuse dataset name (default: gh-docs-eval)",
+        help="Nome do dataset no Langfuse (default: gh-docs-eval)",
     )
     parser.add_argument(
         "--experiment-name",
@@ -237,17 +240,9 @@ def _run_manual_case(args: argparse.Namespace) -> int:
                 value=elapsed,
                 data_type="NUMERIC",
             )
-            from benchmark.langfuse_exporter import ANNOTATION_QUEUE_ID
-            if ANNOTATION_QUEUE_ID:
-                try:
-                    from langfuse.api.annotation_queues.types import AnnotationQueueObjectType
-                    lf_client.api.annotation_queues.create_queue_item(
-                        queue_id=ANNOTATION_QUEUE_ID,
-                        object_id=trace_id,
-                        object_type=AnnotationQueueObjectType.TRACE,
-                    )
-                except Exception:
-                    pass
+            from benchmark.langfuse_annotation import enqueue_traces_for_annotation
+
+            enqueue_traces_for_annotation(lf_client, [trace_id])
             lf_client.flush()
 
     return 0
@@ -277,6 +272,14 @@ def _run_langfuse_eval(args: argparse.Namespace) -> int:
         print(f"Langfuse: {result['dataset_run_url']}")
     print(f"Manifesto: {result['manifest_path']}")
     print(f"CSV final: {result['export_path']}")
+    if result.get("annotation_queue_id"):
+        print(
+            "Annotation queue: "
+            f"{result['annotation_queue_id']} | "
+            f"queued={result['annotation_queued']} | "
+            f"skipped={result['annotation_skipped']} | "
+            f"failed={result['annotation_failed']}"
+        )
     return 0
 
 

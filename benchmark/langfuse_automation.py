@@ -1,5 +1,5 @@
 """
-Single job to sync the dataset, run the experiment, and export results.
+Job unico para sincronizar dataset, executar experimento e exportar resultados.
 """
 
 from __future__ import annotations
@@ -9,12 +9,14 @@ import argparse
 from .dataset_builder import sync_dataset_from_csv
 from .experiment_runner import run_dataset_experiment
 from .export_results import export_dataset_run_results
+from .langfuse_annotation import enqueue_traces_for_annotation
 from .langfuse_utils import (
     DEFAULT_DATASET_NAME,
     DEFAULT_EXPERIMENT_NAME,
     DEFAULT_REQUIRED_SCORES,
     DEFAULT_TEST_TYPE,
     LANGFUSE_OUTPUT_DIR,
+    require_langfuse_client,
     slugify,
 )
 
@@ -50,6 +52,11 @@ def run_langfuse_job(
         refine=refine,
     )
 
+    annotation_summary = enqueue_traces_for_annotation(
+        require_langfuse_client(),
+        experiment_summary["trace_ids"],
+    )
+
     effective_export_path = export_path
     if effective_export_path is None:
         effective_export_path = str(
@@ -72,6 +79,10 @@ def run_langfuse_job(
         "dataset_run_url": experiment_summary["dataset_run_url"] or "",
         "manifest_path": experiment_summary["manifest_path"],
         "export_path": export_summary["output_path"],
+        "annotation_queue_id": annotation_summary["queue_id"] or "",
+        "annotation_queued": str(annotation_summary["queued"]),
+        "annotation_skipped": str(annotation_summary["skipped"]),
+        "annotation_failed": str(annotation_summary["failed"]),
     }
 
 
@@ -169,6 +180,14 @@ def main() -> int:
         print(f"Langfuse: {result['dataset_run_url']}")
     print(f"Manifesto: {result['manifest_path']}")
     print(f"CSV final: {result['export_path']}")
+    if result["annotation_queue_id"]:
+        print(
+            "Annotation queue: "
+            f"{result['annotation_queue_id']} | "
+            f"queued={result['annotation_queued']} | "
+            f"skipped={result['annotation_skipped']} | "
+            f"failed={result['annotation_failed']}"
+        )
     return 0
 
 
