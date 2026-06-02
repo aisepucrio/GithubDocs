@@ -51,6 +51,41 @@ uv sync
 
 ## Usage
 
+### Manual run
+
+The old command still works:
+
+```bash
+python main.py conf/config.toml
+```
+
+You can also use the explicit subcommand:
+
+```bash
+python main.py run conf/config.toml
+```
+
+### Langfuse evaluation
+
+The full evaluation workflow is now centralized in a single command:
+
+```bash
+python main.py eval /path/to/eval.csv
+```
+
+This single command handles:
+
+- CSV -> Langfuse dataset
+- experiment execution with the real GithubDocs pipeline
+- waiting for evaluator scores
+- exporting the final CSV
+
+Example:
+
+~~~bash
+python main.py eval "/path/to/eval.csv"
+~~~
+
 ## Submodule Management
 
 This project uses Git submodules to manage external repositories used as test subjects. They are located in the `external_repos/` directory.
@@ -102,9 +137,14 @@ Create a `.env` file in the project root:
 ```bash
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_TRACING_ENVIRONMENT=development
 # Optionally, if using a self-hosted instance:
 LANGFUSE_HOST=http://localhost:3000
 ```
+
+When enabled, GithubDocs creates a top-level `githubdocs-manual-run` trace for
+each CLI run, nests LangChain model/tool observations under it, adds model and
+repository metadata, and flushes pending events before the process exits.
 
 #### GITHUB_TOKEN (Optional)
 Optional token for **GitHub Issues integration**. The framework can work without it, but with reduced API rate limits (60 requests/hour vs 5000 with authentication).

@@ -7,6 +7,7 @@ from .github_integration import IssueTracker
 from jinja2 import Environment, FileSystemLoader, meta
 from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
+from .llm_agent.langfuse_integration import append_langfuse_callback
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
 from langgraph.checkpoint.memory import InMemorySaver
@@ -118,9 +119,9 @@ def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_bud
     return refined
 
 REDUCE_PROMPT_MAP = {
-    "changelog.jinja": "reduce_changelog.jinja",
-    "readme_update.jinja": "reduce_readme_update.jinja",
-    "readme.jinja": "reduce_readme.jinja",
+    "changelog/changelog.jinja": "reduce_changelog.jinja",
+    "readme-update/readme_update.jinja": "reduce_readme_update.jinja",
+    "readme/readme.jinja": "reduce_readme.jinja",
 }
 
 def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: OrchestrationStep, template_vars: dict) -> str:
@@ -153,7 +154,12 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
     ]
 
     logger.info(f"Map-reduce: sending {len(map_prompts)} files in batch...")
-    map_responses = agent.chat_model.batch(map_prompts)
+    map_responses = agent.chat_model.batch(
+        map_prompts,
+        config=append_langfuse_callback(
+            {"configurable": {"thread_id": f"step-{orchestration_step.step}-map"}}
+        ),
+    )
     map_summaries = [r.content for r in map_responses]
 
     logger.info(f"Map-reduce: map phase done. {len(map_summaries)} summaries generated.")
@@ -169,20 +175,20 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
     return agent.generate_response_with_prompt(reduce_prompt, "", config=config)
 
 
-def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None,tools: list[str] = None) -> AIAgent | None:
+def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory: InMemorySaver = None, tools: list[str] = None, base_url: str = "") -> AIAgent | None:
     agent_class = None
     for key in AI_DICT:
         if key in model_name:
             agent_class = AI_DICT[key]
-    if not agent_class and model_name in LLM_CONTEXT_WINDOWS: # Fallback, if there is no direct match, check if the model_name is in the context window dict (ollama models). TODO: improve this
+    if not agent_class and model_name in LLM_CONTEXT_WINDOWS:
         agent_class = AI_DICT["ollama"]
     if agent_class:
-        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory, tools=tools )
+        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory, tools=tools, base_url=base_url)
     return None
 
 def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, issue_tracker: IssueTracker = None, context_memory:InMemorySaver = None, config: dict = None):
-    agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature, context_memory=context_memory)
-    print(" \n orgestrarion step:", orchestration_step.tools, " \n" )
+    agent = build_ai_agent(orchestration_step.model_name, temperature=orchestration_step.temperature, context_memory=context_memory, base_url=orchestration_step.base_url)
+    print(" \n orchestration step:", orchestration_step.tools, " \n")
     if agent is None:
         error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
         logger.error(str(error))
@@ -220,12 +226,12 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
         logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
 
 
-        # Instancia o agente
         agent = build_ai_agent(
             orchestration_step.model_name,
             temperature=orchestration_step.temperature,
             context_memory=context_memory,
-            tools=orchestration_step.tools
+            tools=orchestration_step.tools,
+            base_url=orchestration_step.base_url,
         )
 
         if agent is None:
@@ -346,7 +352,9 @@ def start(base_config: BaseAppConfig):
             
             logger.info("Analisando issues mencionadas nos commits...")
             issues_analysis = issue_tracker.analyze_commits(repo_info["commits"])
-            logger.info(f"Encontradas {issues_analysis['total_issues_referenced']} issues únicas referenciadas")
+            logger.info(
+                f"Found {issues_analysis['total_issues_referenced']} unique referenced issues"
+            )
             
             if base_config.cli_params.enable_issue_log:
                 print_issues_to_terminal(issues_analysis, issue_tracker)

@@ -250,8 +250,8 @@ TEST_CONFIGS: list[str] = [
 [target_information]
 repo_path = "external_repos/EventFlow"
 branch_name = "develop-v1"
-commit_list = ["6bcade563d627ea3d2b35f59d4d5dee56d6ea6a"]
-ignore_files = ["README.md", "CHANGELOG.md"]
+commit_list = ["621a25d273434b7f371bef60b7e1d558f7bb3f06"]
+ignore_files = ["README.md", "CHANGELOG.md", "IGNORED_PRESET"]
 
 [agents]
 
@@ -265,14 +265,62 @@ step = 1
 model_name = "gemini-2.5-flash-lite"
 temperature = 0.2
 template_path = "prompt/"
-prompt_file = "changelog.jinja"
-prompt_variables = { name = "Benchmark Test 1", repo = "external_repos/EventFlow" }
+prompt_file = "changelog/changelog.jinja"
+prompt_variables = { name = "EventFlow - Changelog", repo = "external_repos/EventFlow" }
+tools = []
+''',
+    '''
+[target_information]
+repo_path = "external_repos/lm4smells-core"
+branch_name = "main"
+commit_list = ["7ef69d178f2413692df590159b9b07f930306bd5"]
+ignore_files = ["README.md", "IGNORED_PRESET"]
+
+[agents]
+
+[[agents.output]]
+result_path = "output/"
+log_path = "logs/"
+result_file_name = "benchmark_test_2.md"
+
+[[agents.orchestration]]
+step = 1
+model_name = "gemini-2.5-flash-lite"
+temperature = 0.2
+template_path = "prompt/"
+prompt_file = "readme-update/readme_update.jinja"
+prompt_variables = { name = "lm4smells-core - README Update", repo = "external_repos/lm4smells-core" }
+tools = []
+''',
+    '''
+[target_information]
+repo_path = "external_repos/flask"
+branch_name = "main"
+commit_list = ["4cae5d8e411b1e69949d8fae669afeacbd3e5908"]
+ignore_files = ["README.md", "CHANGELOG.md", "IGNORED_PRESET"]
+
+[agents]
+
+[[agents.output]]
+result_path = "output/"
+log_path = "logs/"
+result_file_name = "benchmark_test_3.md"
+
+[[agents.orchestration]]
+step = 1
+model_name = "gemini-2.5-flash-lite"
+temperature = 0.2
+template_path = "prompt/"
+prompt_file = "changelog/changelog.jinja"
+prompt_variables = { name = "Flask - Changelog", repo = "external_repos/flask" }
 tools = []
 ''',
 ]
 
 CONFIG_NAMES: list[str] = [
-    "EventFlow - Default",
+    "EventFlow - Changelog",
+    "lm4smells-core - README Update",
+    "Flask - Changelog",
 ]
 
 def get_config_name(index: int) -> str:

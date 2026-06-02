@@ -206,6 +206,7 @@ class OrchestrationStep(BaseModel):
     prompt_variables: dict[str, str]
     prompt: str = ""
     tools: list[str] = []
+    base_url: str = ""
 
     @field_validator("temperature")
     def validate_temperature(cls, v):
@@ -223,12 +224,17 @@ class OrchestrationStep(BaseModel):
         return f"OrchestrationStep(step={self.step}, model_name={self.model_name}, temperature={self.temperature}, prompt_path={self.prompt_file}, prompt_variables={self.prompt_variables}, prompt={self.prompt[:50]}...)"
     
 class CliParams(BaseModel):
-    refine: bool = False
     enable_issue_log: bool = False
+    refine: bool = False
     map_reduce: bool = False
+
 
 class BaseAppConfig(BaseModel):
     target_info: TargetInfo
     output_info: OutputInfo
     orchestration_steps: list[OrchestrationStep]
-    cli_params: CliParams = CliParams()
+    cli_params: CliParams = None
+
+    def model_post_init(self, __context) -> None:
+        if self.cli_params is None:
+            self.cli_params = CliParams()
