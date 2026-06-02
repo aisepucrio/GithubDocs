@@ -126,7 +126,7 @@ Exemplos:
     parser.add_argument(
         "--no-langfuse",
         action="store_true",
-        help="Desativa exportação para o Langfuse mesmo que as variáveis de ambiente estejam configuradas",
+        help="Disable Langfuse export even if environment variables are configured",
     )
 
     parser.add_argument(
@@ -197,11 +197,13 @@ Exemplos:
             from .langfuse_exporter import create_langfuse_exporter
             langfuse_exporter = create_langfuse_exporter()
             if langfuse_exporter:
-                print("Langfuse: exportação de resultados ativada.")
+                print("Langfuse: export enabled.")
             else:
-                print("Langfuse: variáveis LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY não configuradas — exportação desativada.")
+                print(
+                    "Langfuse: LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY not configured — export disabled."
+                )
         except Exception as e:
-            print(f"Langfuse: falha ao inicializar ({e}) — continuando sem exportação.")
+            print(f"Langfuse: failed to initialize ({e}) — continuing without export.")
 
     runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet, refine=args.refine, langfuse_exporter=langfuse_exporter)
     results = runner.run_batch(indices)

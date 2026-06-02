@@ -1,5 +1,5 @@
 """
-Sincroniza um CSV de avaliacoes com um dataset do Langfuse.
+Sync an evaluation CSV into a Langfuse dataset.
 """
 
 from __future__ import annotations

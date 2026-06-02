@@ -82,9 +82,9 @@ This single command handles:
 
 Example:
 
-```bash
-python main.py eval "/Users/alexandrecesarba/Downloads/Testes Automatizado gh_docs - lm4smells-core.csv"
-```
+~~~bash
+python main.py eval "/path/to/eval.csv"
+~~~
 
 ## Submodule Management
 

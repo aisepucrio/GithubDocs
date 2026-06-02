@@ -60,12 +60,10 @@ def run_github_docs_pipeline(
         test_type=test_type,
         output_file_name=output_file_name,
         project_description=metadata.get("project_description"),
-        github_repo_name=metadata.get("github_repo_name"),
-        ignore_files=metadata.get("ignore_files"),
     )
 
-    start(config, refine=refine)
-
+    config.cli_params.refine = refine
+    start(config)
     output_path = LANGFUSE_OUTPUT_DIR / output_file_name
     return output_path.read_text(encoding="utf-8") if output_path.exists() else ""
 
