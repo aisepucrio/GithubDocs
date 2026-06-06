@@ -124,6 +124,12 @@ Exemplos:
     )
 
     parser.add_argument(
+        "--no-langfuse",
+        action="store_true",
+        help="Disable Langfuse export even if environment variables are configured",
+    )
+
+    parser.add_argument(
         "--config-worksheet",
         type=str,
         default=os.getenv("GOOGLE_SHEETS_CONFIG_WORKSHEET", "TestConfigs"),
@@ -185,7 +191,21 @@ Exemplos:
     print(f"Configs selecionadas: {format_indices_summary(indices)}")
     print(f"Total: {len(indices)} de {total_configs} disponíveis")
 
-    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet, refine=args.refine)
+    langfuse_exporter = None
+    if not args.no_langfuse:
+        try:
+            from .langfuse_exporter import create_langfuse_exporter
+            langfuse_exporter = create_langfuse_exporter()
+            if langfuse_exporter:
+                print("Langfuse: export enabled.")
+            else:
+                print(
+                    "Langfuse: LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY not configured — export disabled."
+                )
+        except Exception as e:
+            print(f"Langfuse: failed to initialize ({e}) — continuing without export.")
+
+    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet, refine=args.refine, langfuse_exporter=langfuse_exporter)
     results = runner.run_batch(indices)
 
     if not args.no_export:

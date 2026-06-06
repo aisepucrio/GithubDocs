@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader, meta
 from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
 from .llm_agent.agents_strategy import content_to_text
+from .llm_agent.langfuse_integration import append_langfuse_callback
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
 from langgraph.checkpoint.memory import InMemorySaver
@@ -54,9 +55,9 @@ def refine_oversized_modifications(repo_info: dict, agent: AIAgent, per_file_bud
     return refined
 
 REDUCE_PROMPT_MAP = {
-    "changelog.jinja": "reduce_changelog.jinja",
-    "readme_update.jinja": "reduce_readme_update.jinja",
-    "readme.jinja": "reduce_readme.jinja",
+    "changelog/changelog.jinja": "reduce_changelog.jinja",
+    "readme-update/readme_update.jinja": "reduce_readme_update.jinja",
+    "readme/readme.jinja": "reduce_readme.jinja",
 }
 
 def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: OrchestrationStep, template_vars: dict) -> str:
@@ -89,7 +90,12 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
     ]
 
     logger.info(f"Map-reduce: sending {len(map_prompts)} files in batch...")
-    map_responses = agent.chat_model.batch(map_prompts)
+    map_responses = agent.chat_model.batch(
+        map_prompts,
+        config=append_langfuse_callback(
+            {"configurable": {"thread_id": f"step-{orchestration_step.step}-map"}}
+        ),
+    )
     map_summaries = [content_to_text(r.content) for r in map_responses]
 
     logger.info(f"Map-reduce: map phase done. {len(map_summaries)} summaries generated.")
@@ -209,7 +215,7 @@ def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", te
     for key in AI_DICT:
         if key in model_name:
             agent_class = AI_DICT[key]
-    if not agent_class and model_name in LLM_CONTEXT_WINDOWS: # Fallback, if there is no direct match, check if the model_name is in the context window dict (ollama models). TODO: improve this
+    if not agent_class and model_name in LLM_CONTEXT_WINDOWS:
         agent_class = AI_DICT["ollama"]
     if agent_class:
         return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory)
@@ -256,7 +262,6 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
                 raise RuntimeError("--tool-calling exige um RepoInfoExtractor mas nenhum foi passado para a chain.")
             return execute_tool_calling_step(extractor, orchestration_step, last_output, context_memory)
 
-        # Instancia o agente
         agent = build_ai_agent(
             orchestration_step.model_name,
             temperature=orchestration_step.temperature,
