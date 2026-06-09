@@ -171,12 +171,12 @@ class OllamaAgent(AIAgent):
         self.output = content_to_text(response["messages"][-1].content)
         return self.output
 
-    # funcao aparentemente nao usada
-    #  TODO
-    def generate_response(self, prompt: str, input: str) -> str:
+    def generate_response(self, input: str) -> str:
         full_prompt = self.base_prompt + "\n" + input
+        config = {"configurable": {"thread_id": "generate_response"}}
         response = self._get_default_agent().invoke(
-            {"messages": full_prompt}
+            {"messages": [("user", full_prompt)]},
+            config=config,
         )
         self.output = content_to_text(response["messages"][-1].content)
         return self.output
