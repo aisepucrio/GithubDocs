@@ -343,7 +343,6 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
         
         for step_func in step_functions:
             result = step_func(result)
-            print(result)
             # Para se o resultado estiver vazio
             if result is None or result.strip() == "":
                 logger.info("Result vazio. Interrompendo a chain.")
