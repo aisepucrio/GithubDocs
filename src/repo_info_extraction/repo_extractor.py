@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import cached_property
 import fnmatch
 import os
+import threading
 
 from langchain_core.tools import StructuredTool
 
@@ -85,6 +86,12 @@ class RepoInfoExtractor:
         self.commit_list = commit_list
         self.target_branch = target_branch
         self.ignored_files = ignored_files or []
+
+        # Serializes git/pydriller access. langgraph's ToolNode runs tool calls
+        # from a single turn in parallel threads; pydriller acquires a write lock
+        # on the repo's git config on every Repository creation, so concurrent
+        # tool calls would otherwise collide with "Lock ... already exists".
+        self._git_lock = threading.RLock()
 
         self.git_repo: Repo = self._open_git_repo()
         self._validate_branch()
@@ -227,20 +234,22 @@ class RepoInfoExtractor:
 
     @cached_property
     def readme(self) -> str | None:
-        commit = self.git_repo.commit(self.last_commit_hash)
-        for item in commit.tree.traverse():
-            is_blob = getattr(item, "type", None) == "blob"
-            name = getattr(item, "name", "")
-            if is_blob and name.lower().startswith("readme"):
-                return item.data_stream.read().decode("utf-8", errors="replace")
-        return None
+        with self._git_lock:
+            commit = self.git_repo.commit(self.last_commit_hash)
+            for item in commit.tree.traverse():
+                is_blob = getattr(item, "type", None) == "blob"
+                name = getattr(item, "name", "")
+                if is_blob and name.lower().startswith("readme"):
+                    return item.data_stream.read().decode("utf-8", errors="replace")
+            return None
 
     @cached_property
     def file_tree(self) -> str:
-        files = [
-            item.path for item in self._iter_tracked_blobs()
-            if not self._is_ignored(item.path)
-        ]
+        with self._git_lock:
+            files = [
+                item.path for item in self._iter_tracked_blobs()
+                if not self._is_ignored(item.path)
+            ]
         return "\n".join(sorted(files))
 
     @cached_property
@@ -255,13 +264,14 @@ class RepoInfoExtractor:
     @cached_property
     def extensions(self) -> str:
         ext_list = []
-        for item in self._iter_tracked_blobs():
-            if item.type != 'blob':
-                continue
-            _, ext = os.path.splitext(item.path)
-            ext = ext.lower()
-            if ext:
-                ext_list.append(ext)
+        with self._git_lock:
+            for item in self._iter_tracked_blobs():
+                if item.type != 'blob':
+                    continue
+                _, ext = os.path.splitext(item.path)
+                ext = ext.lower()
+                if ext:
+                    ext_list.append(ext)
 
         counter = Counter(ext_list)
         total = sum(counter.values())
@@ -277,24 +287,30 @@ class RepoInfoExtractor:
 
     def _list_commits_objs(self) -> list[CommitSummary]:
         if self._commit_summaries is None:
-            self._commit_summaries = [
-                CommitSummary(hash=c.hash, date=c.author_date, message=c.msg)
-                for c in self._traverse_resolved_commits()
-            ]
+            with self._git_lock:
+                if self._commit_summaries is None:
+                    self._commit_summaries = [
+                        CommitSummary(hash=c.hash, date=c.author_date, message=c.msg)
+                        for c in self._traverse_resolved_commits()
+                    ]
         return self._commit_summaries
 
     def _get_commit_detail_obj(self, commit_hash: str) -> CommitDetail:
         if commit_hash in self._commit_detail_cache:
             return self._commit_detail_cache[commit_hash]
 
-        for c in Repository(
-            self.repository_path,
-            single=commit_hash,
-            only_in_branch=self.target_branch,
-        ).traverse_commits():
-            detail = self._build_commit_detail(c)
-            self._commit_detail_cache[commit_hash] = detail
-            return detail
+        with self._git_lock:
+            if commit_hash in self._commit_detail_cache:
+                return self._commit_detail_cache[commit_hash]
+
+            for c in Repository(
+                self.repository_path,
+                single=commit_hash,
+                only_in_branch=self.target_branch,
+            ).traverse_commits():
+                detail = self._build_commit_detail(c)
+                self._commit_detail_cache[commit_hash] = detail
+                return detail
 
         raise InvalidCommitError(commit_hash)
 

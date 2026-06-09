@@ -110,6 +110,13 @@ class GPTAgent(AIAgent):
         self.output = content_to_text(response.content)
         return self.output
 
+    def refine_content(self, text: str) -> str:
+        chunk_size = self.context_window // 4
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
+        docs = [Document(page_content=c) for c in splitter.split_text(text)]
+        chain = load_summarize_chain(self.chat_model, chain_type="refine", verbose=True)
+        return chain.invoke(docs)["output_text"]
+
     def _count_tokens(self, input: str) -> int:
         encoding = tiktoken.get_encoding("cl100k_base")
         num_tokens = len(encoding.encode(input))

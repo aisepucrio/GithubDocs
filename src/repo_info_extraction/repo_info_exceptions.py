@@ -51,11 +51,13 @@ class InvalidBranchError(RepoInfoExtractionError):
 
 class InvalidCommitError(RepoInfoExtractionError):
     """Raised when a commit is invalid."""
-    def __init__(self: str, commit_hash: str):
+    def __init__(self, commit_hash: str = None):
         super().__init__()
-        self.message = f"""Invalid commit {commit_hash} provided. Please ensure the commit exists in the repository.
-        This could be caused by a typo in the commit hash or by trying to access a commit that does not belong to the target branch.
+        commit_reference = f"commit {commit_hash}" if commit_hash else "commit list"
+        self.message = f"""Invalid {commit_reference} provided. Please ensure the commit(s) exist in the repository.
+        This could be caused by an empty commit list, a typo in the commit hash, or by trying to access a commit that does not belong to the target branch.
         Commit resolution:
-        1. Ensure that you are in the right branch.
-        2. Check the commit hash for typos or mistakes.
+        1. Ensure that you provided at least one commit in commit_list.
+        2. Ensure that you are in the right branch.
+        3. Check the commit hash for typos or mistakes.
         """

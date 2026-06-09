@@ -5,8 +5,38 @@ from typing import List, Dict
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def _message_content_to_str(content) -> str:
-    """Normaliza AIMessage.content para str (Gemini pode retornar list[dict] com content blocks)."""
+def _message_content_to_str(message_or_content) -> str:
+    """Extract text from an AIMessage (or its raw content) robustly.
+
+    langchain-core 1.x can expose content as a plain string, a list of content
+    blocks, or split reasoning/text blocks. Provider integrations (e.g. Gemini)
+    also differ in whether text blocks carry a ``type`` key. We prefer the
+    message's canonical ``.text``/``.content_blocks`` accessors and fall back to
+    walking raw content, accepting both typed ({"type": "text", "text": ...}) and
+    untyped ({"text": ...}) blocks. Without this, tool-calling answers returned as
+    untyped blocks were silently dropped and broke the chain ("Result vazio").
+    """
+    # Prefer canonical accessors when given a message object.
+    if hasattr(message_or_content, "content"):
+        message = message_or_content
+        canonical = str(getattr(message, "text", "") or "")
+        if canonical.strip():
+            return canonical
+        try:
+            blocks = list(message.content_blocks)
+        except Exception:
+            blocks = []
+        joined = "".join(
+            block.get("text", "")
+            for block in blocks
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+        if joined.strip():
+            return joined
+        content = message.content
+    else:
+        content = message_or_content
+
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -14,8 +44,8 @@ def _message_content_to_str(content) -> str:
         for block in content:
             if isinstance(block, str):
                 parts.append(block)
-            elif isinstance(block, dict) and block.get("type") == "text":
-                parts.append(block.get("text", ""))
+            elif isinstance(block, dict) and "text" in block and block.get("type") in (None, "text"):
+                parts.append(block.get("text") or "")
         return "".join(parts)
     return str(content) if content is not None else ""
 
@@ -67,7 +97,7 @@ class AIAgent(ABC):
 
         executor = create_agent(self.chat_model, tools=tools, checkpointer=self.context_memory)
         response = executor.invoke({"messages": [("user", prompt)]}, config=config)
-        return _message_content_to_str(response["messages"][-1].content)
+        return _message_content_to_str(response["messages"][-1])
 
     def _get_model_window_context(self) -> int:
         return self.context_window
