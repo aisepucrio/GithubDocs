@@ -14,15 +14,13 @@ from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_classic.chains.summarize.chain import load_summarize_chain
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def content_to_text(content) -> str:
-    """Normaliza response.content (str | list[str|dict]) para str.
+    """Normalize response.content (str | list[str|dict]) into a single string.
 
-    Modelos como Gemini podem devolver content como lista de blocos
-    (ex.: thinking + texto). Concatenamos apenas as partes textuais.
+    Some models (e.g. Gemini) may return content as a list of blocks (e.g. thinking + text).
+    This helper concatenates only the textual parts.
     """
     if content is None:
         return ""

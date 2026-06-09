@@ -126,8 +126,8 @@ def _resolve_tool_calling_prompt(prompt_file: str) -> str:
     key = os.path.basename(prompt_file)
     if key not in TOOL_CALLING_PROMPT_MAP:
         raise ValueError(
-            f"--tool-calling: prompt_file '{prompt_file}' tem nenhum equivalente em prompt/tool-calling/. "
-            f"Suportados: {list(TOOL_CALLING_PROMPT_MAP.keys())}."
+            f"--tool-calling: prompt_file '{prompt_file}' has no equivalent in prompt/tool-calling/. "
+            f"Supported: {list(TOOL_CALLING_PROMPT_MAP.keys())}."
         )
     return TOOL_CALLING_PROMPT_MAP[key]
 
