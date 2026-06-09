@@ -131,3 +131,143 @@ Each TOML string must follow the GithubDocs config format found in conf/config_e
 | `test_configs.py` | Loads configs from Google Sheets or local TOML strings |
 | `sheets_exporter.py` | Exports results to Google Sheets |
 | `index_parser.py` | Parses index notation (`"1-5,10"` → `[0,1,2,3,4,9]`) |
+
+## Langfuse Evaluation Pipeline
+
+The repository now includes a full Langfuse-based evaluation flow for GithubDocs:
+
+`CSV -> Dataset Langfuse -> Experiment Run -> Traces -> Scores -> CSV`
+
+### Modules
+
+| File | Purpose |
+|------|---------|
+| `dataset_builder.py` | Reads a CSV and upserts each row as a Langfuse dataset item |
+| `experiment_runner.py` | Runs the real GithubDocs pipeline over dataset items using `src.facade.start` |
+| `export_results.py` | Exports trace metadata, outputs and scores into a structured CSV |
+| `langfuse_automation.py` | End-to-end job: sync dataset, run experiment and export results |
+| `langfuse_utils.py` | Shared parsing, config building and Langfuse helpers |
+
+### Expected CSV columns
+
+Required:
+
+- `description`
+- `repo_path`
+- `branch_name`
+- `commits`
+
+Optional:
+
+- `model_name`
+- `temperature`
+- `commit_mixed`
+- `type` or `test_type`
+- `project_description`
+- `github_repo_name`
+- `ignore_files`
+
+Notes:
+
+- `type`/`test_type` supports `readme`, `readme_update`, `changelog`
+- If `type` is absent, the scripts default to `readme_update`
+- `ignore_files` can be a comma-separated string or a JSON array
+
+### Langfuse setup
+
+Create a `.env` file in the project root with the Langfuse credentials used both for tracing and dataset/experiment APIs:
+
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+```
+
+The same `.env` should also contain whichever LLM credentials your selected `model_name` needs, such as `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `OLLAMA_HOST`, etc.
+
+### 1. Build or update the dataset
+
+```bash
+python -m benchmark.dataset_builder path/to/eval.csv --dataset-name gh-docs-eval
+```
+
+Each CSV row becomes one Langfuse dataset item with:
+
+- `input`: `{task, repo_path, branch}`
+- `expected_output`: `null`
+- `metadata`: model, temperature, commits, commit_mixed, test_type and source fields
+
+### 2. Run the real experiment
+
+```bash
+python -m benchmark.experiment_runner \
+  --dataset-name gh-docs-eval \
+  --experiment-name gh-docs-experiment \
+  --max-concurrency 1
+```
+
+This command executes the real GithubDocs generation flow for every dataset item and stores the resulting traces in Langfuse. A manifest JSON is written to `output/langfuse_eval/`.
+
+### 3. Configure judges in Langfuse UI
+
+The Python code does not implement judges directly. Configure evaluators in the Langfuse UI and map them to:
+
+- `trace.input`
+- `trace.output`
+- `trace.metadata`
+
+Recommended evaluator names:
+
+- `doc_quality`
+- `hallucination`
+- `consistency`
+
+### 4. Export structured results
+
+```bash
+python -m benchmark.export_results \
+  --dataset-name gh-docs-eval \
+  --run-name gh-docs-experiment-2026-03-25t120000-00-00 \
+  --output-path output/langfuse_eval/latest-results.csv
+```
+
+By default, the exporter waits for `doc_quality`, `hallucination`, and `consistency` to appear in Langfuse before writing the CSV. This is useful because UI evaluators may finish slightly after the experiment traces are ingested.
+
+### 5. Run the full automation job
+
+```bash
+python -m benchmark.langfuse_automation path/to/eval.csv
+```
+
+You can use this command in cron, GitHub Actions, or any scheduler.
+
+Example cron entry:
+
+```cron
+0 9 * * 1 cd /path/to/GithubDocs && ./.venv/bin/python -m benchmark.langfuse_automation path/to/eval.csv
+```
+
+### Output schema
+
+The exported CSV includes the main fields needed for quantitative analysis:
+
+- `model_name`
+- `temperature`
+- `repo_path`
+- `branch_name`
+- `commits`
+- `commit_mixed`
+- `test_type`
+- `description`
+- `doc_quality`
+- `hallucination`
+- `consistency`
+- `output`
+- `trace_id`
+- `trace_url`
+
+### Dataset versioning
+
+- `experiment_runner.py` accepts `--dataset-version` in ISO 8601 UTC
+- If omitted, the latest dataset version is used
+- `dataset_builder.py` uses upserts by item id and does not delete old items automatically, which preserves historical runs

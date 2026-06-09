@@ -6,6 +6,7 @@ import argparse
 import shlex
 import time
 import traceback
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -30,6 +31,10 @@ from src.load_configuration.conf_structures import BaseAppConfig, CliParams
 from src.repo_info_extraction import RepoInfoExtractor
 
 from .test_configs import ConfigMetadata
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .langfuse_exporter import LangfuseExporter
 
 
 def _build_cli_params_parser() -> argparse.ArgumentParser:
@@ -117,6 +122,7 @@ class BenchmarkRunner:
         metadata: Optional[list[ConfigMetadata]] = None,
         verbose: bool = True,
         refine: bool = False,
+        langfuse_exporter: Optional["LangfuseExporter"] = None,
     ):
         """
         Args:
@@ -125,15 +131,15 @@ class BenchmarkRunner:
             metadata: Lista de metadados (description, commit_mixed) para cada config
             verbose: Se True, imprime logs detalhados
             refine: Se True, ativa refinamento de arquivos grandes via load_summarize_chain
-            refine: Se True, ativa refinamento de arquivos grandes via load_summarize_chain
         """
         self.configs = configs
         self.names = names
         self.metadata = metadata or [ConfigMetadata() for _ in configs]
         self.verbose = verbose
         self.refine = refine
-        self.refine = refine
         self.results: list[BenchmarkResult] = []
+        self.langfuse_exporter = langfuse_exporter
+        self._run_name: Optional[str] = None
 
     def _get_config_name(self, index: int) -> str:
         """Retorna o nome da config pelo índice."""
@@ -285,8 +291,30 @@ class BenchmarkRunner:
             except Exception as prompt_err:
                 self._log(f"Aviso: Não foi possível capturar o prompt: {prompt_err}")
 
+            # Inicia trace Langfuse antes de executar (vincula spans LLM ao trace pai)
+            langfuse_attributes_context = nullcontext()
+            if self.langfuse_exporter and self._run_name:
+                trace_metadata = {
+                    "config_index": config_index + 1,
+                    "description": result.description,
+                    "commit_mixed": result.commit_mixed,
+                    "model_name": result.model_name or "",
+                    "temperature": result.temperature,
+                    "repo_path": result.repo_path or "",
+                    "test_type": result.test_type or "",
+                }
+                self.langfuse_exporter.start_trace(
+                    config_index,
+                    result.prompt_content,
+                    trace_metadata,
+                )
+                langfuse_attributes_context = (
+                    self.langfuse_exporter.trace_attributes_context(config_index)
+                )
+
             # Executa o framework
-            start(config)
+            with langfuse_attributes_context:
+                start(config)
 
             # Lê o output gerado
             if os.path.exists(result.output_file):
@@ -307,6 +335,9 @@ class BenchmarkRunner:
             result.timestamp = datetime.now()
             self._log(f"Tempo: {result.execution_time_seconds:.2f}s")
 
+            if self.langfuse_exporter and self._run_name:
+                self.langfuse_exporter.finish_trace(result, self._run_name)
+
         self.results.append(result)
         return result
 
@@ -323,6 +354,10 @@ class BenchmarkRunner:
         total = len(indices)
         self._log(f"\nIniciando batch de {total} benchmark(s)...")
         self._log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        if self.langfuse_exporter:
+            self._run_name = self.langfuse_exporter.get_run_name()
+            self._log(f"Langfuse run: {self._run_name}")
 
         batch_results = []
         for i, idx in enumerate(indices, 1):
@@ -343,6 +378,9 @@ class BenchmarkRunner:
         self._log(f"Falhas: {total - success_count}")
         self._log(f"Tempo total: {total_time:.2f}s")
         self._log(f"Tempo médio: {total_time/total:.2f}s")
+
+        if self.langfuse_exporter:
+            self.langfuse_exporter.flush()
 
         return batch_results
 

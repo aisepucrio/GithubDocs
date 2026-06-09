@@ -14,15 +14,13 @@ from langchain_ollama import ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_classic.chains.summarize.chain import load_summarize_chain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_classic.chains.summarize.chain import load_summarize_chain
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def content_to_text(content) -> str:
-    """Normaliza response.content (str | list[str|dict]) para str.
+    """Normalize response.content (str | list[str|dict]) into a single string.
 
-    Modelos como Gemini podem devolver content como lista de blocos
-    (ex.: thinking + texto). Concatenamos apenas as partes textuais.
+    Some models (e.g. Gemini) may return content as a list of blocks (e.g. thinking + text).
+    This helper concatenates only the textual parts.
     """
     if content is None:
         return ""
@@ -94,26 +92,20 @@ class GPTAgent(AIAgent):
 
     def generate_response(self, input: str) -> str:
         full_input = self.base_prompt + "\n" + input
-        parameters = {
-            "model": self.model_name,
-            "input": full_input,
-        }
-        if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
-            parameters["temperature"] = self.temperature
-        response = self.chat_model.invoke(**parameters)
+        kwargs = {}
+        if not (self.model_name.startswith("gpt-5") or self.model_name.startswith("o")):
+            kwargs["temperature"] = self.temperature
+        response = self.chat_model.invoke(full_input, **kwargs)
 
         self.output = content_to_text(response.content)
         return self.output
 
     def generate_response_with_prompt(self, prompt: str, input: str, config: dict = None) -> str:
         full_input = prompt + "\n" + input
-        parameters = {
-            "model": self.model_name,
-            "input": full_input,
-        }
-        if not self.model_name.startswith("gpt-5") or self.model_name.startswith("o"):
-            parameters["temperature"] = self.temperature
-        response = self.chat_model.invoke(**parameters)
+        kwargs = {}
+        if not (self.model_name.startswith("gpt-5") or self.model_name.startswith("o")):
+            kwargs["temperature"] = self.temperature
+        response = self.chat_model.invoke(full_input, **kwargs)
 
         self.output = content_to_text(response.content)
         return self.output
@@ -190,7 +182,7 @@ class OllamaAgent(AIAgent):
 
     def _count_tokens(self, input: str) -> int:
          # Naive token counting logic
-         return len(input.split())/3
+         return len(input.split()) // 3
 
 
 class MockAgent(AIAgent):
@@ -212,12 +204,6 @@ class MockAgent(AIAgent):
         print("--- END MOCK AGENT ---")
         return "Mocked response with custom prompt"
     
-    def refine_content(self, text: str) -> str:
-        print("--- MOCK AGENT ---")
-        print("Refining content:", text)
-        print("--- END MOCK AGENT ---")
-        return "Refined content (mocked)"
-
     def refine_content(self, text: str) -> str:
         print("--- MOCK AGENT ---")
         print("Refining content:", text)
