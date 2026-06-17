@@ -1,3 +1,4 @@
+import logging
 import os
 from langchain_core.documents import Document
 
@@ -124,6 +125,13 @@ class GPTAgent(AIAgent):
 
 #  ollama aqui -----V
 
+logger = logging.getLogger(__name__)
+
+# Each Ollama request is capped at 3 minutes and retried up to 5 times on failure.
+OLLAMA_TIMEOUT_SECONDS = 180
+OLLAMA_MAX_RETRIES = 5
+
+
 class OllamaAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
@@ -137,11 +145,31 @@ class OllamaAgent(AIAgent):
             model=model_name,
             base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             temperature=temperature,
+            num_ctx=self.context_window,
+            client_kwargs={"timeout": OLLAMA_TIMEOUT_SECONDS},
             callbacks=cb
         )
 
         # Construido lazy: invoke_with_tools (base) cria seu proprio executor sem essa middleware.
         self._default_agent = None
+
+    def _invoke_with_retry(self, call, *args, **kwargs):
+        """Run an Ollama invoke, retrying up to OLLAMA_MAX_RETRIES times on failure.
+
+        The per-request timeout is enforced by the ChatOllama client; this wrapper
+        only handles transient failures (timeouts, connection errors, etc.).
+        """
+        last_error = None
+        for attempt in range(1, OLLAMA_MAX_RETRIES + 1):
+            try:
+                return call(*args, **kwargs)
+            except Exception as error:
+                last_error = error
+                logger.warning(
+                    "Ollama call failed (attempt %d/%d): %s",
+                    attempt, OLLAMA_MAX_RETRIES, error,
+                )
+        raise last_error
 
     def _get_default_agent(self):
         if self._default_agent is None:
@@ -162,10 +190,10 @@ class OllamaAgent(AIAgent):
     def generate_response_with_prompt(self, prompt, input, config: dict | None = None):
 
         full_prompt = prompt + "\n" + input
-        response = self._get_default_agent().invoke(
+        response = self._invoke_with_retry(
+            self._get_default_agent().invoke,
             {"messages": [("user", full_prompt)]},
-            config=config
-
+            config=config,
         )
         self.output = content_to_text(response["messages"][-1].content)
         return self.output
@@ -173,7 +201,8 @@ class OllamaAgent(AIAgent):
     def generate_response(self, input: str) -> str:
         full_prompt = self.base_prompt + "\n" + input
         config = {"configurable": {"thread_id": "generate_response"}}
-        response = self._get_default_agent().invoke(
+        response = self._invoke_with_retry(
+            self._get_default_agent().invoke,
             {"messages": [("user", full_prompt)]},
             config=config,
         )
@@ -185,7 +214,7 @@ class OllamaAgent(AIAgent):
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=100)
         docs = [Document(page_content=c) for c in splitter.split_text(text)]
         chain = load_summarize_chain(self.chat_model, chain_type="refine",verbose=True)
-        return chain.invoke(docs)["output_text"]
+        return self._invoke_with_retry(chain.invoke, docs)["output_text"]
 
     def _count_tokens(self, input: str) -> int:
          # Naive token counting logic
