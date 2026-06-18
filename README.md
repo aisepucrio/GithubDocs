@@ -146,33 +146,6 @@ When enabled, GithubDocs creates a top-level `githubdocs-manual-run` trace for
 each CLI run, nests LangChain model/tool observations under it, adds model and
 repository metadata, and flushes pending events before the process exits.
 
-#### GITHUB_TOKEN (Optional)
-Optional token for **GitHub Issues integration**. The framework can work without it, but with reduced API rate limits (60 requests/hour vs 5000 with authentication).
-
-**How to obtain a GitHub Personal Access Token:**
-1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Click "Generate new token (classic)"
-3. Select scopes: `repo` (for private repos) or `public_repo` (for public repos only)
-4. Copy the generated token
-
-**How to configure:**
-
-Create a `.env` file in the project root:
-```bash
-GITHUB_TOKEN=your_token_here
-```
-
-Or set it directly in your environment:
-```bash
-# Linux/macOS
-export GITHUB_TOKEN=your_token_here
-
-# Windows PowerShell
-$env:GITHUB_TOKEN="your_token_here"
-```
-
-**Note:** Without a token, GitHub Issues integration will still work but with GitHub's unauthenticated API rate limit (60 requests/hour instead of 5000/hour).
-
 # Configuration Documentation
 
 ## Config File
@@ -231,27 +204,6 @@ ignore_files = ["IGNORED_PRESET", "README.md", "docs/**"]
 ignore_files = ["*.log", "temp/**", "config.json"]
 ```
 
-#### github_repo_name
-Optional parameter to enable **GitHub Issues integration**. Specify the repository in the format `"owner/repo"`.
-
-When configured, the framework will:
-- Automatically detect issue references in commit messages (patterns like `#123`, `fix #456`, `closes #789`)
-- Fetch detailed information about referenced issues via GitHub API
-- Make issue data available to LLM agents through specialized tools
-- Include issue context in documentation generation
-
-**Requirements:**
-- A GitHub Personal Access Token in the `GITHUB_TOKEN` environment variable is **recommended** for higher API rate limits
-- Without a token, the GitHub API has a rate limit of 60 requests/hour
-- The repository must be publicly accessible (or accessible with the provided token if private)
-
-##### Example
-```Python
-github_repo_name = "stone-payments/pos-mamba-sdk"
-```
-
-**Note:** The framework works without a token but with reduced rate limits (60 requests/hour). For better performance, especially with repositories that have many issues, it's recommended to configure a token.
-
 ### [[agents.output]]
 
 #### result & log paths
@@ -276,22 +228,7 @@ This parameter controls the randomness of the model's output. It is a standard L
 #### template_path
 The absolute or relative path to the directory containing your Jinja prompt templates.
 
-#### tools
-Optional list of tool names that the LLM agent can use during execution. Tools extend the agent's capabilities beyond text generation.
-
-**Available tool categories:**
-- **GitHub Issues Tools** (automatically enabled when `github_repo_name` is configured):
-  - `search_github_issues_in_commits`: Searches for issues mentioned in commit messages
-  - `get_github_issue_details`: Retrieves detailed information about a specific issue
-  - `extract_issue_numbers_from_text`: Extracts issue numbers from any text
-
-When GitHub tools are enabled, the LLM agent can autonomously search for and retrieve issue information during documentation generation, providing richer context about bug fixes, feature implementations, and project evolution.
-
-##### Example
-```Python
-tools = []  # No special tools (default)
-# Tools are automatically available when github_repo_name is set
-```
+> **Note on tools:** Orchestration steps do not accept a per-step `tools` setting. Tool calling is enabled globally via the `--tool-calling` CLI flag (see [Optional Flags](#optional-flags)). When active, the agent receives tools backed by the `RepoInfoExtractor` and fetches repository data on demand instead of having everything embedded in the prompt.
 
 #### prompt_file
 The name of the Jinja template file (e.g., `my_prompt.jinja`) that will be rendered to create the actual prompt sent to the LLM.
@@ -378,13 +315,13 @@ The project supports the following optional flags:
 
   * **`--debug`**: Enables **verbose logging** for enhanced troubleshooting.
   * **`--mock`**: Prints the **rendered AI prompt** (based on your configuration) directly to the terminal without sending it to the external AI service. This flag is **intended solely for testing and verification purposes**.
-  * **`--issuelog`**: Prints **GitHub issues analysis** directly to the terminal instead of including it in the generated documentation. Useful for reviewing issue information without adding it to the output file. Automatically enabled when using `--debug`.
+  * **`--tool-calling`**: Runs each step in **tool-calling mode**. Instead of embedding all repository data in the prompt, the agent is given tools backed by the `RepoInfoExtractor` (file tree, file contents and search at a given commit) and pulls data on demand. Uses the leaner templates under `prompt/tool-calling/`.
 
 ### Example with Flags
 
 ```bash
 python main.py conf/config.toml --mock --debug
-python main.py conf/config_mamba_test.toml --issuelog
+python main.py conf/config.toml --tool-calling
 ```
 ---
 
@@ -491,7 +428,6 @@ temperature = 0.2
 template_path = "prompt/readme-update/two-step-flow/"
 prompt_file = "verify_changes.jinja"
 prompt_variables = {}
-tools = []
 
 [[agents.orchestration]]
 step = 2
@@ -500,7 +436,6 @@ temperature = 0.2
 template_path = "prompt/readme-update/two-step-flow/"
 prompt_file = "apply_changes.jinja"
 prompt_variables = {}
-tools = []
 ```
 
 ## Other Examples and Deprecated Files
@@ -510,90 +445,3 @@ The `prompt/other-examples/deprecated/` folder contains older experimental promp
 - **orchestration.jinja** - Generic repository analysis template
 
 These files are not part of the main workflow but remain available for reference or testing alternative approaches
-
----
-
-# GitHub Issues Integration
-
-The framework includes powerful GitHub Issues integration, allowing LLM agents to automatically discover and analyze issues referenced in commits.
-
-## Features
-
-### Automatic Issue Detection
-The framework automatically scans commit messages for issue references using various patterns:
-- `#123` - Direct issue reference
-- `fix #456`, `fixes #456`, `fixed #456` - Fix patterns
-- `close #789`, `closes #789`, `closed #789` - Close patterns  
-- `resolve #101`, `resolves #101`, `resolved #101` - Resolve patterns
-- `issue-123`, `gh-123` - Alternative formats
-
-### Issue Data Extraction
-For each detected issue, the framework fetches:
-- Title and description
-- Current state (open/closed)
-- Author information
-- Labels and milestone
-- Related pull requests
-- Closing commit (if applicable)
-- Creation and close timestamps
-
-### LLM Agent Tools
-When GitHub integration is enabled, LLM agents gain access to specialized tools:
-
-**`search_github_issues_in_commits()`**  
-Searches all commit messages for issue references and returns a summary of found issues with their details.
-
-**`get_github_issue_details(issue_number: int)`**  
-Retrieves comprehensive information about a specific issue, including description, timeline, and resolution context.
-
-**`extract_issue_numbers_from_text(text: str)`**  
-Extracts issue numbers from any given text using pattern matching.
-
-These tools allow the LLM to autonomously gather issue context during documentation generation, producing more accurate and contextual documentation.
-
-## Configuration Example
-
-```toml
-[target_information]
-repo_path = "external_repos/pos-mamba-sdk"
-branch_name = "master"
-commit_list = ["abc123..def456"]
-github_repo_name = "stone-payments/pos-mamba-sdk"  # Enable GitHub integration
-
-[[agents.orchestration]]
-step = 1
-model_name = "gemini-2.5-flash"
-template_path = "prompt/"
-prompt_file = "changelog.jinja"
-tools = []  # GitHub tools are automatically available
-```
-
-## Usage in Prompts
-
-Issue data is automatically available in your Jinja templates when not using `--issuelog`:
-
-```jinja
-{% if issues_analysis %}
-## Related Issues
-
-This release addresses {{ issues_analysis.total_issues_referenced }} issue(s):
-
-{% for issue_num, issue in issues_analysis.issues.items() %}
-- **#{{ issue_num }}**: {{ issue.title }} ({{ issue.state }})
-  - Author: {{ issue.author }}
-  {% if issue.labels %}
-  - Labels: {{ issue.labels | join(', ') }}
-  {% endif %}
-{% endfor %}
-{% endif %}
-```
-
-## Terminal Output Mode
-
-Use the `--issuelog` flag to print issue analysis to the terminal instead of including it in documentation:
-
-```bash
-python main.py conf/config.toml --issuelog
-```
-
-This displays a formatted report of all detected issues without adding them to the generated output file.

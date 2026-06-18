@@ -3,15 +3,14 @@ import os
 from .llm_agent import *
 from .load_configuration import *
 from .repo_info_extraction import *
-from .github_integration import IssueTracker
 from jinja2 import Environment, FileSystemLoader, meta
 from jinja2 import Undefined, make_logging_undefined
 from .llm_agent.agents_calls import summarize_text
+from .llm_agent.agents_strategy import content_to_text
 from .llm_agent.langfuse_integration import append_langfuse_callback
 from .log import CustomLogger
 from .llm_agent.context_window_size import LLM_CONTEXT_WINDOWS
 from langgraph.checkpoint.memory import InMemorySaver
-from .llm_agent.tools import ALL_TOOLS
 
 
 
@@ -29,70 +28,7 @@ def load_file(repo_path: str, relative_path: str) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
-def print_issues_to_terminal(issues_analysis: dict, issue_tracker: IssueTracker):
-    print("\n" + "="*80)
-    print("📋 ANÁLISE DE ISSUES DO GITHUB")
-    print("="*80)
-    
-    total = issues_analysis.get('total_issues_referenced', 0)
-    if total == 0:
-        print("\n⚠️  Nenhuma issue foi referenciada nos commits analisados.")
-        print("="*80 + "\n")
-        return
-    
-    print(f"\nTotal de issues encontradas: {total}\n")
-    
-    issues = issues_analysis.get('issues', {})
-    commits_by_issue = issues_analysis.get('commits_by_issue', {})
-    
-    for issue_num, issue_data in sorted(issues.items()):
-        # Cabeçalho da issue
-        status_icon = "✅" if issue_data['state'] == 'closed' else "🔴"
-        print(f"{status_icon} Issue #{issue_num}: {issue_data['title']}")
-        print("-" * 80)
-        
-        # Informações básicas
-        print(f"   Status: {issue_data['state'].upper()}")
-        print(f"   Autor: {issue_data['author']}")
-        print(f"   Criada em: {issue_data['created_at'][:10]}")
-        
-        if issue_data.get('closed_at'):
-            print(f"   Fechada em: {issue_data['closed_at'][:10]}")
-        
-        if issue_data.get('labels'):
-            labels_str = ', '.join(issue_data['labels'])
-            print(f"   Labels: {labels_str}")
-        
-        if issue_data.get('closing_commit'):
-            print(f"   Commit que fechou: {issue_data['closing_commit'][:7]}")
-        
-        # Descrição
-        if issue_data.get('body'):
-            body = issue_data['body']
-            if len(body) > 200:
-                body = body[:200] + "..."
-            print(f"\n   Descrição:")
-            # Indenta cada linha da descrição
-            for line in body.split('\n'):
-                if line.strip():
-                    print(f"      {line[:76]}")
-        
-        # Commits relacionados
-        related_commits = commits_by_issue.get(issue_num, [])
-        if related_commits:
-            print(f"\n   Commits relacionados ({len(related_commits)}):")
-            for commit in related_commits:
-                commit_hash = commit['hash'][:7]
-                commit_msg = commit['message'].split('\n')[0][:60]
-                print(f"      • {commit_hash} - {commit_msg}")
-        
-        print("\n")
-    
-    print("="*80)
-    print(f"📊 Resumo: {total} issue(s) analisada(s)")
-    print("="*80 + "\n")
-
-def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_path: str, issue_tracker: IssueTracker = None) -> str:
+def render_prompt(template_path: str, prompt_file: str, variables: dict, repo_path: str) -> str:
     LoggingUndefined = make_logging_undefined(logger=logger,base=Undefined)
     env = Environment(loader=FileSystemLoader(template_path), undefined=LoggingUndefined)
     # TODO: Its interesting to simplify this with all posibilities in one function only.
@@ -160,7 +96,7 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
             {"configurable": {"thread_id": f"step-{orchestration_step.step}-map"}}
         ),
     )
-    map_summaries = [r.content for r in map_responses]
+    map_summaries = [content_to_text(r.content) for r in map_responses]
 
     logger.info(f"Map-reduce: map phase done. {len(map_summaries)} summaries generated.")
 
@@ -175,7 +111,106 @@ def map_reduce_step(repo_info: dict, agent: AIAgent, orchestration_step: Orchest
     return agent.generate_response_with_prompt(reduce_prompt, "", config=config)
 
 
-def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory: InMemorySaver = None, tools: list[str] = None, base_url: str = "") -> AIAgent | None:
+TOOL_CALLING_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "..", "prompt", "tool-calling")
+
+TOOL_CALLING_PROMPT_MAP = {
+    "readme.jinja": "tool_calling_readme.jinja",
+    "changelog.jinja": "tool_calling_changelog.jinja",
+    "readme_update.jinja": "tool_calling_readme_update.jinja",
+}
+
+
+def _resolve_tool_calling_prompt(prompt_file: str) -> str:
+    # Aceita tanto "readme.jinja" quanto "readme/readme.jinja" — o benchmark
+    # usa caminhos prefixados (TEST_TYPE_PROMPTS), então normalizamos pelo basename.
+    key = os.path.basename(prompt_file)
+    if key not in TOOL_CALLING_PROMPT_MAP:
+        raise ValueError(
+            f"--tool-calling: prompt_file '{prompt_file}' has no equivalent in prompt/tool-calling/. "
+            f"Supported: {list(TOOL_CALLING_PROMPT_MAP.keys())}."
+        )
+    return TOOL_CALLING_PROMPT_MAP[key]
+
+
+from langchain_core.callbacks import BaseCallbackHandler
+
+
+class _ToolCallLogger(BaseCallbackHandler):
+    """Callback handler que loga toda chamada de tool feita pela LLM."""
+
+    _MAX_OUTPUT_CHARS = 300
+    _MAX_INPUT_CHARS = 200
+
+    def _short(self, s, limit: int) -> str:
+        s = str(s)
+        if len(s) <= limit:
+            return s
+        return f"{s[:limit]}... [+{len(s) - limit} chars]"
+
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        name = (serialized or {}).get("name", "<unknown>")
+        inputs = kwargs.get("inputs")
+        if isinstance(inputs, dict):
+            args_str = ", ".join(f"{k}={self._short(v, self._MAX_INPUT_CHARS)}" for k, v in inputs.items())
+        else:
+            args_str = self._short(input_str, self._MAX_INPUT_CHARS)
+        logger.info(f"🔧 [tool] {name}({args_str})")
+
+    def on_tool_end(self, output, **kwargs):
+        text = getattr(output, "content", None) if not isinstance(output, (str, bytes)) else output
+        if text is None:
+            text = output
+        logger.info(f"✅ [tool] -> {self._short(text, self._MAX_OUTPUT_CHARS)}")
+
+    def on_tool_error(self, error, **kwargs):
+        logger.warning(f"❌ [tool] error: {error}")
+
+
+def execute_tool_calling_step(
+    extractor: "RepoInfoExtractor",
+    orchestration_step: OrchestrationStep,
+    last_output: str | None,
+    context_memory: InMemorySaver,
+) -> str:
+    """Executa uma step em modo --tool-calling: prompt enxuto + tools do extractor.
+
+    O LLM puxa dados do repo sob demanda em vez de receber tudo no prompt.
+    """
+    agent = build_ai_agent(
+        orchestration_step.model_name,
+        temperature=orchestration_step.temperature,
+        context_memory=context_memory,
+    )
+    if agent is None:
+        raise ValueError(f"--tool-calling: modelo '{orchestration_step.model_name}' nao suportado.")
+
+    tools = list(extractor.as_tools())
+
+    prompt_file = _resolve_tool_calling_prompt(orchestration_step.prompt_file)
+    template_vars = {"prompt_variables": orchestration_step.prompt_variables}
+    if last_output:
+        template_vars["last_step_output"] = last_output
+
+    prompt = render_prompt(
+        TOOL_CALLING_TEMPLATE_PATH,
+        prompt_file,
+        template_vars,
+        extractor.repository_path,
+    )
+
+    logger.info(
+        f"--tool-calling step {orchestration_step.step}: model={orchestration_step.model_name}, "
+        f"tools={len(tools)}"
+    )
+
+    config = {
+        "configurable": {"thread_id": f"step-{orchestration_step.step}"},
+        "callbacks": [_ToolCallLogger()],
+    }
+    return agent.invoke_with_tools(prompt, tools, config=config)
+
+
+def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", temperature: float = None, context_memory:InMemorySaver = None) -> AIAgent | None:
     agent_class = None
     for key in AI_DICT:
         if key in model_name:
@@ -183,12 +218,11 @@ def build_ai_agent(model_name: str, api_key: str = "", base_prompt: str = "", te
     if not agent_class and model_name in LLM_CONTEXT_WINDOWS:
         agent_class = AI_DICT["ollama"]
     if agent_class:
-        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory, tools=tools, base_url=base_url)
+        return agent_class(model_name=model_name, api_key=api_key, base_prompt=base_prompt, temperature=temperature, context_memory=context_memory)
     return None
 
-def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, issue_tracker: IssueTracker = None, context_memory:InMemorySaver = None, config: dict = None):
-    agent = build_ai_agent(orchestration_step.model_name, temperature=orchestration_step.temperature, context_memory=context_memory, base_url=orchestration_step.base_url)
-    print(" \n orchestration step:", orchestration_step.tools, " \n")
+def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: list, last_step_output: str | None = None, context_memory:InMemorySaver = None, config: dict = None):
+    agent = build_ai_agent(orchestration_step.model_name, temperature = orchestration_step.temperature, context_memory=context_memory)
     if agent is None:
         error = ValueError(f"Agent for model {orchestration_step.model_name} not found.")
         logger.error(str(error))
@@ -207,7 +241,6 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
         orchestration_step.prompt_file,
         template_vars,
         repo_info["repo_path"],
-        issue_tracker
     )
 
     if agent.need_summarization(prompt):
@@ -218,20 +251,21 @@ def build_orchestration_step(orchestration_step: OrchestrationStep, repo_info: l
     response = agent.generate_response_with_prompt(prompt, "", config=config)
     return response
 
-def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None):
+def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None, extractor: "RepoInfoExtractor" = None):
     """Cria uma função para executar uma step específica"""
-
-
+    
     def execute_step(last_output: str) -> str:
         logger.info(f"Executing step {orchestration_step.step}: {orchestration_step.model_name}")
 
+        if cli_params and cli_params.tool_calling:
+            if extractor is None:
+                raise RuntimeError("--tool-calling exige um RepoInfoExtractor mas nenhum foi passado para a chain.")
+            return execute_tool_calling_step(extractor, orchestration_step, last_output, context_memory)
 
         agent = build_ai_agent(
             orchestration_step.model_name,
             temperature=orchestration_step.temperature,
             context_memory=context_memory,
-            tools=orchestration_step.tools,
-            base_url=orchestration_step.base_url,
         )
 
         if agent is None:
@@ -289,7 +323,7 @@ def create_step_chain(orchestration_step: OrchestrationStep, repo_info: dict, co
 
     return execute_step
 
-def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None):
+def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, context_memory: InMemorySaver, cli_params: "CliParams" = None, extractor: "RepoInfoExtractor" = None):
     """Encadeia as steps usando composição de funções"""
 
 
@@ -299,7 +333,7 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
 
     # Cria as funções para cada step
     step_functions = [
-        create_step_chain(step, repo_info, context_memory, cli_params=cli_params)
+        create_step_chain(step, repo_info, context_memory, cli_params=cli_params, extractor=extractor)
         for step in sorted_steps
     ]
     
@@ -309,7 +343,6 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
         
         for step_func in step_functions:
             result = step_func(result)
-            
             # Para se o resultado estiver vazio
             if result is None or result.strip() == "":
                 logger.info("Result vazio. Interrompendo a chain.")
@@ -320,6 +353,7 @@ def build_chain(orchestration_steps: list[OrchestrationStep], repo_info: dict, c
     return execute_chain
 
 def start(base_config: BaseAppConfig):
+    tool_calling_mode = bool(base_config.cli_params and base_config.cli_params.tool_calling)
     try:
         extractor = RepoInfoExtractor(
             repository_path=base_config.target_info.repo_path,
@@ -327,63 +361,17 @@ def start(base_config: BaseAppConfig):
             target_branch=base_config.target_info.branch_name,
             ignored_files=base_config.target_info.ignore_files
         )
-        repo_info = extractor.extract_repo_info()
+        repo_info = None if tool_calling_mode else extractor.extract_repo_info()
     except Exception as e:
         logger.error(f"Failed to extract repository information: {e}")
         raise
-        raise
 
-    issue_tracker = None
-    commit_messages = []
-    
-    github_token = os.getenv('GITHUB_TOKEN')
-    if github_token and hasattr(base_config.target_info, 'github_repo_name') and base_config.target_info.github_repo_name:
-        try:
-            repo_name = base_config.target_info.github_repo_name
-            issue_tracker = IssueTracker(repo_name, github_token)
-            
-            commit_messages = [commit.get("message", "") for commit in repo_info["commits"]]
-            
-            from src.llm_agent.github_tools import set_issue_tracker
-            set_issue_tracker(issue_tracker, commit_messages)
-            
-            logger.info(f"✅ GitHub Issues Tools habilitadas para o modelo LLM")
-            logger.info(f"   O modelo poderá buscar informações sobre issues autonomamente")
-            
-            logger.info("Analisando issues mencionadas nos commits...")
-            issues_analysis = issue_tracker.analyze_commits(repo_info["commits"])
-            logger.info(
-                f"Found {issues_analysis['total_issues_referenced']} unique referenced issues"
-            )
-            
-            if base_config.cli_params.enable_issue_log:
-                print_issues_to_terminal(issues_analysis, issue_tracker)
-            else:
-                repo_info["issues_analysis"] = issues_analysis
-        except Exception as e:
-            logger.warning(f"Não foi possível inicializar rastreador de issues: {e}")
-            logger.warning("Continuando sem análise de issues...")
-
-    final_result = ""
-    last_step_output = None
     base_config.orchestration_steps.sort(key=lambda x: x.step)
 
     context_memory = InMemorySaver()
 
-    # criação da orquestração anterior
-    # for step in base_config.orchestration_steps:
-    #     logger.info(f"Executing step {step.step}: {step.model_name}")
-    #     final_result = build_orchestration_step(step, repo_info, last_step_output, issue_tracker, context_memory, RUNNABLE_CONFIG)
-    #     last_step_output = final_result
-        
-    #     if final_result is None or final_result.strip() == "":
-    #         logger.info("Final result vazio. Interrompendo o loop.")
-    #         break
-
-    #  criação da orquestração utilizando chains atualmente:
-
     # CRIA UMA CHAIN (cadeia) de funções ----------------------
-    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, cli_params=base_config.cli_params)
+    chain = build_chain(base_config.orchestration_steps, repo_info, context_memory, cli_params=base_config.cli_params, extractor=extractor)
     
     # EXECUTA a chain de uma vez
     final_result = chain("")

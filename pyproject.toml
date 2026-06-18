@@ -22,13 +22,13 @@ dependencies = [
     "langchain-core>=1.2.7",
     "langchain-google-genai>=4.2.0",
     "langchain",
-    "pygithub>=2.1.0",
     "gspread>=6.2.1",
     "google-auth>=2.48.0",
     "langchain-ollama>=1.0.1",
     "langchain-community>=0.4.1",
     "langfuse>=4.0.0",
     "langchain-text-splitters>=1.1.0",
+    "langchain-openai>=1.2.2",
 ]
 
 [project.optional-dependencies]

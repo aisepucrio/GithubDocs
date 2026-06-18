@@ -55,6 +55,7 @@ class GoogleSheetsExporter:
         "Prompt",
         "Erro",
         "Timestamp",
+        "Parâmetros"     
     ]
 
     def __init__(
@@ -162,14 +163,17 @@ class GoogleSheetsExporter:
         rows = []
         prompt_notes = []  # (row_index, full_prompt) para adicionar como notas
         for r in results:
-            # Lê o conteúdo do arquivo de output se existir
-            output_content = ""
-            output_file = r.get("output_file", "")
-            if output_file and Path(output_file).exists():
-                try:
-                    output_content = Path(output_file).read_text(encoding="utf-8")
-                except Exception:
-                    output_content = f"[Erro ao ler: {output_file}]"
+            # Prefere o conteúdo capturado em memória pelo runner (snapshot da execução).
+            # Fallback para leitura do disco — atenção: se múltiplos rows compartilham
+            # o mesmo output_file, runs posteriores sobrescrevem os anteriores.
+            output_content = r.get("output_content", "") or ""
+            if not output_content:
+                output_file = r.get("output_file", "")
+                if output_file and Path(output_file).exists():
+                    try:
+                        output_content = Path(output_file).read_text(encoding="utf-8")
+                    except Exception:
+                        output_content = f"[Erro ao ler: {output_file}]"
 
             full_prompt = r.get("prompt_content", "")
             row = [
@@ -186,6 +190,7 @@ class GoogleSheetsExporter:
                 "Ver nota" if full_prompt else "",
                 r.get("error_message", ""),
                 r.get("timestamp", ""),
+                r.get("parameters", ""),
             ]
             rows.append(row)
             if full_prompt:
