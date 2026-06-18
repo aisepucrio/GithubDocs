@@ -141,14 +141,21 @@ class OllamaAgent(AIAgent):
         # invoke_with_tools tambem a injeta no config; sendo o mesmo objeto, o LangChain deduplica.
         cb = [self._langfuse_callback] if self._langfuse_callback else []
 
-        self.chat_model: BaseChatModel = ChatOllama(
+        # Per-request HTTP timeout for the Ollama client, overridable via the
+        # OLLAMA_TIMEOUT env var (falls back to OLLAMA_TIMEOUT_SECONDS). Makes a
+        # stuck/unresponsive server fail fast instead of blocking forever.
+        timeout_seconds = float(os.environ.get("OLLAMA_TIMEOUT", OLLAMA_TIMEOUT_SECONDS))
+
+        chat_kwargs = dict(
             model=model_name,
             base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             temperature=temperature,
             num_ctx=self.context_window,
-            client_kwargs={"timeout": OLLAMA_TIMEOUT_SECONDS},
-            callbacks=cb
+            client_kwargs={"timeout": timeout_seconds},
+            callbacks=cb,
         )
+
+        self.chat_model: BaseChatModel = ChatOllama(**chat_kwargs)
 
         # Construido lazy: invoke_with_tools (base) cria seu proprio executor sem essa middleware.
         self._default_agent = None

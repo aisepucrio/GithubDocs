@@ -4,15 +4,63 @@ Runner de benchmark - executa os testes e coleta métricas.
 
 import argparse
 import shlex
+import signal
+import threading
 import time
 import traceback
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 import tomllib
 import sys
 import os
+
+# Timeout de parede padrao (segundos) para UMA tentativa de execucao de uma
+# config. Cobre toda a chain (extracao + todos os steps) de uma tentativa.
+DEFAULT_STEP_TIMEOUT_SECONDS = 200
+
+# Numero padrao de tentativas por config antes de marcar como falha e seguir.
+# Uma config que trava (ex.: Ollama sem responder) ou que falha por erro
+# transitorio costuma passar numa nova tentativa (agente e conexao sao
+# recriados do zero a cada start()).
+DEFAULT_MAX_ATTEMPTS = 3
+
+
+class StepTimeoutError(TimeoutError):
+    """Disparado quando a execucao de uma config excede o timeout de parede."""
+
+
+@contextmanager
+def step_timeout(seconds: Optional[int]):
+    """Aborta o bloco com StepTimeoutError se ele exceder `seconds`.
+
+    Usa SIGALRM (Unix, somente main thread): interrompe inclusive chamadas de
+    rede bloqueadas (ex.: Ollama travado sem responder), que e justamente o caso
+    em que o benchmark congelava o batch inteiro. Se SIGALRM nao estiver
+    disponivel ou nao estivermos na main thread, vira no-op (sem timeout).
+    """
+    if (
+        not seconds
+        or seconds <= 0
+        or not hasattr(signal, "SIGALRM")
+        or threading.current_thread() is not threading.main_thread()
+    ):
+        yield
+        return
+
+    def _handler(signum, frame):
+        raise StepTimeoutError(
+            f"Config execution exceeded the {seconds}s wall-clock timeout"
+        )
+
+    previous_handler = signal.signal(signal.SIGALRM, _handler)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 # Adiciona o diretório pai ao path para importar GithubDocs
 BENCHMARK_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -123,6 +171,8 @@ class BenchmarkRunner:
         verbose: bool = True,
         refine: bool = False,
         langfuse_exporter: Optional["LangfuseExporter"] = None,
+        timeout_seconds: Optional[int] = DEFAULT_STEP_TIMEOUT_SECONDS,
+        max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     ):
         """
         Args:
@@ -131,12 +181,19 @@ class BenchmarkRunner:
             metadata: Lista de metadados (description, commit_mixed) para cada config
             verbose: Se True, imprime logs detalhados
             refine: Se True, ativa refinamento de arquivos grandes via load_summarize_chain
+            timeout_seconds: Timeout de parede por TENTATIVA de execucao. Se uma
+                tentativa exceder, ela e abortada e (se restarem tentativas) a
+                config e re-executada. <=0 ou None desativa o timeout.
+            max_attempts: Numero de tentativas por config antes de marcar como
+                falha e seguir para a proxima. <=1 desativa o retry.
         """
         self.configs = configs
         self.names = names
         self.metadata = metadata or [ConfigMetadata() for _ in configs]
         self.verbose = verbose
         self.refine = refine
+        self.timeout_seconds = timeout_seconds
+        self.max_attempts = max(1, max_attempts)
         self.results: list[BenchmarkResult] = []
         self.langfuse_exporter = langfuse_exporter
         self._run_name: Optional[str] = None
@@ -312,9 +369,37 @@ class BenchmarkRunner:
                     self.langfuse_exporter.trace_attributes_context(config_index)
                 )
 
-            # Executa o framework
+            # Executa o framework com timeout de parede e ate `max_attempts`
+            # tentativas. Uma config travada (ex.: Ollama sem responder) ou um
+            # erro transitorio nao congela nem derruba o batch: aborta a
+            # tentativa, tenta de novo e, esgotadas as tentativas, marca como
+            # falha e segue para a proxima config.
             with langfuse_attributes_context:
-                start(config)
+                last_error: Optional[BaseException] = None
+                for attempt in range(1, self.max_attempts + 1):
+                    try:
+                        with step_timeout(self.timeout_seconds):
+                            start(config)
+                        last_error = None
+                        break
+                    except StepTimeoutError as e:
+                        last_error = e
+                        retrying = attempt < self.max_attempts
+                        suffix = " — tentando novamente..." if retrying else ""
+                        self._log(
+                            f"Timeout (tentativa {attempt}/{self.max_attempts}){suffix}"
+                        )
+                    except Exception as e:
+                        last_error = e
+                        retrying = attempt < self.max_attempts
+                        suffix = " — tentando novamente..." if retrying else ""
+                        self._log(
+                            f"Erro (tentativa {attempt}/{self.max_attempts}): "
+                            f"{type(e).__name__}: {e}{suffix}"
+                        )
+
+                if last_error is not None:
+                    raise last_error
 
             # Lê o output gerado
             if os.path.exists(result.output_file):
@@ -323,6 +408,10 @@ class BenchmarkRunner:
 
             result.success = True
             self._log(f"Sucesso!")
+
+        except StepTimeoutError as e:
+            result.error_message = f"{type(e).__name__}: {str(e)}"
+            self._log("Timeout: pulando para a próxima config")
 
         except Exception as e:
             result.error_message = f"{type(e).__name__}: {str(e)}"

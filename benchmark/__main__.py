@@ -28,7 +28,11 @@ from dotenv import load_dotenv
 
 from .test_configs import load_configs
 from .index_parser import parse_indices, format_indices_summary
-from .runner import BenchmarkRunner
+from .runner import (
+    BenchmarkRunner,
+    DEFAULT_STEP_TIMEOUT_SECONDS,
+    DEFAULT_MAX_ATTEMPTS,
+)
 
 # Carrega .env do diretório do benchmark
 BENCHMARK_DIR = Path(__file__).parent.parent.resolve()
@@ -136,6 +140,29 @@ Exemplos:
         help="Nome da aba com configs de teste (default: TestConfigs ou env)",
     )
 
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_STEP_TIMEOUT_SECONDS,
+        help=(
+            "Timeout de parede por TENTATIVA de execucao de uma config, em "
+            "segundos. Se uma tentativa travar (ex.: Ollama sem responder), ela "
+            f"e abortada e a config e re-executada (default: "
+            f"{DEFAULT_STEP_TIMEOUT_SECONDS}; <=0 desativa)."
+        ),
+    )
+
+    parser.add_argument(
+        "--max-attempts",
+        type=int,
+        default=DEFAULT_MAX_ATTEMPTS,
+        help=(
+            "Numero de tentativas por config antes de marcar como falha e "
+            f"seguir para a proxima (default: {DEFAULT_MAX_ATTEMPTS}; 1 desativa "
+            "o retry)."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Carrega configs: Sheets por padrão, local com --local
@@ -205,7 +232,7 @@ Exemplos:
         except Exception as e:
             print(f"Langfuse: failed to initialize ({e}) — continuing without export.")
 
-    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet, refine=args.refine, langfuse_exporter=langfuse_exporter)
+    runner = BenchmarkRunner(configs=configs, names=names, metadata=metadata, verbose=not args.quiet, refine=args.refine, langfuse_exporter=langfuse_exporter, timeout_seconds=args.timeout, max_attempts=args.max_attempts)
     results = runner.run_batch(indices)
 
     if not args.no_export:
