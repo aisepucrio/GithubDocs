@@ -89,14 +89,37 @@ class GPTAgent(AIAgent):
     def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float = 0.2, context_memory: InMemorySaver = None):
         api_key = api_key or os.environ.get("OPENAI_API_KEY") or ""
         super().__init__(model_name, api_key, base_prompt, temperature, context_memory)
-        self.chat_model: BaseChatModel = init_chat_model("openai:" + model_name, api_key=api_key)
+        model_kwargs = {}
+        if model_name.startswith("gpt-5.6"):
+            # GPT-5.6 function tools with reasoning are only supported by the
+            # Responses API. Chat Completions rejects this combination with 400.
+            model_kwargs["use_responses_api"] = True
+        self.chat_model: BaseChatModel = init_chat_model(
+            "openai:" + model_name,
+            api_key=api_key,
+            **model_kwargs,
+        )
+
+    def _with_langfuse_callback(self, config: dict | None = None) -> dict | None:
+        """Return a runnable config containing this agent's Langfuse callback."""
+        merged_config = dict(config or {})
+        callbacks = list(merged_config.get("callbacks") or [])
+        if self._langfuse_callback and self._langfuse_callback not in callbacks:
+            callbacks.append(self._langfuse_callback)
+        if callbacks:
+            merged_config["callbacks"] = callbacks
+        return merged_config or None
 
     def generate_response(self, input: str) -> str:
         full_input = self.base_prompt + "\n" + input
         kwargs = {}
         if not (self.model_name.startswith("gpt-5") or self.model_name.startswith("o")):
             kwargs["temperature"] = self.temperature
-        response = self.chat_model.invoke(full_input, **kwargs)
+        response = self.chat_model.invoke(
+            full_input,
+            config=self._with_langfuse_callback(),
+            **kwargs,
+        )
 
         self.output = content_to_text(response.content)
         return self.output
@@ -106,7 +129,11 @@ class GPTAgent(AIAgent):
         kwargs = {}
         if not (self.model_name.startswith("gpt-5") or self.model_name.startswith("o")):
             kwargs["temperature"] = self.temperature
-        response = self.chat_model.invoke(full_input, **kwargs)
+        response = self.chat_model.invoke(
+            full_input,
+            config=self._with_langfuse_callback(config),
+            **kwargs,
+        )
 
         self.output = content_to_text(response.content)
         return self.output
