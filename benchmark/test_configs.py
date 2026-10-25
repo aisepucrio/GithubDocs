@@ -52,6 +52,7 @@ class TestConfigRow:
     model_name: str = "gemini-2.5-flash-lite"
     temperature: float = 0.2
     project_description: str = ""
+    parameters: str = ""
 
     @classmethod
     def from_sheet_row(cls, row: dict) -> "TestConfigRow":
@@ -66,6 +67,7 @@ class TestConfigRow:
             model_name=(row.get("model_name", "gemini-2.5-flash")) or "gemini-2.5-flash",
             temperature=float(row.get("temperature", 0.2) or 0.2),
             project_description=row.get("project_description", ""),
+            parameters=str(row.get("parameters", "") or ""),
         )
 
 
@@ -154,6 +156,7 @@ class ConfigMetadata:
     """Metadados de uma configuração de teste."""
     description: str = ""
     commit_mixed: bool = False
+    parameters: str = ""
 
 
 def fetch_configs_from_sheets(
@@ -217,6 +220,7 @@ def fetch_configs_from_sheets(
         metadata.append(ConfigMetadata(
             description=row.description,
             commit_mixed=row.commit_mixed,
+            parameters=row.parameters,
         ))
 
     return configs, names, metadata

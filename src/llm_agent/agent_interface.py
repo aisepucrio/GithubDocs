@@ -1,16 +1,67 @@
 from abc import ABC, abstractmethod
 from .context_window_size import LLM_CONTEXT_WINDOWS
+from .langfuse_integration import get_langfuse_callback
 from typing import List, Dict
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+def _message_content_to_str(message_or_content) -> str:
+    """Extract text from an AIMessage (or its raw content) robustly.
+
+    langchain-core 1.x can expose content as a plain string, a list of content
+    blocks, or split reasoning/text blocks. Provider integrations (e.g. Gemini)
+    also differ in whether text blocks carry a ``type`` key. We prefer the
+    message's canonical ``.text``/``.content_blocks`` accessors and fall back to
+    walking raw content, accepting both typed ({"type": "text", "text": ...}) and
+    untyped ({"text": ...}) blocks. Without this, tool-calling answers returned as
+    untyped blocks were silently dropped and broke the chain ("Result vazio").
+    """
+    # Prefer canonical accessors when given a message object.
+    if hasattr(message_or_content, "content"):
+        message = message_or_content
+        canonical = str(getattr(message, "text", "") or "")
+        if canonical.strip():
+            return canonical
+        try:
+            blocks = list(message.content_blocks)
+        except Exception:
+            blocks = []
+        joined = "".join(
+            block.get("text", "")
+            for block in blocks
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+        if joined.strip():
+            return joined
+        content = message.content
+    else:
+        content = message_or_content
+
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and "text" in block and block.get("type") in (None, "text"):
+                parts.append(block.get("text") or "")
+        return "".join(parts)
+    return str(content) if content is not None else ""
+
 
 class AIAgent(ABC):
-    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float, tools: list[str] = None):
+    def __init__(self, model_name: str, api_key: str, base_prompt: str, temperature: float, context_memory: InMemorySaver = None):
         self.model_name = model_name
         self.api_key = api_key
         self.base_prompt = base_prompt
         self.context_window = LLM_CONTEXT_WINDOWS[self.model_name]
         self.output = ""
         self.temperature = temperature
-        self.tools = tools or []
+        self.context_memory = context_memory
+        # Memoize Langfuse callback handler per agent instance to avoid repeated initialization.
+        # Single shared instance: LangChain dedups it across local + inheritable callbacks.
+        self._langfuse_callback = get_langfuse_callback()
         #variables for the interative one
         self.mode = 0  # 0: non-interactive, 1: interactive
         self.chat_history: List[Dict[str, str]] = []
@@ -31,7 +82,23 @@ class AIAgent(ABC):
     @abstractmethod
     def _count_tokens(self, input: str) -> int:
         pass
-    
+
+    def invoke_with_tools(self, prompt: str, tools: list, config: dict = None) -> str:
+        """Executa um turno ReAct: agent_executor sobre self.chat_model com as tools. MockAgent sobrescreve."""
+        from langchain.agents import create_agent
+
+        # Injeta o callback do Langfuse nos callbacks do invoke (inheritable), para que o
+        # trace cubra toda a arvore do agente (grafo -> LLM -> tools), nao so a chamada do modelo.
+        config = config or {}
+        callbacks = config.get("callbacks", [])
+        if self._langfuse_callback and self._langfuse_callback not in callbacks:
+            callbacks.append(self._langfuse_callback)
+        config["callbacks"] = callbacks
+
+        executor = create_agent(self.chat_model, tools=tools, checkpointer=self.context_memory)
+        response = executor.invoke({"messages": [("user", prompt)]}, config=config)
+        return _message_content_to_str(response["messages"][-1])
+
     def _get_model_window_context(self) -> int:
         return self.context_window
     
