@@ -18,7 +18,7 @@ those materials. Confirm their redistribution conditions before public release.
 
 The curated data replace human evaluator identifiers, mark synthetic evaluator
 slots, remove operational trace/session/collector identifiers and mask email
-addresses and local home paths. Internal subjects use stable anonymous identifiers
+addresses and local home paths. All six subject projects use stable anonymous identifiers
 in filenames, metadata, prompts, outputs, annotations and figure labels. Their
 submodules, identifiable example image, source filenames, repository URLs and
 revision fingerprints are excluded. The private mapping stays outside the
@@ -31,8 +31,11 @@ pull-request diffs can still expose earlier identities. Updating current files
 does not erase those records. Share the generated archive through an appropriate
 anonymous review channel, not a link to the identified development repository or
 its PR. The archive omits Git history, source commit IDs and private identity maps.
-Public third-party project names and deidentified free text remain scientifically
-relevant; a final manual review should assess indirect identification from content.
+Personal names in commit trailers, notebook account metadata and citation
+entries, and the titles and venues of related publications, are withheld.
+Third-party names inside subject source code and deidentified free text remain
+scientifically relevant; a final manual review should assess indirect
+identification from content.
 Never include `.env`, service-account credentials, virtual environments or private
 mappings in an upload. Existing local archives produced before this anonymization
 must not be used as the review artifact.

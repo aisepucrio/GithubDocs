@@ -82,9 +82,9 @@
       }
     },
     {
-      "path": "data/event_flow_answers_merged.csv.gz",
-      "dataset": "event_flow_answers_merged.csv",
-      "sha256": "c2c6f97c532ffff61ff60982ec8c811ffd854fd3ddb1ba53a7f269577814b593",
+      "path": "data/project-d_answers_merged.csv.gz",
+      "dataset": "project-d_answers_merged.csv",
+      "sha256": "01ddb74c3446a5cd578d2018efff56f7e4fd8612a4b4585d8d714e55fa43cb4f",
       "rows": 180,
       "contexts": 90,
       "synthetic_rows": 32,
@@ -158,9 +158,9 @@
       }
     },
     {
-      "path": "data/ngx_admin_lte_answers_merged.csv.gz",
-      "dataset": "ngx_admin_lte_answers_merged.csv",
-      "sha256": "7bcdc3b2c08c6ab17bce3bce33760e5d6fe81cad930aabc322d82349c7c8c745",
+      "path": "data/project-e_answers_merged.csv.gz",
+      "dataset": "project-e_answers_merged.csv",
+      "sha256": "21f535d5668058e3f5dc8aa53bb6a7a8ef842b1542c00302e5c333339d0c4f91",
       "rows": 180,
       "contexts": 90,
       "synthetic_rows": 26,
@@ -234,9 +234,9 @@
       }
     },
     {
-      "path": "data/pos_mamba_sdk_answers_merged.csv.gz",
-      "dataset": "pos_mamba_sdk_answers_merged.csv",
-      "sha256": "ab6a582f375b8fd8acd7c071bf3b4b72e79c3ba8f356393a4aacef28ca904b08",
+      "path": "data/project-f_answers_merged.csv.gz",
+      "dataset": "project-f_answers_merged.csv",
+      "sha256": "22b0788020e6a21ad74edb1606e8653908888b9d94ff86680996667a418be59d",
       "rows": 180,
       "contexts": 90,
       "synthetic_rows": 30,
@@ -312,7 +312,7 @@
     {
       "path": "data/project-b_answers_merged.csv.gz",
       "dataset": "project-b_answers_merged.csv",
-      "sha256": "434cbfa6e5191f5d0006127fecf2143bfd37fdd2c376e1876ebce7f43aff9cdb",
+      "sha256": "286b7e81c22fd3fdd4247be9cfce49d17314fafedb36acfd9cb1685b1bdb1ab4",
       "rows": 180,
       "contexts": 90,
       "synthetic_rows": 20,
@@ -388,7 +388,7 @@
     {
       "path": "data/project-c_answers_merged.csv.gz",
       "dataset": "project-c_answers_merged.csv",
-      "sha256": "6df2b427f70ef408e87172ffdbb6f1817a33b7cd1c3e2643cc5b61774d961043",
+      "sha256": "4643e8b9fe2bb62dae33666465b16f6003f222b187bd9634e698d0fa63d824a2",
       "rows": 180,
       "contexts": 90,
       "synthetic_rows": 18,
@@ -464,7 +464,7 @@
     {
       "path": "data/claude_code_answers.csv.gz",
       "dataset": "claude_code_answers.csv",
-      "sha256": "5e881dbd5780b36b7f66ed2eebe084f230ee339eb12d50aca13086acfa581835",
+      "sha256": "ce54d36d12903f7f76b760c329fdeae764019b775e49fb73421252e0fc2c89e2",
       "rows": 108,
       "contexts": 54,
       "synthetic_rows": 0,

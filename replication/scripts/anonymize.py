@@ -15,10 +15,67 @@ PROJECTS = {
     "project-a": "external_repos/project-a",
     "project-b": "external_repos/project-b",
     "project-c": "external_repos/project-c",
-    "event_flow": "external_repos/EventFlow",
-    "ngx_admin_lte": "external_repos/ngx-admin-lte",
-    "pos_mamba_sdk": "external_repos/pos-mamba-sdk",
+    "project-d": "external_repos/project-d",
+    "project-e": "external_repos/project-e",
+    "project-f": "external_repos/project-f",
 }
+# Commit trailers, notebook account metadata and citation entries name people.
+TRAILER = re.compile(
+    r"\b(co-authored-by|signed-off-by|reviewed-by|reported-by|helped-by):"
+    r"[ \t]*[^<\r\n\\\"]+",
+    re.IGNORECASE,
+)
+ACCOUNT = re.compile(
+    r"((?:\\)*\"(?:displayName|userId|emailAddress|photoUrl)(?:\\)*\"\s*:\s*"
+    r"(?:\\)*\")[^\"\\]*"
+)
+CSL_NAME = re.compile(
+    r"((?:\\)*\"given(?:\\)*\"\s*:\s*(?:\\)*\")[^\"\\]*"
+    r"((?:\\)*\"\s*,\s*(?:\\)*\"family(?:\\)*\"\s*:\s*(?:\\)*\")[^\"\\]*"
+)
+# Entries end with a closing brace on its own (possibly diff-prefixed) line; the
+# newline may be literal or escaped inside serialized prompts.
+CITATION = re.compile(
+    r"@(?:inproceedings|article|misc|inbook|incollection|book|phdthesis|"
+    r"mastersthesis|techreport|software|online)\{.{0,3000}?(?:\n|\\n)[+\- ]?\}",
+    re.IGNORECASE | re.DOTALL,
+)
+CITATION_KEY = re.compile(r"^(@\w+\{)[^,\s]+,")
+CITATION_FIELD = re.compile(
+    r"\b(author|editor|title|booktitle|journal|doi|url|note)(\s*=\s*)"
+    r"(?:\{[^{}]*\}|\"[^\"]*\")",
+    re.IGNORECASE,
+)
+WITHHELD_PERSON = "[name-withheld]"
+
+
+def _citation(match):
+    entry = CITATION_KEY.sub(r"\1anonymous,", match[0])
+    return CITATION_FIELD.sub(r"\1\2{[withheld]}", entry)
+
+
+def redact_people(text):
+    """Withhold personal names carried by trailers, notebook metadata and BibTeX."""
+    text = TRAILER.sub(lambda m: f"{m[1]}: {WITHHELD_PERSON} ", text)
+    text = ACCOUNT.sub(r"\1[withheld]", text)
+    text = CSL_NAME.sub(r"\1[withheld]\2[withheld]", text)
+    return CITATION.sub(_citation, text)
+
+
+def exposes_people(text):
+    if any(
+        m[0].split(":", 1)[1].strip() != WITHHELD_PERSON for m in TRAILER.finditer(text)
+    ):
+        return True
+    if any(not m[0].endswith("[withheld]") for m in ACCOUNT.finditer(text)):
+        return True
+    if any(m[0].count("[withheld]") != 2 for m in CSL_NAME.finditer(text)):
+        return True
+    return any(
+        "{[withheld]}" not in field[0]
+        for entry in CITATION.finditer(text)
+        for field in CITATION_FIELD.finditer(entry[0])
+    )
 
 
 class Anonymizer:
@@ -28,7 +85,7 @@ class Anonymizer:
             raise ValueError(
                 "Keep the private anonymization mapping outside the repository"
             )
-        config = json.loads(mapping_path.read_text())
+        config = json.loads(mapping_path.read_text(encoding="utf-8"))
         self.sources = config["sources"]
         self.patterns = [
             (re.compile(pattern, re.IGNORECASE), replacement)
@@ -47,7 +104,7 @@ class Anonymizer:
         """Redact indirect links as well as explicit project names in data text."""
         text = URL.sub("[link-withheld]", text)
         text = REVISION.sub("[revision-withheld]", text)
-        return self.names(text)
+        return redact_people(self.names(text))
 
     def python(self, source):
         """Change project names inside strings/comments, preserving Python keywords."""
@@ -71,6 +128,8 @@ def validate_dataset(frame, source_name):
                 raise ValueError(
                     f"Unredacted link or revision in {source_name}: {column}"
                 )
+            if exposes_people(text):
+                raise ValueError(f"Unredacted personal name in {source_name}: {column}")
 
 
 def audit_data_bytes(name, payload):
@@ -89,3 +148,5 @@ def audit_data_bytes(name, payload):
         for value in row.values():
             if URL.search(value) or REVISION.search(value):
                 raise ValueError("Unredacted URL or revision in dataset")
+            if exposes_people(value):
+                raise ValueError("Unredacted personal name in dataset")

@@ -1,7 +1,7 @@
 [target_information]
-repo_path = "external_repos/EventFlow"
-branch_name = "develop-v1"
-commit_list = ["6c9fc15a44f02742a2bd36db0613ff304c77c77d"]
+repo_path = "external_repos/requests"
+branch_name = "main"
+commit_list = ["0e4ae38f0c93d4f92a96c774bd52c069d12a4798"]
 ignore_files = ["IGNORED_PRESET", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE_NOTES.md"]
 [agents]
 
@@ -16,4 +16,4 @@ model_name = "mistral-nemo:latest"
 temperature = 0.2
 template_path = "prompt/readme-update/"
 prompt_file = "readme_update.jinja"
-prompt_variables = { name = "mais instrucoes de como rodar o framework (atencao ao modelo antigo de rodar o framework, nao o atual)", repo = "external_repos/EventFlow" }
+prompt_variables = { name = "mais instrucoes de como rodar o framework (atencao ao modelo antigo de rodar o framework, nao o atual)", repo = "external_repos/requests" }

@@ -9,8 +9,8 @@ repository, but their exact correspondence with the historical runs is unverifie
 `../provenance/experiments.csv` records every context's available configuration
 index, repository path, task, model label, temperature, tool-calling flag,
 mixed-commit flag and timestamp. Blank experiment commit/branch fields mean
-**unknown**. `../provenance/repositories.csv` records available public third-party
-references. Internal project identities and Git references are intentionally
+**unknown**. `../provenance/repositories.csv` lists the anonymous subject
+identifiers. Subject project identities and Git references are intentionally
 withheld for review, and their submodules are excluded. The maintainer's private
 identity mapping is needed to locate those original checkouts for reexecution.
 
@@ -41,7 +41,7 @@ these missing records.
 The merged DOME exports retain rendered inputs in `C : input`, and the Claude
 Code export retains `C : prompt`; both retain `C : output`. These are available
 inside the gzip CSVs, including empty-output/failure records. These are
-deidentified artifacts: internal project names, links and revisions are withheld,
+deidentified artifacts: subject project names, links and revisions are withheld,
 and emails/home paths are masked. They help inspect the requests but are not a
 complete environment snapshot or executable replacements for the original inputs.
 Numeric measurements and pre-redaction output lengths are preserved separately.

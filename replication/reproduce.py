@@ -44,9 +44,9 @@ def compare_tables(output, root=ROOT):
             check_exact=False,
             rtol=1e-9,
             atol=1e-12,
-            obj=str(relative),
+            obj=relative.as_posix(),
         )
-        checked.append(str(relative))
+        checked.append(relative.as_posix())
     return checked
 
 
@@ -91,7 +91,7 @@ def main():
             )
     checked = compare_tables(output)
     produced = sorted(
-        str(path.relative_to(output))
+        path.relative_to(output).as_posix()
         for path in output.glob("fig*/*")
         if path.suffix in {".pdf", ".png"}
     )

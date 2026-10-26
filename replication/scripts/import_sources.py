@@ -25,9 +25,9 @@ csv.field_size_limit(sys.maxsize)
 ROOT = Path(__file__).resolve().parents[1]
 REPOS = (
     "project-a",
-    "event_flow",
-    "ngx_admin_lte",
-    "pos_mamba_sdk",
+    "project-d",
+    "project-e",
+    "project-f",
     "project-b",
     "project-c",
 )

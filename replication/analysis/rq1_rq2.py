@@ -346,8 +346,8 @@ for rq, _ in rq_frames():
 
 # Original notebook cell 12
 # Figure 5 — is quality project-dependent? model x repo heatmap of overall quality
-REPO_LABEL = {'project-a': 'project-a', 'event_flow': 'event_flow', 'ngx_admin_lte': 'ngx-admin-lte',
-              'pos_mamba_sdk': 'pos-mamba-sdk', 'project-b': 'project-b', 'project-c': 'project-c'}
+REPO_LABEL = {'project-a': 'project-a', 'project-d': 'project-d', 'project-e': 'project-e',
+              'project-f': 'project-f', 'project-b': 'project-b', 'project-c': 'project-c'}
 for rq, d in rq_frames():
     piv = d.pivot_table(index='model', columns='repo', values='Overall', aggfunc='mean',
                         observed=True).reindex(MODEL_ORDER)

@@ -122,11 +122,11 @@ TASK_RQ    = {'README (generation)': 'RQ1', 'README (update)': 'RQ1', 'CHANGELOG
 TASK_ORDER = ['README (generation)', 'README (update)', 'CHANGELOG']
 TASK_SHORT = {'README (generation)': 'README gen', 'README (update)': 'README upd', 'CHANGELOG': 'CHANGELOG'}
 # the Claude Code export names the repositories by checkout path; map them onto the DOME keys
-REPO_FROM_PATH = {'external_repos/project-a': 'project-a', 'external_repos/EventFlow': 'event_flow',
-                  'external_repos/project-c': 'project-c', 'external_repos/ngx-admin-lte': 'ngx_admin_lte',
-                  'external_repos/pos-mamba-sdk': 'pos_mamba_sdk', 'external_repos/project-b': 'project-b'}
-REPO_LABEL = {'project-a': 'project-a', 'event_flow': 'event_flow', 'ngx_admin_lte': 'ngx-admin-lte',
-              'pos_mamba_sdk': 'pos-mamba-sdk', 'project-b': 'project-b', 'project-c': 'project-c'}
+REPO_FROM_PATH = {'external_repos/project-a': 'project-a', 'external_repos/project-d': 'project-d',
+                  'external_repos/project-c': 'project-c', 'external_repos/project-e': 'project-e',
+                  'external_repos/project-f': 'project-f', 'external_repos/project-b': 'project-b'}
+REPO_LABEL = {'project-a': 'project-a', 'project-d': 'project-d', 'project-e': 'project-e',
+              'project-f': 'project-f', 'project-b': 'project-b', 'project-c': 'project-c'}
 REPO_ORDER = list(REPO_LABEL)
 
 # total_tokens == input + output + cache_read + cache_write in BOTH exports (checked below),

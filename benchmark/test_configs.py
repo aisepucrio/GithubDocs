@@ -63,7 +63,7 @@ class TestConfigRow:
             commit_mixed=str(row.get("commit_mixed", "")).lower() in ("true", "1", "yes", "sim","y"),
             test_type=TestType(row.get("type", "readme")),
             description=row.get("description", ""),
-            repo_path=row.get("repo_path", "external_repos/EventFlow"),
+            repo_path=row.get("repo_path", "external_repos/flask"),
             model_name=(row.get("model_name", "gemini-2.5-flash")) or "gemini-2.5-flash",
             temperature=float(row.get("temperature", 0.2) or 0.2),
             project_description=row.get("project_description", ""),
@@ -252,9 +252,9 @@ def load_configs(from_sheets: bool = False, **sheets_kwargs) -> tuple[list[str],
 TEST_CONFIGS: list[str] = [
     '''
 [target_information]
-repo_path = "external_repos/EventFlow"
-branch_name = "develop-v1"
-commit_list = ["621a25d273434b7f371bef60b7e1d558f7bb3f06"]
+repo_path = "external_repos/requests"
+branch_name = "main"
+commit_list = ["0e4ae38f0c93d4f92a96c774bd52c069d12a4798"]
 ignore_files = ["README.md", "CHANGELOG.md", "IGNORED_PRESET"]
 
 [agents]
@@ -270,7 +270,7 @@ model_name = "gemini-2.5-flash-lite"
 temperature = 0.2
 template_path = "prompt/"
 prompt_file = "changelog/changelog.jinja"
-prompt_variables = { name = "EventFlow - Changelog", repo = "external_repos/EventFlow" }
+prompt_variables = { name = "Requests - Changelog", repo = "external_repos/requests" }
 tools = []
 ''',
     '''
@@ -299,7 +299,7 @@ tools = []
 ]
 
 CONFIG_NAMES: list[str] = [
-    "EventFlow - Changelog",
+    "Requests - Changelog",
     "Flask - Changelog",
 ]
 

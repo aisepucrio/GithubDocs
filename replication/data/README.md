@@ -32,11 +32,13 @@ Additional provider/library metadata is retained where present; missing columns
 in the Claude Code export are not fabricated. Fourteen human IDs and two
 synthetic IDs are represented. Eighteen individual criterion values are missing.
 
-Internal project names are replaced consistently by `project-a`, `project-b` and
-`project-c`, including in filenames, prompts, outputs and comments. URLs and
+Subject project names are replaced consistently by `project-a` to `project-f`,
+including in filenames, prompts, outputs and comments. URLs and
 40-character revision hashes within the exports are withheld; emails and local
-home paths are masked. Trace/session identifiers and collector internals are
+home paths are masked. Personal names in commit trailers, notebook account
+metadata and citation entries, and the venues of related publications, are
+withheld. Trace/session identifiers and collector internals are
 removed. Original numeric measurements and pre-redaction output lengths remain.
-Third-party project names/excerpts remain where relevant. The private identity map
+Third-party names inside subject source code remain where relevant. The private identity map
 and original source checksums are not included. See `../docs/release.md` and
 `../DATA_LICENSE.md` before public distribution.

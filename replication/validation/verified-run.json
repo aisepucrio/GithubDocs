@@ -1,10 +1,10 @@
 {
   "status": "passed",
-  "manifest_sha256": "e92a22453f2029c2f5ded8f13effd3d0c8122a42173da4959571527ad79f0794",
+  "manifest_sha256": "46934d8e204b95fb0c9d145a55e6ea9be13c14b5493ea00a7c3464125160918d",
   "lockfile_sha256": "1c2b1070ca13be2bf3476cf5d9da4d6f36e3686a8dbe9d4aa9f1fc7317b0454d",
   "analysis_sha256": {
-    "rq1_rq2.py": "fc7daa860669aca2c9f3061285d7a53da07d8c7c8bad3fe265af80334bfb3b2d",
-    "rq3.py": "fb14c131acd85c30008326aa43e697bd6069611ae5efe1c1db69094966ec57b4"
+    "rq1_rq2.py": "a95b5460a243464b10d4ef98aeca2516cc123856167088fbe1def9e680878bf7",
+    "rq3.py": "6df546b9f5b89bdd586cbb896919834895da5dd06fc322889e4f3f59fd812d86"
   },
   "reference_tables_matched": [
     "figs/summary_by_model.csv",
@@ -13,9 +13,9 @@
     "figs_rq3/rq3_summary_by_model.csv",
     "figs_rq3/rq3_summary_by_task.csv"
   ],
-  "elapsed_seconds": 18.87,
-  "python": "3.13.9",
-  "platform": "Linux-7.1.13-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "elapsed_seconds": 16.31,
+  "python": "3.13.5",
+  "platform": "Windows-11-10.0.26300-SP0",
   "dependencies": {
     "numpy": "2.5.4",
     "pandas": "2.3.3",

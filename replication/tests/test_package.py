@@ -10,7 +10,13 @@ from tempfile import TemporaryDirectory
 import pandas as pd
 
 from replication.reproduce import compare_tables, verify_inputs
-from replication.scripts.anonymize import Anonymizer, audit_data_bytes, validate_dataset
+from replication.scripts.anonymize import (
+    Anonymizer,
+    audit_data_bytes,
+    exposes_people,
+    redact_people,
+    validate_dataset,
+)
 from replication.scripts.build_archive import included
 from replication.scripts.import_sources import MASKS, SECRET
 
@@ -86,6 +92,22 @@ class PackageTests(unittest.TestCase):
             text = sanitizer.record("class https://example.org/secret " + "f" * 40)
             self.assertEqual(text, "project-a [link-withheld] [revision-withheld]")
 
+    def test_personal_names_are_withheld(self):
+        samples = (
+            "fix\n\nCo-authored-by: Jane Doe <xxxxxxxx>\n",
+            '{\\"displayName\\": \\"Jane Doe\\", \\"userId\\": \\"123\\"}',
+            '{"given": "Jane", "family": "Doe"}',
+            "@Inproceedings{doe2025:XYZ,\\n  author = {Doe, Jane},\\n"
+            "  title = {A Paper},\\n  booktitle = {Some Venue}\\n}",
+            "@article{doe2025,\n-  author = {Doe, Jane and Roe, Rick},\n+}",
+        )
+        for text in samples:
+            self.assertTrue(exposes_people(text), text)
+            redacted = redact_people(text)
+            self.assertFalse(exposes_people(redacted), redacted)
+            self.assertNotIn("Doe", redacted)
+        self.assertFalse(exposes_people("milestone = models.CharField()"))
+
     def test_privacy_audit_rejects_identifiable_paths_and_links(self):
         path = ROOT / "data/project-a_answers_merged.csv.gz"
         frame = pd.read_csv(path)
@@ -103,7 +125,8 @@ class PackageTests(unittest.TestCase):
     def test_internal_repository_provenance_is_withheld(self):
         frame = pd.read_csv(ROOT / "provenance/repositories.csv")
         internal = frame[frame.analysis_repo.str.startswith("project-")]
-        self.assertEqual(len(internal), 3)
+        self.assertEqual(len(internal), 6)
+        self.assertEqual(len(frame), 6)
         self.assertTrue(internal.url_from_gitmodules.isna().all())
         self.assertTrue(internal.preparation_gitlink.isna().all())
         manifest = verify_inputs()

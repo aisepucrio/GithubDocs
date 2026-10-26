@@ -98,7 +98,7 @@ python main.py eval "/path/to/eval.csv"
 ## Submodule Management
 
 This project uses Git submodules to manage external repositories used as test subjects. They are located in the `external_repos/` directory.
-The bundled submodules contain only public third-party examples. Internal study projects use anonymous identifiers in the replication data and are not distributed as submodules.
+The bundled submodules contain only public third-party examples. The study subject projects use anonymous identifiers in the replication data and are not distributed as submodules.
 
 You also could specify repositories in your computer that are not in the git modules, see more about the variable **repo_path** in the "Config File Structure".
 
@@ -159,7 +159,7 @@ repository metadata, and flushes pending events before the process exits.
 
 ## Config File
 
-The configuration file must be passed as an argument when running the application. The `conf/` directory contains a simple example that sets up the framework to analyze the EventFlow repository. Please note that this example is intended for demonstration purposes only and is not suitable for real test scenarios.
+The configuration file must be passed as an argument when running the application. The `conf/` directory contains a simple example that sets up the framework to analyze the Requests repository. Please note that this example is intended for demonstration purposes only and is not suitable for real test scenarios.
 
 ## Config File Structure
 
@@ -250,7 +250,7 @@ These are simple key-value pairs that can be passed into your Jinja prompt templ
 Example of `prompt_variables` in the configuration:
 
 ```python
-{repo_name = "EventFlow", repo_description= "EventFlow is a basic CQRS+ES framework designed to be easy to use."}
+{repo_name = "Requests", repo_description= "Requests is a simple, yet elegant, HTTP library."}
 
 ```
 This variable could appear in the prompt where you mention it between curly braces. Example:

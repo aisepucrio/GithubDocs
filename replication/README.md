@@ -44,7 +44,8 @@ numeric discrepancies return a nonzero exit status. The five reference tables
 use `rtol=1e-9`, `atol=1e-12`; PDF byte equality is not expected because rendering
 metadata and installed fonts can vary.
 
-Tested on Linux x86-64, Python 3.13.9, in an isolated environment. Figure generation
+Tested on Linux x86-64 (Python 3.13.9) and Windows 11 (Python 3.13.5), in
+isolated environments. Figure generation
 took approximately 18 seconds after dependency installation on the preparation
 machine; allow several minutes on other machines. No GPU is used. Reserve about
 1 GB of disk space for the environment and generated files. Other operating
@@ -60,7 +61,7 @@ systems have not been tested.
 | `reference/` | Five original CSV outputs, copied without numerical changes |
 | `manifest.json` | Curated input/reference hashes, row counts and curation details |
 | `provenance/experiments.csv` | 594 contexts with available task/model/configuration metadata |
-| `provenance/repositories.csv` | Anonymous internal-project identifiers and public third-party references |
+| `provenance/repositories.csv` | Anonymous subject-project identifiers |
 | `pyproject.toml`, `uv.lock` | Analysis environment, separate from framework dependencies |
 | `docs/methodology.md` | Analysis definitions, figure mapping and limitations |
 | `docs/reexecution.md` | Framework execution and missing historical configuration |
@@ -112,15 +113,17 @@ case-insensitive regular-expression/replacement pairs; `private_revisions` lists
 additional revisions to withhold. The real mapping is not distributed.
 
 Import preserves row order and numeric measurements, pseudonymizes evaluators,
-removes collector identifiers, masks emails/home paths, and replaces internal
-project names throughout the data. Embedded URLs and revision hashes are withheld.
+removes collector identifiers, masks emails/home paths, and replaces subject
+project names throughout the data. Embedded URLs and revision hashes are withheld,
+as are personal names in commit trailers, notebook account metadata and citation
+entries.
 Original output lengths are recorded before redaction in `C : output_char_count`
 and used by the analyses. Prompts and outputs are consequently deidentified
 versions, not byte-identical original artifacts. Notebook execution outputs,
 metadata, original filenames and original source hashes are not published.
 The scripts retain source cell numbers. Re-run validation after any import or
-code change. Internal projects appear only as `project-a`, `project-b` and
-`project-c`; their repositories are not included as submodules.
+code change. Subject projects appear only as `project-a` to `project-f`; their
+repositories are not included as submodules.
 
 Licensing and remaining publication steps are documented in
 [the release guide](docs/release.md). No DOI or published artifact is claimed.

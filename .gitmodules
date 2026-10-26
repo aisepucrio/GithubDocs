@@ -1,18 +1,6 @@
-[submodule "external_repos/EventFlow"]
-path = external_repos/EventFlow
-url = https://github.com/stone-payments/EventFlow
-
-[submodule "external_repos/pos-mamba-sdk"]
-path = external_repos/pos-mamba-sdk
-url = https://github.com/stone-payments/pos-mamba-sdk
-
 [submodule "external_repos/security-analysis-tool"]
 path = external_repos/security-analysis-tool
 url = https://github.com/databricks-industry-solutions/security-analysis-tool
-
-[submodule "external_repos/ngx-admin-lte"]
-path = external_repos/ngx-admin-lte
-url = https://github.com/stone-payments/ngx-admin-lte
 
 [submodule "external_repos/requests"]
 path = external_repos/requests

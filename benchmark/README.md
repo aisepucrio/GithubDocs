@@ -86,8 +86,8 @@ Create a worksheet named `TestConfigs` (or set `GOOGLE_SHEETS_CONFIG_WORKSHEET` 
 
 | Column | Description | Example |
 |--------|-------------|---------|
-| `description` | Name/label for the test | `EventFlow - Changelog` |
-| `repo_path` | Path to the target repository | `external_repos/EventFlow` |
+| `description` | Name/label for the test | `Flask - Changelog` |
+| `repo_path` | Path to the target repository | `external_repos/flask` |
 | `branch_name` | Branch to analyse | `main` |
 | `commits` | Comma-separated commit SHAs | `abc123, def456` |
 | `commit_mixed` | `true` if commits span multiple features | `false` |
