@@ -1,4 +1,13 @@
-# GithubDocs
+# DOME
+
+## DOME replication package
+
+The [replication package](replication/README.md) includes the curated evaluation
+data and offline RQ1/RQ2/RQ3 analyses, including the Claude Code comparison.
+It recreates 51 figures and checks five summary/statistical tables against the
+author-supplied reference exports without LLM API keys, Langfuse, or Google Sheets.
+See its [methodology and limitations](replication/docs/methodology.md) before
+interpreting the results or attempting to rerun the original experiments.
 
 This project utilizes [uv](https://github.com/astral-sh/uv), an ultra-fast Python package installer and manager that also includes the Ruff linter/formatter.
 
@@ -76,7 +85,7 @@ python main.py eval /path/to/eval.csv
 This single command handles:
 
 - CSV -> Langfuse dataset
-- experiment execution with the real GithubDocs pipeline
+- experiment execution with the real DOME pipeline
 - waiting for evaluator scores
 - exporting the final CSV
 
@@ -89,7 +98,7 @@ python main.py eval "/path/to/eval.csv"
 ## Submodule Management
 
 This project uses Git submodules to manage external repositories used as test subjects. They are located in the `external_repos/` directory.
-The GitModules is just used as Formality and Testability. You could find interest cases, about this git modules, to test in this google sheets: https://docs.google.com/spreadsheets/d/1tR-glo3Wky11PWpasvBAdzWIHSlkXx9W76VPLKVU_Vk/edit?gid=911701213#gid=911701213.
+The bundled submodules contain only public third-party examples. Internal study projects use anonymous identifiers in the replication data and are not distributed as submodules.
 
 You also could specify repositories in your computer that are not in the git modules, see more about the variable **repo_path** in the "Config File Structure".
 
@@ -142,7 +151,7 @@ LANGFUSE_TRACING_ENVIRONMENT=development
 LANGFUSE_HOST=http://localhost:3000
 ```
 
-When enabled, GithubDocs creates a top-level `githubdocs-manual-run` trace for
+When enabled, DOME creates a top-level `DOME-manual-run` trace for
 each CLI run, nests LangChain model/tool observations under it, adds model and
 repository metadata, and flushes pending events before the process exits.
 

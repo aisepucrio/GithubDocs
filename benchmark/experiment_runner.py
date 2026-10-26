@@ -1,5 +1,5 @@
 """
-Executa experimentos no Langfuse usando o pipeline real do GithubDocs.
+Executa experimentos no Langfuse usando o pipeline real do DOME.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from .langfuse_utils import (
 )
 
 
-def run_github_docs_pipeline(
+def run_dome_pipeline(
     input_payload: dict[str, Any],
     metadata: dict[str, Any],
     *,
@@ -94,7 +94,7 @@ def run_dataset_experiment(
         item_metadata = item.metadata if hasattr(item, "metadata") else item["metadata"]
         item_metadata = dict(item_metadata or {})
         item_metadata.setdefault("test_type", default_test_type)
-        return run_github_docs_pipeline(
+        return run_dome_pipeline(
             item_input,
             item_metadata,
             run_name=effective_run_name,
@@ -105,14 +105,14 @@ def run_dataset_experiment(
         name=experiment_name,
         run_name=effective_run_name,
         description=(
-            "Experimento automatizado do GithubDocs com pipeline real de geracao."
+            "Experimento automatizado do DOME com pipeline real de geracao."
         ),
         data=items,
         task=task,
         evaluators=[],
         max_concurrency=max_concurrency,
         metadata={
-            "pipeline": "githubdocs",
+            "pipeline": "DOME",
             "dataset_name": dataset_name,
             "default_test_type": default_test_type,
         },
@@ -146,7 +146,7 @@ def run_dataset_experiment(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Executa um experimento do GithubDocs em um dataset do Langfuse."
+        description="Executa um experimento do DOME em um dataset do Langfuse."
     )
     parser.add_argument(
         "--dataset-name",

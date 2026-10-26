@@ -62,12 +62,10 @@ def step_timeout(seconds: Optional[int]):
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
 
-# Adiciona o diretório pai ao path para importar GithubDocs
+# Adiciona o diretório pai ao path para importar DOME
 BENCHMARK_DIR = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.dirname(BENCHMARK_DIR)  # githubdocs/
-GITHUBDOCS_DIR = os.path.join(PARENT_DIR, "GithubDocs")  # for internal src imports
+PARENT_DIR = os.path.dirname(BENCHMARK_DIR)  # DOME/
 sys.path.insert(0, PARENT_DIR)
-sys.path.insert(0, GITHUBDOCS_DIR)
 
 from src.facade import (
     start,

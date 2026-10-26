@@ -1,0 +1,18 @@
+[project]
+name = "dome-replication"
+version = "1.0.0"
+description = "Offline reproduction of the supplied DOME RQ1, RQ2 and RQ3 analyses"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "numpy>=2.2,<3",
+    "pandas>=2.2,<3",
+    "scipy>=1.15,<2",
+    "matplotlib>=3.10,<3.11",
+    "krippendorff>=0.8,<0.9",
+    "scikit-posthocs>=0.11,<0.12",
+    # scikit-posthocs imports multipletests from a path removed in statsmodels 0.15.
+    "statsmodels>=0.14,<0.15",
+]
+
+[tool.uv]
+package = false

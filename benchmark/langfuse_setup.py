@@ -1,5 +1,5 @@
 """
-Configure Langfuse score configs and annotation queue for GithubDocs.
+Configure Langfuse score configs and annotation queue for DOME.
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ def _print_summary(
     env_path: Path,
     update_env: bool,
 ) -> None:
-    print("GithubDocs Langfuse manual annotation setup")
+    print("DOME Langfuse manual annotation setup")
     print(f"Mode: {'dry-run' if dry_run else 'apply'}")
     print("")
     print("Score configs:")
@@ -153,7 +153,7 @@ def configure_langfuse_manual_annotation(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Configure GithubDocs manual annotation in Langfuse."
+        description="Configure DOME manual annotation in Langfuse."
     )
     parser.add_argument(
         "--dry-run",

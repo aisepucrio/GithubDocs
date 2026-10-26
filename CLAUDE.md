@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GithubDocs is an AI-powered documentation generation tool that analyzes Git commit history and generates/updates README files, changelogs, and other docs using LLMs (Gemini, OpenAI, Ollama).
+DOME is an AI-powered documentation generation tool that analyzes Git commit history and generates/updates README files, changelogs, and other docs using LLMs (Gemini, OpenAI, Ollama).
 
 ## Commands
 

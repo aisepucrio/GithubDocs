@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from .langfuse_annotation import (
-    ALL_GITHUBDOCS_SCORE_CONFIGS,
+    ALL_DOME_SCORE_CONFIGS,
     enqueue_traces_for_annotation,
     ensure_score_configs,
 )
@@ -25,9 +25,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-DATASET_NAME = "GithubDocs Benchmarks"
+DATASET_NAME = "DOME Benchmarks"
 
-SCORE_CONFIGS = ALL_GITHUBDOCS_SCORE_CONFIGS
+SCORE_CONFIGS = ALL_DOME_SCORE_CONFIGS
 
 
 def _is_langfuse_configured() -> bool:
@@ -66,7 +66,7 @@ class LangfuseExporter:
                 self.client.create_dataset(
                     name=self.dataset_name,
                     description=(
-                        "Resultados automáticos do benchmark GithubDocs. "
+                        "Resultados automáticos do benchmark DOME. "
                         "Cada run corresponde a uma execução de python -m benchmark."
                     ),
                 )

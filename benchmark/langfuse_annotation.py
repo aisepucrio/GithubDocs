@@ -1,5 +1,5 @@
 """
-Helpers for GithubDocs manual annotation setup in Langfuse.
+Helpers for DOME manual annotation setup in Langfuse.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from .langfuse_utils import iter_pages
 
 logger = logging.getLogger(__name__)
 
-MANUAL_ANNOTATION_QUEUE_NAME = "GithubDocs Avaliação Manual"
+MANUAL_ANNOTATION_QUEUE_NAME = "DOME Avaliação Manual"
 LEGACY_ANNOTATION_QUEUE_NAME = "Métricas de Avaliação"
 
 MANUAL_SCORE_CONFIGS = [
@@ -68,7 +68,7 @@ PROGRAMMATIC_SCORE_CONFIGS = [
     },
 ]
 
-ALL_GITHUBDOCS_SCORE_CONFIGS = [
+ALL_DOME_SCORE_CONFIGS = [
     *MANUAL_SCORE_CONFIGS,
     *PROGRAMMATIC_SCORE_CONFIGS,
 ]
@@ -197,7 +197,7 @@ def ensure_score_configs(
     dry_run: bool = False,
     preferred_ids: set[str] | None = None,
 ) -> dict[str, ScoreConfigSelection]:
-    score_specs = specs or ALL_GITHUBDOCS_SCORE_CONFIGS
+    score_specs = specs or ALL_DOME_SCORE_CONFIGS
     preferred_ids = preferred_ids or preferred_score_config_ids(client)
     existing = fetch_score_configs(client)
     selections: dict[str, ScoreConfigSelection] = {}
@@ -256,7 +256,7 @@ def ensure_manual_annotation_queue(
     return client.api.annotation_queues.create_queue(
         name=queue_name,
         description=(
-            "Manual GithubDocs evaluation queue for clarity, completeness, "
+            "Manual DOME evaluation queue for clarity, completeness, "
             "concision, correctness, and reviewer observation."
         ),
         score_config_ids=score_config_ids,
