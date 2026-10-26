@@ -1,18 +1,18 @@
 # Benchmark
 
-A testing module for GithubDocs that evaluates the AI documentation generation pipeline across multiple configurations. It runs test cases (README creation, README update, Changelog generation), measures execution time, tracks success rates, and exports results to Google Sheets.
+A testing module for DOME that evaluates the AI documentation generation pipeline across multiple configurations. It runs test cases (README creation, README update, Changelog generation), measures execution time, tracks success rates, and exports results to Google Sheets.
 
 ## What it does
 
 Each benchmark run:
 1. Loads test configurations (from Google Sheets or locally)
-2. Runs the GithubDocs pipeline (`src/facade.start`) for each selected config
+2. Runs the DOME pipeline (`src/facade.start`) for each selected config
 3. Collects metrics: success, execution time, model, temperature, rendered prompt, output content
 4. Exports all results to a Google Sheets spreadsheet (one tab per repository)
 
 ## Setup
 
-Create a `.env` file in the **project root** (`githubdocs/.env`) with:
+Create a `.env` file in the **project root** (`DOME/.env`) with:
 
 ```env
 GOOGLE_SHEETS_CREDENTIALS=path/to/credentials.json
@@ -33,7 +33,7 @@ pip install gspread google-auth python-dotenv
 
 ## Usage
 
-Run from the **project root** (`githubdocs/`):
+Run from the **project root** (`DOME/`):
 
 ```bash
 # Test rows 1 to 20 from Google Sheets
@@ -113,7 +113,7 @@ Edit `test_configs.py` and add TOML config strings to the `TEST_CONFIGS` list an
 python -m benchmark "1" --local
 ```
 
-Each TOML string must follow the GithubDocs config format found in conf/config_example.toml
+Each TOML string must follow the DOME config format found in conf/config_example.toml
 
 ## Output
 
@@ -134,7 +134,7 @@ Each TOML string must follow the GithubDocs config format found in conf/config_e
 
 ## Langfuse Evaluation Pipeline
 
-The repository now includes a full Langfuse-based evaluation flow for GithubDocs:
+The repository now includes a full Langfuse-based evaluation flow for DOME:
 
 `CSV -> Dataset Langfuse -> Experiment Run -> Traces -> Scores -> CSV`
 
@@ -143,7 +143,7 @@ The repository now includes a full Langfuse-based evaluation flow for GithubDocs
 | File | Purpose |
 |------|---------|
 | `dataset_builder.py` | Reads a CSV and upserts each row as a Langfuse dataset item |
-| `experiment_runner.py` | Runs the real GithubDocs pipeline over dataset items using `src.facade.start` |
+| `experiment_runner.py` | Runs the real DOME pipeline over dataset items using `src.facade.start` |
 | `export_results.py` | Exports trace metadata, outputs and scores into a structured CSV |
 | `langfuse_automation.py` | End-to-end job: sync dataset, run experiment and export results |
 | `langfuse_utils.py` | Shared parsing, config building and Langfuse helpers |
@@ -188,7 +188,7 @@ The same `.env` should also contain whichever LLM credentials your selected `mod
 ### 1. Build or update the dataset
 
 ```bash
-python -m benchmark.dataset_builder path/to/eval.csv --dataset-name gh-docs-eval
+python -m benchmark.dataset_builder path/to/eval.csv --dataset-name dome-eval
 ```
 
 Each CSV row becomes one Langfuse dataset item with:
@@ -201,12 +201,12 @@ Each CSV row becomes one Langfuse dataset item with:
 
 ```bash
 python -m benchmark.experiment_runner \
-  --dataset-name gh-docs-eval \
-  --experiment-name gh-docs-experiment \
+  --dataset-name dome-eval \
+  --experiment-name dome-experiment \
   --max-concurrency 1
 ```
 
-This command executes the real GithubDocs generation flow for every dataset item and stores the resulting traces in Langfuse. A manifest JSON is written to `output/langfuse_eval/`.
+This command executes the real DOME generation flow for every dataset item and stores the resulting traces in Langfuse. A manifest JSON is written to `output/langfuse_eval/`.
 
 ### 3. Configure judges in Langfuse UI
 
@@ -224,10 +224,20 @@ Recommended evaluator names:
 
 ### 4. Export structured results
 
+Each export also writes `<name>.scores.csv` with every score record (including
+individual evaluator IDs, comments and timestamps) and `<name>.observations.jsonl`
+with per-observation usage and cost details. The main CSV remains a **latest score
+per criterion** view for compatibility; use the scores sidecar for human evaluation
+analysis. Token totals count GENERATION observations only; missing or non-token
+usage remains empty rather than being reported as zero. The observation sidecar
+preserves provider-specific cache usage without assuming a common accounting
+convention. These exports contain private identifiers and require curation before
+publication. The historical study's curated exports are in `replication/data/`.
+
 ```bash
 python -m benchmark.export_results \
-  --dataset-name gh-docs-eval \
-  --run-name gh-docs-experiment-2026-03-25t120000-00-00 \
+  --dataset-name dome-eval \
+  --run-name dome-experiment-2026-03-25t120000-00-00 \
   --output-path output/langfuse_eval/latest-results.csv
 ```
 
@@ -244,7 +254,7 @@ You can use this command in cron, GitHub Actions, or any scheduler.
 Example cron entry:
 
 ```cron
-0 9 * * 1 cd /path/to/GithubDocs && ./.venv/bin/python -m benchmark.langfuse_automation path/to/eval.csv
+0 9 * * 1 cd /path/to/DOME && ./.venv/bin/python -m benchmark.langfuse_automation path/to/eval.csv
 ```
 
 ### Output schema

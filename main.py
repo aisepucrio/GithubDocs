@@ -52,13 +52,13 @@ def _configure_eval_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("csv_path", help="Caminho para o CSV de entrada")
     parser.add_argument(
         "--dataset-name",
-        default="gh-docs-eval",
-        help="Nome do dataset no Langfuse (default: gh-docs-eval)",
+        default="dome-eval",
+        help="Nome do dataset no Langfuse (default: dome-eval)",
     )
     parser.add_argument(
         "--experiment-name",
-        default="gh-docs-experiment",
-        help="Nome logico do experimento (default: gh-docs-experiment)",
+        default="dome-experiment",
+        help="Nome logico do experimento (default: dome-experiment)",
     )
     parser.add_argument("--run-name", default=None, help="Nome exato do dataset run")
     parser.add_argument(
@@ -177,14 +177,14 @@ def _run_manual_case(args: argparse.Namespace) -> int:
         trace_id = Langfuse.create_trace_id()
         span = lf_client.start_observation(
             trace_context={"trace_id": trace_id},
-            name="githubdocs-manual-run",
+            name="DOME-manual-run",
             as_type="chain",
             input=trace_input,
             metadata=trace_metadata,
         )
         set_current_trace_id(trace_id)
         trace_attributes_context = propagate_attributes(
-            trace_name="githubdocs-manual-run",
+            trace_name="DOME-manual-run",
             metadata=trace_metadata,
             tags=build_run_tags(model_names),
         )
@@ -288,7 +288,7 @@ def _run_langfuse_eval(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="GithubDocs CLI")
+    parser = argparse.ArgumentParser(description="DOME CLI")
     subparsers = parser.add_subparsers(dest="command")
 
     run_parser = subparsers.add_parser(

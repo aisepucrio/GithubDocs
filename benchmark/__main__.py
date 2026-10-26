@@ -56,7 +56,7 @@ def list_configs(configs: list[str], names: list[str]):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Benchmark tool para GithubDocs",
+        description="Benchmark tool para DOME",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemplos:
@@ -213,7 +213,7 @@ Exemplos:
         print("Erro: Nenhum índice válido selecionado")
         return 1
 
-    print(f"\nBenchmark GithubDocs")
+    print(f"\nBenchmark DOME")
     print(f"=" * 60)
     print(f"Configs selecionadas: {format_indices_summary(indices)}")
     print(f"Total: {len(indices)} de {total_configs} disponíveis")

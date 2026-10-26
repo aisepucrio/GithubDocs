@@ -24,8 +24,8 @@ from src.load_configuration.conf_structures import (
 from .test_configs import TEST_TYPE_PROMPTS, TestType
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATASET_NAME = "gh-docs-eval"
-DEFAULT_EXPERIMENT_NAME = "gh-docs-experiment"
+DEFAULT_DATASET_NAME = "dome-eval"
+DEFAULT_EXPERIMENT_NAME = "dome-experiment"
 DEFAULT_REQUIRED_SCORES = ("doc_quality", "hallucination", "consistency")
 DEFAULT_MODEL_NAME = "gemini-2.5-flash"
 DEFAULT_TEMPERATURE = 0.2

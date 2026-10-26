@@ -1,0 +1,19 @@
+task,system,model,n,fail_pct,eff_quality,tokens,latency_s
+CHANGELOG,Claude Code,Claude Code (Opus 5),24,4.17,4.12,129045.13,21.51
+CHANGELOG,DOME,Gemini 3.1 Flash-Lite,48,4.17,4.23,11575.78,7.34
+CHANGELOG,DOME,Llama 3.1 8B,48,54.17,2.15,9448.64,7.1
+CHANGELOG,DOME,Mistral-Nemo 12B,48,2.08,3.33,5179.98,14.5
+CHANGELOG,DOME,Qwen2.5-Coder 14B,48,0.0,2.08,5647.0,8.76
+CHANGELOG,DOME,GPT-5.6 Luna,48,14.58,3.92,12481.65,7.82
+README (generation),Claude Code,Claude Code (Opus 5),6,16.67,3.75,330584.4,78.64
+README (generation),DOME,Gemini 3.1 Flash-Lite,12,50.0,2.32,5934.33,12.52
+README (generation),DOME,Llama 3.1 8B,12,50.0,2.05,13540.5,33.1
+README (generation),DOME,Mistral-Nemo 12B,12,50.0,1.86,2090.5,20.54
+README (generation),DOME,Qwen2.5-Coder 14B,12,50.0,1.54,2025.67,6.76
+README (generation),DOME,GPT-5.6 Luna,12,66.67,2.11,14881.33,10.38
+README (update),Claude Code,Claude Code (Opus 5),24,12.5,3.31,127406.24,27.88
+README (update),DOME,Gemini 3.1 Flash-Lite,48,2.08,3.32,48158.15,19.29
+README (update),DOME,Llama 3.1 8B,48,25.0,2.0,14321.94,50.55
+README (update),DOME,Mistral-Nemo 12B,48,2.08,2.39,8921.47,37.51
+README (update),DOME,Qwen2.5-Coder 14B,48,0.0,2.67,7447.62,13.49
+README (update),DOME,GPT-5.6 Luna,48,47.92,2.59,18059.17,10.96

@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "manifest_sha256": "e92a22453f2029c2f5ded8f13effd3d0c8122a42173da4959571527ad79f0794",
+  "lockfile_sha256": "1c2b1070ca13be2bf3476cf5d9da4d6f36e3686a8dbe9d4aa9f1fc7317b0454d",
+  "analysis_sha256": {
+    "rq1_rq2.py": "fc7daa860669aca2c9f3061285d7a53da07d8c7c8bad3fe265af80334bfb3b2d",
+    "rq3.py": "fb14c131acd85c30008326aa43e697bd6069611ae5efe1c1db69094966ec57b4"
+  },
+  "reference_tables_matched": [
+    "figs/summary_by_model.csv",
+    "figs/summary_by_model_task.csv",
+    "figs_rq3/rq3_paired_tests.csv",
+    "figs_rq3/rq3_summary_by_model.csv",
+    "figs_rq3/rq3_summary_by_task.csv"
+  ],
+  "elapsed_seconds": 18.87,
+  "python": "3.13.9",
+  "platform": "Linux-7.1.13-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "dependencies": {
+    "numpy": "2.5.4",
+    "pandas": "2.3.3",
+    "scipy": "1.18.1",
+    "matplotlib": "3.10.9",
+    "krippendorff": "0.8.2",
+    "scikit-posthocs": "0.11.4",
+    "statsmodels": "0.14.6"
+  },
+  "figures_png": 51,
+  "figures_pdf": 51,
+  "qualitative_coding": "automatic keyword seeds (no manual CODED file supplied)",
+  "scope": "Supplied notebooks and reference CSVs; manuscript correspondence not verified"
+}

@@ -1,0 +1,7 @@
+system,model,n,cases,fail_pct,eff_quality,tokens,latency_s,cost_usd,Conciseness,Correctness,Completeness,Clarity,cond_quality
+Claude Code,Claude Code (Opus 5),54,54,9.26,3.72,148907.98,30.07,0.0,3.78,4.04,4.15,4.03,4.0
+DOME,Gemini 3.1 Flash-Lite,108,54,8.33,3.61,28601.26,13.33,0.0,3.95,3.77,3.65,4.03,3.85
+DOME,Llama 3.1 8B,108,54,40.74,2.07,12573.48,33.98,0.0,2.44,2.82,2.89,3.09,2.81
+DOME,Mistral-Nemo 12B,108,54,7.41,2.75,6753.11,25.68,0.0,3.06,2.73,2.59,3.19,2.89
+DOME,Qwen2.5-Coder 14B,108,54,5.56,2.28,6281.33,10.87,0.0,2.4,2.25,2.24,2.51,2.36
+DOME,GPT-5.6 Luna,108,54,35.19,3.13,15227.18,9.5,0.0,4.02,4.28,4.31,4.54,4.29

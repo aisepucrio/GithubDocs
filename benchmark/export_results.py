@@ -5,6 +5,7 @@ Exporta resultados do Langfuse para CSV estruturado.
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from typing import Any
 
@@ -32,6 +33,46 @@ def _fetch_all_scores(client: Any, dataset_run_id: str) -> list[Any]:
             )
         )
     )
+
+
+def _iso(value: Any) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _observation_row(observation: Any, trace_id: str) -> dict[str, Any]:
+    """Keep the provider's detailed usage alongside Langfuse's normalized usage."""
+    usage = getattr(observation, "usage", None)
+    return {
+        "trace_id": trace_id,
+        "observation_id": getattr(observation, "id", None),
+        "type": getattr(observation, "type", None),
+        "model": getattr(observation, "model", None),
+        "start_time": _iso(getattr(observation, "start_time", None)),
+        "end_time": _iso(getattr(observation, "end_time", None)),
+        "usage_unit": getattr(usage, "unit", None),
+        "input": getattr(usage, "input", None),
+        "output": getattr(usage, "output", None),
+        "total": getattr(usage, "total", None),
+        "usage_details": getattr(observation, "usage_details", None),
+        "cost_details": getattr(observation, "cost_details", None),
+        "calculated_total_cost": getattr(observation, "calculated_total_cost", None),
+    }
+
+
+def _token_totals(observations: list[dict[str, Any]]) -> dict[str, Any]:
+    # Spans may repeat their children's usage: only count GENERATION observations.
+    generations = [row for row in observations if row["type"] == "GENERATION"]
+    totals = {}
+    for key in ("input", "output", "total"):
+        complete = bool(generations) and all(
+            row["usage_unit"] in (None, "TOKENS", "tokens")
+            and isinstance(row[key], (int, float))
+            for row in generations
+        )
+        totals[f"{key}_tokens"] = (
+            sum(row[key] for row in generations) if complete else None
+        )
+    return totals
 
 
 def wait_for_scores(
@@ -120,12 +161,54 @@ def export_dataset_run_results(
         trace_scores[score.name] = score_value_to_python(score)
         discovered_score_names.add(score.name)
 
+    # The wide CSV remains a latest-score view for existing consumers. The sidecar
+    # below is the lossless source for individual-rater analysis and score history.
+    score_columns = [
+        "score_id",
+        "trace_id",
+        "observation_id",
+        "name",
+        "value",
+        "data_type",
+        "source",
+        "author_user_id",
+        "comment",
+        "created_at",
+        "updated_at",
+        "dataset_run_id",
+    ]
+    score_rows = [
+        {
+            "score_id": getattr(score, "id", None),
+            "trace_id": score.trace_id,
+            "observation_id": getattr(score, "observation_id", None),
+            "name": score.name,
+            "value": score_value_to_python(score),
+            "data_type": getattr(score, "data_type", None),
+            "source": getattr(score, "source", None),
+            "author_user_id": getattr(score, "author_user_id", None),
+            "comment": getattr(score, "comment", None),
+            "created_at": _iso(getattr(score, "created_at", None)),
+            "updated_at": _iso(getattr(score, "updated_at", None)),
+            "dataset_run_id": dataset_run.id,
+        }
+        for score in scores
+    ]
+    observation_rows: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
+    seen_traces: set[str] = set()
     for run_item in dataset_run.dataset_run_items:
         trace = client.api.trace.get(run_item.trace_id)
 
         trace_input = trace.input if isinstance(trace.input, dict) else {}
         trace_metadata = trace.metadata if isinstance(trace.metadata, dict) else {}
+        observations = [
+            _observation_row(observation, trace.id)
+            for observation in (getattr(trace, "observations", None) or [])
+        ]
+        if trace.id not in seen_traces:
+            observation_rows.extend(observations)
+            seen_traces.add(trace.id)
         row = {
             "model_name": trace_metadata.get("model_name"),
             "temperature": trace_metadata.get("temperature"),
@@ -142,6 +225,12 @@ def export_dataset_run_results(
             "dataset_run_name": dataset_run.name,
             "dataset_run_id": dataset_run.id,
             "timestamp": trace.timestamp.isoformat(),
+            "latency_seconds": getattr(trace, "latency", None),
+            "total_cost": getattr(trace, "total_cost", None),
+            "execution_time_seconds": trace_metadata.get("execution_time_seconds"),
+            "success": trace_metadata.get("success"),
+            "error_message": trace_metadata.get("error_message"),
+            **_token_totals(observations),
         }
         row.update(scores_by_trace.get(trace.id, {}))
         rows.append(row)
@@ -168,6 +257,14 @@ def export_dataset_run_results(
         "dataset_run_name",
         "dataset_run_id",
         "timestamp",
+        "latency_seconds",
+        "total_cost",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "execution_time_seconds",
+        "success",
+        "error_message",
     ]
 
     dataframe = pd.DataFrame(rows)
@@ -181,6 +278,12 @@ def export_dataset_run_results(
 
     csv_path = ensure_absolute_output_path(output_path)
     dataframe.to_csv(csv_path, index=False)
+    scores_path = csv_path.with_suffix(".scores.csv")
+    observations_path = csv_path.with_suffix(".observations.jsonl")
+    pd.DataFrame(score_rows, columns=score_columns).to_csv(scores_path, index=False)
+    with observations_path.open("w", encoding="utf-8") as handle:
+        for row in observation_rows:
+            handle.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
 
     return {
         "dataset_name": dataset_name,
@@ -189,6 +292,9 @@ def export_dataset_run_results(
         "output_path": str(csv_path),
         "row_count": len(dataframe),
         "scores_complete": scores_complete,
+        "scores_path": str(scores_path),
+        "score_count": len(score_rows),
+        "observations_path": str(observations_path),
     }
 
 

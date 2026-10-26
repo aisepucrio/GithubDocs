@@ -89,7 +89,7 @@ def run_langfuse_job(
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Job completo do GithubDocs: CSV -> Dataset Langfuse -> "
+            "Job completo do DOME: CSV -> Dataset Langfuse -> "
             "Experiment -> Scores -> CSV"
         )
     )

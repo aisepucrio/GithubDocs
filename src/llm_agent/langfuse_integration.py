@@ -6,7 +6,7 @@ from typing import Any, Optional
 from langfuse.langchain import CallbackHandler
 
 _current_trace_id: ContextVar[Optional[str]] = ContextVar(
-    "githubdocs_langfuse_trace_id",
+    "DOME_langfuse_trace_id",
     default=None,
 )
 _langfuse_client = None
@@ -79,7 +79,7 @@ def build_run_metadata(
 ) -> dict[str, str]:
     return safe_langfuse_metadata(
         {
-            "app": "GithubDocs",
+            "app": "DOME",
             "repo_path": repo_path,
             "branch_name": branch_name,
             "commit_count": len(commit_list or []),
@@ -92,7 +92,7 @@ def build_run_metadata(
 
 
 def build_run_tags(model_names: list[str], extra: list[str] | None = None) -> list[str]:
-    tags = ["githubdocs", "manual-run"]
+    tags = ["DOME", "manual-run"]
     tags.extend(model_names)
     if extra:
         tags.extend(extra)

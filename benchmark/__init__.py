@@ -1,5 +1,5 @@
 """
-Benchmark Module - Ferramenta de testes e benchmark para GithubDocs
+Benchmark Module - Ferramenta de testes e benchmark para DOME
 
 Este módulo é COMPLETAMENTE SEPARADO do framework principal.
 Permite testar múltiplos configs de uma linha do sheets e exportar os resultados pro google sheets.

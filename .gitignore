@@ -173,8 +173,7 @@ ENV/
 env.bak/
 venv.bak/
 
-#uv
-uv.lock
+# Dependency lockfiles are versioned for reproducibility.
 
 # Spyder project settings
 .spyderproject

@@ -133,11 +133,11 @@ def ensure_dataset(client: Any, dataset_name: str) -> Any:
         client.create_dataset(
             name=dataset_name,
             description=(
-                "Dataset de avaliacao do GithubDocs para experimentos automatizados "
+                "Dataset de avaliacao do DOME para experimentos automatizados "
                 "com tracing e judges no Langfuse."
             ),
             metadata={
-                "pipeline": "githubdocs",
+                "pipeline": "DOME",
                 "source": "benchmark.dataset_builder",
             },
             input_schema={
@@ -217,7 +217,7 @@ def sync_dataset_from_csv(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Converte um CSV em dataset do Langfuse para o GithubDocs."
+        description="Converte um CSV em dataset do Langfuse para o DOME."
     )
     parser.add_argument("csv_path", help="Caminho para o CSV de entrada")
     parser.add_argument(

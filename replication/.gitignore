@@ -1,0 +1,6 @@
+.venv/
+results/
+__pycache__/
+.cache/
+!uv.lock
+!data/*.csv.gz

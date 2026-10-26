@@ -275,29 +275,6 @@ tools = []
 ''',
     '''
 [target_information]
-repo_path = "external_repos/lm4smells-core"
-branch_name = "main"
-commit_list = ["7ef69d178f2413692df590159b9b07f930306bd5"]
-ignore_files = ["README.md", "IGNORED_PRESET"]
-
-[agents]
-
-[[agents.output]]
-result_path = "output/"
-log_path = "logs/"
-result_file_name = "benchmark_test_2.md"
-
-[[agents.orchestration]]
-step = 1
-model_name = "gemini-2.5-flash-lite"
-temperature = 0.2
-template_path = "prompt/"
-prompt_file = "readme-update/readme_update.jinja"
-prompt_variables = { name = "lm4smells-core - README Update", repo = "external_repos/lm4smells-core" }
-tools = []
-''',
-    '''
-[target_information]
 repo_path = "external_repos/flask"
 branch_name = "main"
 commit_list = ["4cae5d8e411b1e69949d8fae669afeacbd3e5908"]
@@ -323,7 +300,6 @@ tools = []
 
 CONFIG_NAMES: list[str] = [
     "EventFlow - Changelog",
-    "lm4smells-core - README Update",
     "Flask - Changelog",
 ]
 

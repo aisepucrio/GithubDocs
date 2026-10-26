@@ -1,46 +1,23 @@
 [submodule "external_repos/EventFlow"]
-	path = external_repos/EventFlow
-	url = https://github.com/stone-payments/EventFlow
+path = external_repos/EventFlow
+url = https://github.com/stone-payments/EventFlow
+
 [submodule "external_repos/pos-mamba-sdk"]
-	path = external_repos/pos-mamba-sdk
-	url = https://github.com/stone-payments/pos-mamba-sdk
-[submodule "external_repos/stnl-dataminer-web"]
-	path = external_repos/stnl-dataminer-web
-	url = https://github.com/aisepucrio/stnl-dataminer-web
-[submodule "external_repos/stnl-dataminer-api"]
-	path = external_repos/stnl-dataminer-api
-	url = https://github.com/aisepucrio/stnl-dataminer-api
+path = external_repos/pos-mamba-sdk
+url = https://github.com/stone-payments/pos-mamba-sdk
+
 [submodule "external_repos/security-analysis-tool"]
-	path = external_repos/security-analysis-tool
-	url = https://github.com/databricks-industry-solutions/security-analysis-tool
-[submodule "buddyments"]
-	path = buddyments
-	url = https://github.com/aisepucrio/buddyments
-[submodule "external_repos/buddyments"]
-	path = external_repos/buddyments
-	url = https://github.com/aisepucrio/buddyments
-[submodule "external_repos/raise"]
-	path = external_repos/raise
-	url = https://github.com/aisepucrio/stnl-dataminer-api
-[submodule "external_repos/GithubDocs"]
-	path = external_repos/GithubDocs
-	url = https://github.com/aisepucrio/GithubDocs
+path = external_repos/security-analysis-tool
+url = https://github.com/databricks-industry-solutions/security-analysis-tool
+
 [submodule "external_repos/ngx-admin-lte"]
-	path = external_repos/ngx-admin-lte
-	url = https://github.com/stone-payments/ngx-admin-lte
+path = external_repos/ngx-admin-lte
+url = https://github.com/stone-payments/ngx-admin-lte
+
 [submodule "external_repos/requests"]
-	path = external_repos/requests
-	url = https://github.com/psf/requests.git
+path = external_repos/requests
+url = https://github.com/psf/requests.git
+
 [submodule "external_repos/flask"]
-	path = external_repos/flask
-	url = https://github.com/pallets/flask.git
-# The lm4smells-core repository is intentionally vendored as a git submodule.
-# It provides core analysis functionality that needs to be version-pinned and
-# co-evolve with this repository for reproducible experiments and CI runs.
-# Update policy:
-# - Keep this submodule pinned to a specific, tested commit or tag.
-# - When updating, explicitly bump the submodule reference, run the full test
-#   and analysis pipeline, and review the upstream changelog for breaking changes.
-[submodule "external_repos/lm4smells-core"]
-	path = external_repos/lm4smells-core
-	url = https://github.com/aisepucrio/lm4smells-core.git
+path = external_repos/flask
+url = https://github.com/pallets/flask.git
